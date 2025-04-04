@@ -26,6 +26,7 @@
     <modules>
         <module>continew-webapi</module>
         <module>continew-module-system</module>
+        <module>continew-module-education</module>
         <module>continew-plugin</module>
         <module>continew-common</module>
         <module>continew-extension</module>
@@ -52,6 +53,12 @@
                 <artifactId>continew-module-system</artifactId>
                 <version>${revision}</version>
             </dependency>
+
+<!--            <dependency>-->
+<!--                <groupId>top.continew</groupId>-->
+<!--                <artifactId>continew-module-education</artifactId>-->
+<!--                <version>${revision}</version>-->
+<!--            </dependency>-->
 
             <!-- 公共模块（存放公共工具类，公共配置等） -->
             <dependency>
