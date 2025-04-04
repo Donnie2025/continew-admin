@@ -608,3 +608,36 @@ COMMENT ON COLUMN "sys_sms_log"."res_msg"     IS '返回数据';
 COMMENT ON COLUMN "sys_sms_log"."create_user" IS '创建人';
 COMMENT ON COLUMN "sys_sms_log"."create_time" IS '创建时间';
 COMMENT ON TABLE "sys_sms_log" IS '短信日志表';
+
+CREATE TABLE edu_teacher (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  teacher_no VARCHAR(20) NOT NULL,
+  gender SMALLINT DEFAULT 0,
+  phone VARCHAR(20),
+  email VARCHAR(100),
+  description VARCHAR(500),
+  status SMALLINT DEFAULT 0,
+  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  create_by VARCHAR(50),
+  update_by VARCHAR(50),
+  deleted SMALLINT DEFAULT 0
+);
+
+COMMENT ON TABLE edu_teacher IS '教师表';
+COMMENT ON COLUMN edu_teacher.id IS '主键ID';
+COMMENT ON COLUMN edu_teacher.name IS '教师姓名';
+COMMENT ON COLUMN edu_teacher.teacher_no IS '教师工号';
+COMMENT ON COLUMN edu_teacher.gender IS '性别（0-未知 1-男 2-女）';
+COMMENT ON COLUMN edu_teacher.phone IS '手机号码';
+COMMENT ON COLUMN edu_teacher.email IS '邮箱';
+COMMENT ON COLUMN edu_teacher.description IS '描述';
+COMMENT ON COLUMN edu_teacher.status IS '状态（0-正常 1-停用）';
+COMMENT ON COLUMN edu_teacher.create_time IS '创建时间';
+COMMENT ON COLUMN edu_teacher.update_time IS '更新时间';
+COMMENT ON COLUMN edu_teacher.create_by IS '创建者';
+COMMENT ON COLUMN edu_teacher.update_by IS '更新者';
+COMMENT ON COLUMN edu_teacher.deleted IS '是否删除';
+
+CREATE UNIQUE INDEX uk_teacher_no ON edu_teacher(teacher_no);

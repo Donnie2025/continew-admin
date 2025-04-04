@@ -361,3 +361,29 @@ CREATE TABLE IF NOT EXISTS `sys_sms_log`  (
     INDEX `idx_config_id`(`config_id`),
     INDEX `idx_create_user`(`create_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='短信日志表';
+
+CREATE TABLE `edu_teacher` (
+   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
+  `name` varchar(50) NOT NULL COMMENT '教师姓名',
+  `teacher_no` varchar(20) NOT NULL COMMENT '教师工号',
+   `score`  int NOT NULL DEFAULT 5  COMMENT '评分',
+   `tags` varchar(100) DEFAULT NULL COMMENT '标签',
+  `gender` tinyint DEFAULT '2' COMMENT '性别（0-未知 1-男 2-女）',
+  `is_show` tinyint DEFAULT '1' COMMENT '是否展示（ 1-展示, 2-不展示）',
+  `is_fixed` tinyint DEFAULT '1' COMMENT '是否固定（ 1-固定, 2-不固定）',
+  `phone` varchar(20) DEFAULT NULL COMMENT '手机号码',
+  `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
+  `head_img` varchar(512) DEFAULT NULL COMMENT '头像地址',
+  `audio_url` varchar(512) DEFAULT NULL COMMENT '音频地址',
+  `video_url` varchar(512) DEFAULT NULL COMMENT '视频地址',
+  `brief_intro` varchar(256) DEFAULT NULL COMMENT '简介',
+  `description` varchar(1024) DEFAULT NULL COMMENT '描述',
+  `sort`        int          NOT NULL DEFAULT 999        COMMENT '排序',
+  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
+  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_teacher_no` (`teacher_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师表';

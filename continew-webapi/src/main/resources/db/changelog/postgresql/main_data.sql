@@ -116,7 +116,15 @@ VALUES
 (2020, '系统日志', 2000, 2, '/monitor/log', 'MonitorLog', 'monitor/log/index', NULL, 'history', false, false, false, NULL, 2, 1, 1, NOW()),
 (2021, '列表', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:list', 1, 1, 1, NOW()),
 (2022, '详情', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:get', 2, 1, 1, NOW()),
-(2023, '导出', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:export', 3, 1, 1, NOW());
+(2023, '导出', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:export', 3, 1, 1, NOW()),
+
+(3000, '学校管理', 0, 1, '/education', 'Teaching', 'Layout', '/education/teacher', 'education', false, false, false, NULL, 3, 1, 1, NOW()),
+(3010, '教师管理', 3000, 2, '/education/teacher', 'Teacher', 'teaching/teacher/index', NULL, 'building', false, false, false, NULL, 1, 1, 1, NOW()),
+(3011, '列表', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'teaching:teacher:list', 1, 1, 1, NOW()),
+(3012, '详情', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'teaching:teacher:get', 2, 1, 1, NOW()),
+(3013, '新增', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'teaching:teacher:create', 3, 1, 1, NOW()),
+(3014, '修改', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'teaching:teacher:update', 4, 1, 1, NOW()),
+(3015, '删除', 3010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'teaching:teacher:delete', 5, 1, 1, NOW());
 
 -- 初始化默认部门
 INSERT INTO "sys_dept"

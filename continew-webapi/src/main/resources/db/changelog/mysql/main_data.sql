@@ -116,7 +116,23 @@ VALUES
 (2020, '系统日志', 2000, 2, '/monitor/log', 'MonitorLog', 'monitor/log/index', NULL, 'history', b'0', b'0', b'0', NULL, 2, 1, 1, NOW()),
 (2021, '列表', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:list', 1, 1, 1, NOW()),
 (2022, '详情', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:get', 2, 1, 1, NOW()),
-(2023, '导出', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:export', 3, 1, 1, NOW());
+(2023, '导出', 2020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'monitor:log:export', 3, 1, 1, NOW()),
+
+(4000, '学校管理', 0, 1, '/education', 'Teaching', 'Layout', '/education/teacher', 'education', b'0', b'0', b'0', NULL, 3, 1, 1, NOW()),
+(4010, '教师管理', 4000, 2, '/education/teacher', 'Teacher', 'education/teacher/index', NULL, 'building', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
+(4011, '列表', 4010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:list', 1, 1, 1, NOW()),
+(4012, '详情', 4010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:get', 2, 1, 1, NOW()),
+(4013, '新增', 4010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:create', 3, 1, 1, NOW()),
+(4014, '修改', 4010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:update', 4, 1, 1, NOW()),
+(4015, '删除', 4010, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:delete', 5, 1, 1, NOW()),
+
+(4020, '学生管理', 4000, 2, '/education/student', 'Student', 'education/student/index', NULL, 'building', b'0', b'0', b'0', NULL, 1, 1, 1, NOW()),
+(4021, '列表', 4020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:list', 1, 1, 1, NOW()),
+(4022, '详情', 4020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:get', 2, 1, 1, NOW()),
+(4023, '新增', 4020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:create', 3, 1, 1, NOW()),
+(4024, '修改', 4020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:update', 4, 1, 1, NOW()),
+(4025, '删除', 4020, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'education:teacher:delete', 5, 1, 1, NOW());
+
 
 -- 初始化默认部门
 INSERT INTO `sys_dept`
