@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package top.continew.admin.education.controller;
+package top.continew.admin.controller.education;
 
 import top.continew.starter.extension.crud.enums.Api;
 
