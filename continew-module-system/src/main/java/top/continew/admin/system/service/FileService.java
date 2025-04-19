@@ -25,6 +25,7 @@ import top.continew.admin.system.model.resp.file.FileResp;
 import top.continew.admin.system.model.resp.file.FileStatisticsResp;
 import top.continew.starter.core.constant.StringConstants;
 import top.continew.starter.data.mp.service.IService;
+import top.continew.starter.extension.crud.model.resp.IdResp;
 import top.continew.starter.extension.crud.service.BaseService;
 
 import java.time.LocalDate;
@@ -94,4 +95,20 @@ public interface FileService extends BaseService<FileResp, FileResp, FileQuery, 
         return today.getYear() + StringConstants.SLASH + today.getMonthValue() + StringConstants.SLASH + today
             .getDayOfMonth() + StringConstants.SLASH;
     }
+
+    /**
+     * 检查文件是否存在
+     * 
+     * @param fileHash 文件 Hash
+     * @return 响应参数
+     */
+    FileResp check(String fileHash);
+
+    /**
+     * 创建目录
+     * 
+     * @param req 请求参数
+     * @return ID
+     */
+    IdResp<Long> createDir(FileReq req);
 }

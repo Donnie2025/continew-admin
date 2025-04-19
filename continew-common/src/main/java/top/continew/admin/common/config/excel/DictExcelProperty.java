@@ -14,38 +14,26 @@
  * limitations under the License.
  */
 
-package top.continew.admin.schedule.model.req;
+package top.continew.admin.common.config.excel;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
-
-import java.io.Serial;
-import java.io.Serializable;
+import java.lang.annotation.*;
 
 /**
- * 任务执行请求参数
+ * 字典字段注解
  *
  * @author Charles7c
- * @since 2025/3/26 21:50
+ * @since 2025/4/9 20:25
  */
-@Data
-@Schema(description = "任务执行请求参数")
-public class JobTriggerReq implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    /**
-     * ID
-     */
-    @Schema(description = "ID", example = "1")
-    @NotNull(message = "ID不能为空")
-    private Long jobId;
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+public @interface DictExcelProperty {
 
     /**
-     * 方法参数
+     * 字典编码
+     *
+     * @return 字典编码
      */
-    @Schema(description = "方法参数")
-    private String tmpArgsStr;
+    String value();
 }

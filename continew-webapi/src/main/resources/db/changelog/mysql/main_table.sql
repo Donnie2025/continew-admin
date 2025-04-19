@@ -57,8 +57,8 @@ CREATE TABLE IF NOT EXISTS `sys_role` (
     `description`         varchar(200) DEFAULT NULL            COMMENT '描述',
     `sort`                int          NOT NULL DEFAULT 999    COMMENT '排序',
     `is_system`           bit(1)       NOT NULL DEFAULT b'0'   COMMENT '是否为系统内置数据',
-    `menu_check_strictly` bit(1)       DEFAULT b'0'            COMMENT '菜单选择是否父子节点关联',
-    `dept_check_strictly` bit(1)       DEFAULT b'0'            COMMENT '部门选择是否父子节点关联',
+    `menu_check_strictly` bit(1)       DEFAULT b'1'            COMMENT '菜单选择是否父子节点关联',
+    `dept_check_strictly` bit(1)       DEFAULT b'1'            COMMENT '部门选择是否父子节点关联',
     `create_user`         bigint(20)   NOT NULL                COMMENT '创建人',
     `create_time`         datetime     NOT NULL                COMMENT '创建时间',
     `update_user`         bigint(20)   DEFAULT NULL            COMMENT '修改人',
@@ -286,7 +286,7 @@ CREATE TABLE IF NOT EXISTS `sys_file` (
     `extension`          varchar(100)  DEFAULT NULL                COMMENT '扩展名',
     `content_type`       varchar(64)   NOT NULL                    COMMENT '内容类型',
     `type`               tinyint(1)    UNSIGNED NOT NULL DEFAULT 1 COMMENT '类型（0: 目录；1：其他；2：图片；3：文档；4：视频；5：音频）',
-    `md5`                varchar(128)  NOT NULL                    COMMENT 'MD5值',
+    `sha256`             varchar(256)  NOT NULL                    COMMENT 'SHA256值',
     `metadata`           text          DEFAULT NULL                COMMENT '元数据',
     `thumbnail_size`     bigint(20)    DEFAULT NULL                COMMENT '缩略图大小（字节)',
     `thumbnail_url`      varchar(512)  DEFAULT NULL                COMMENT '缩略图URL',
@@ -294,24 +294,21 @@ CREATE TABLE IF NOT EXISTS `sys_file` (
     `storage_id`         bigint(20)    NOT NULL                    COMMENT '存储ID',
     `create_user`        bigint(20)    NOT NULL                    COMMENT '创建人',
     `create_time`        datetime      NOT NULL                    COMMENT '创建时间',
-    `update_user`        bigint(20)    NOT NULL                    COMMENT '修改人',
-    `update_time`        datetime      NOT NULL                    COMMENT '修改时间',
+    `update_user`        bigint(20)    DEFAULT NULL                COMMENT '修改人',
+    `update_time`        datetime      DEFAULT NULL                COMMENT '修改时间',
     PRIMARY KEY (`id`),
     INDEX `idx_url`(`url`),
-    INDEX `idx_md5`(`md5`),
+    INDEX `idx_sha256`(`sha256`),
     INDEX `idx_type`(`type`),
     INDEX `idx_storage_id`(`storage_id`),
-    INDEX `idx_create_user`(`create_user`),
-    INDEX `idx_update_user`(`update_user`)
+    INDEX `idx_create_user`(`create_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件表';
 
 CREATE TABLE IF NOT EXISTS `sys_client` (
     `id`             bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-    `client_id`      varchar(50)  NOT NULL                    COMMENT '终端ID',
-    `client_key`     varchar(255) NOT NULL                    COMMENT '终端Key',
-    `client_secret`  varchar(255) NOT NULL                    COMMENT '终端秘钥',
+    `client_id`      varchar(50)  NOT NULL                    COMMENT '客户端ID',
+    `client_type`    varchar(50)  NOT NULL                    COMMENT '客户端类型',
     `auth_type`      json         NOT NULL                    COMMENT '认证类型',
-    `client_type`    varchar(50)  NOT NULL                    COMMENT '终端类型',
     `active_timeout` bigint(20)   DEFAULT -1                  COMMENT 'Token最低活跃频率（单位：秒，-1：不限制，永不冻结）',
     `timeout`        bigint(20)   DEFAULT 2592000             COMMENT 'Token有效期（单位：秒，-1：永不过期）',
     `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
@@ -323,7 +320,7 @@ CREATE TABLE IF NOT EXISTS `sys_client` (
     UNIQUE INDEX `uk_client_id`(`client_id`),
     INDEX `idx_create_user`(`create_user`),
     INDEX `idx_update_user`(`update_user`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='终端表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户端表';
 
 CREATE TABLE IF NOT EXISTS `sys_sms_config`  (
     `id`              bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',

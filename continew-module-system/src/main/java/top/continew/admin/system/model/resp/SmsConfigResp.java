@@ -29,7 +29,7 @@ import top.continew.starter.security.mask.annotation.JsonMask;
 import java.io.Serial;
 
 /**
- * 短信配置信息
+ * 短信配置响应参数
  *
  * @author luoqiz
  * @author Charles7c
@@ -37,7 +37,7 @@ import java.io.Serial;
  */
 @Data
 @ExcelIgnoreUnannotated
-@Schema(description = "短信配置信息")
+@Schema(description = "短信配置响应参数")
 public class SmsConfigResp extends BaseDetailResp {
 
     @Serial

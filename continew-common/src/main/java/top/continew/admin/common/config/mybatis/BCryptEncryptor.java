@@ -19,6 +19,8 @@ package top.continew.admin.common.config.mybatis;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import top.continew.starter.security.crypto.encryptor.IEncryptor;
 
+import java.util.regex.Pattern;
+
 /**
  * BCrypt 加/解密处理器（不可逆）
  *
@@ -27,6 +29,10 @@ import top.continew.starter.security.crypto.encryptor.IEncryptor;
  */
 public class BCryptEncryptor implements IEncryptor {
 
+    /**
+     * BCrypt 正则表达式
+     */
+    private static final Pattern BCRYPT_PATTERN = Pattern.compile("\\A\\$2(a|y|b)?\\$(\\d\\d)\\$[./0-9A-Za-z]{53}");
     private final PasswordEncoder passwordEncoder;
 
     public BCryptEncryptor(PasswordEncoder passwordEncoder) {
@@ -34,12 +40,16 @@ public class BCryptEncryptor implements IEncryptor {
     }
 
     @Override
-    public String encrypt(String plaintext, String password, String publicKey) throws Exception {
+    public String encrypt(String plaintext, String password, String publicKey) {
+        // 如果已经是 BCrypt 加密格式，直接返回
+        if (BCRYPT_PATTERN.matcher(plaintext).matches()) {
+            return plaintext;
+        }
         return passwordEncoder.encode(plaintext);
     }
 
     @Override
-    public String decrypt(String ciphertext, String password, String privateKey) throws Exception {
+    public String decrypt(String ciphertext, String password, String privateKey) {
         return ciphertext;
     }
 }

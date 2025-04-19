@@ -14,38 +14,25 @@
  * limitations under the License.
  */
 
-package top.continew.admin.schedule.model.req;
+package top.continew.admin.common.service;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import top.continew.starter.extension.crud.model.resp.LabelValueResp;
 
-import java.io.Serial;
-import java.io.Serializable;
+import java.util.List;
 
 /**
- * 任务执行请求参数
+ * 公共字典项业务接口
  *
  * @author Charles7c
- * @since 2025/3/26 21:50
+ * @since 2025/4/9 20:17
  */
-@Data
-@Schema(description = "任务执行请求参数")
-public class JobTriggerReq implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public interface CommonDictItemService {
 
     /**
-     * ID
+     * 根据字典编码查询
+     *
+     * @param dictCode 字典编码
+     * @return 字典项列表
      */
-    @Schema(description = "ID", example = "1")
-    @NotNull(message = "ID不能为空")
-    private Long jobId;
-
-    /**
-     * 方法参数
-     */
-    @Schema(description = "方法参数")
-    private String tmpArgsStr;
+    List<LabelValueResp> listByDictCode(String dictCode);
 }

@@ -90,8 +90,8 @@ CREATE TABLE IF NOT EXISTS "sys_role" (
     "description"         varchar(200) DEFAULT NULL,
     "sort"                int4         NOT NULL DEFAULT 999,
     "is_system"           bool         NOT NULL DEFAULT false,
-    "menu_check_strictly" bool DEFAULT false,
-    "dept_check_strictly" bool DEFAULT false,
+    "menu_check_strictly" bool DEFAULT true,
+    "dept_check_strictly" bool DEFAULT true,
     "create_user"         int8         NOT NULL,
     "create_time"         timestamp    NOT NULL,
     "update_user"         int8         DEFAULT NULL,
@@ -472,7 +472,7 @@ CREATE TABLE IF NOT EXISTS "sys_file" (
     "extension"          varchar(100) DEFAULT NULL,
     "content_type"       varchar(64)  NOT NULL,
     "type"               int2         NOT NULL DEFAULT 1,
-    "md5"       		 varchar(128) NOT NULL,
+    "sha256"       		 varchar(256) NOT NULL,
     "metadata"           text         DEFAULT NULL,
     "thumbnail_size"     int8         DEFAULT NULL,
     "thumbnail_url"      varchar(512) DEFAULT NULL,
@@ -480,16 +480,15 @@ CREATE TABLE IF NOT EXISTS "sys_file" (
     "storage_id"         int8         NOT NULL,
     "create_user"        int8         NOT NULL,
     "create_time"        timestamp    NOT NULL,
-    "update_user"        int8         NOT NULL,
-    "update_time"        timestamp    NOT NULL,
+    "update_user"        int8         DEFAULT NULL,
+    "update_time"        timestamp    DEFAULT NULL,
     PRIMARY KEY ("id")
 );
 CREATE INDEX "idx_file_url" ON "sys_file" ("url");
 CREATE INDEX "idx_file_type" ON "sys_file" ("type");
-CREATE INDEX "idx_file_md5" ON "sys_file" ("md5");
+CREATE INDEX "idx_file_sha256" ON "sys_file" ("sha256");
 CREATE INDEX "idx_file_storage_id" ON "sys_file" ("storage_id");
 CREATE INDEX "idx_file_create_user" ON "sys_file" ("create_user");
-CREATE INDEX "idx_file_update_user" ON "sys_file" ("update_user");
 COMMENT ON COLUMN "sys_file"."id"                 IS 'ID';
 COMMENT ON COLUMN "sys_file"."name"               IS '名称';
 COMMENT ON COLUMN "sys_file"."size"               IS '大小（字节）';
@@ -499,7 +498,7 @@ COMMENT ON COLUMN "sys_file"."abs_path"           IS '绝对路径';
 COMMENT ON COLUMN "sys_file"."extension"          IS '扩展名';
 COMMENT ON COLUMN "sys_file"."content_type"       IS '内容类型';
 COMMENT ON COLUMN "sys_file"."type"               IS '类型（0: 目录；1：其他；2：图片；3：文档；4：视频；5：音频）';
-COMMENT ON COLUMN "sys_file"."md5"                IS 'MD5值';
+COMMENT ON COLUMN "sys_file"."sha256"             IS 'SHA256值';
 COMMENT ON COLUMN "sys_file"."metadata"           IS '元数据';
 COMMENT ON COLUMN "sys_file"."thumbnail_size"     IS '缩略图大小（字节)';
 COMMENT ON COLUMN "sys_file"."thumbnail_url"      IS '缩略图URL';
@@ -514,10 +513,8 @@ COMMENT ON TABLE  "sys_file"                      IS '文件表';
 CREATE TABLE IF NOT EXISTS "sys_client" (
     "id"             int8         NOT NULL,
     "client_id"      varchar(50)  NOT NULL,
-    "client_key"     varchar(255) NOT NULL,
-    "client_secret"  varchar(255) NOT NULL,
-    "auth_type"      json         NOT NULL,
     "client_type"    varchar(50)  NOT NULL,
+    "auth_type"      json         NOT NULL,
     "active_timeout" int8         NOT NULL DEFAULT -1,
     "timeout"        int8         NOT NULL DEFAULT 2592000,
     "status"         int2         NOT NULL DEFAULT 1,
@@ -531,11 +528,9 @@ CREATE UNIQUE INDEX "uk_client_client_id" ON "sys_client" ("client_id");
 CREATE INDEX "idx_client_create_user" ON "sys_client" ("create_user");
 CREATE INDEX "idx_client_update_user" ON "sys_client" ("update_user");
 COMMENT ON COLUMN "sys_client"."id"             IS 'ID';
-COMMENT ON COLUMN "sys_client"."client_id"      IS '终端ID';
-COMMENT ON COLUMN "sys_client"."client_key"     IS '终端Key';
-COMMENT ON COLUMN "sys_client"."client_secret"  IS '终端秘钥';
+COMMENT ON COLUMN "sys_client"."client_id"      IS '客户端ID';
+COMMENT ON COLUMN "sys_client"."client_type"    IS '客户端类型';
 COMMENT ON COLUMN "sys_client"."auth_type"      IS '认证类型';
-COMMENT ON COLUMN "sys_client"."client_type"    IS '终端类型';
 COMMENT ON COLUMN "sys_client"."active_timeout" IS 'Token最低活跃频率（单位：秒，-1：不限制，永不冻结）';
 COMMENT ON COLUMN "sys_client"."timeout"        IS 'Token有效期（单位：秒，-1：永不过期）';
 COMMENT ON COLUMN "sys_client"."status"         IS '状态（1：启用；2：禁用）';
@@ -543,7 +538,7 @@ COMMENT ON COLUMN "sys_client"."create_user"    IS '创建人';
 COMMENT ON COLUMN "sys_client"."create_time"    IS '创建时间';
 COMMENT ON COLUMN "sys_client"."update_user"    IS '修改人';
 COMMENT ON COLUMN "sys_client"."update_time"    IS '修改时间';
-COMMENT ON TABLE  "sys_client"                  IS '终端表';
+COMMENT ON TABLE  "sys_client"                  IS '客户端表';
 
 CREATE TABLE IF NOT EXISTS "sys_sms_config" (
     "id"              int8         NOT NULL,

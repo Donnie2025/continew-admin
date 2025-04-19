@@ -30,14 +30,14 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 创建或修改短信配置参数
+ * 短信配置创建或修改请求参数
  *
  * @author luoqiz
  * @author Charles7c
  * @since 2025/03/15 18:41
  */
 @Data
-@Schema(description = "创建或修改短信配置参数")
+@Schema(description = "短信配置创建或修改请求参数")
 public class SmsConfigReq implements Serializable {
 
     @Serial

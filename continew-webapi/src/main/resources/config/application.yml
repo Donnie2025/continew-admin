@@ -5,7 +5,7 @@ project:
   # 应用名称
   app-name: continew-admin
   # 版本
-  version: 3.6.0-SNAPSHOT
+  version: 3.6.0
   # 描述
   description: 持续迭代优化的前后端分离中后台管理系统框架，开箱即用，持续提供舒适的开发体验。
   # 基本包
@@ -74,6 +74,13 @@ continew-starter.crud:
     id-key: key
     name-key: title
     weight-key: sort
+
+--- ### 安全配置：密码编码器配置
+continew-starter.security:
+  password:
+    enabled: true
+    # BCryptPasswordEncoder（如有改动，需同步调整 top.continew.admin.common.config.mybatis.BCryptEncryptor）
+    encoding-id: bcrypt
 
 --- ### 接口文档配置
 springdoc:

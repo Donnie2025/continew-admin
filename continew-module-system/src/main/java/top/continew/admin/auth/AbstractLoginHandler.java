@@ -16,8 +16,8 @@
 
 package top.continew.admin.auth;
 
-import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.bean.BeanUtil;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,7 +38,7 @@ import top.continew.admin.system.service.RoleService;
 import top.continew.admin.system.service.UserService;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.core.validation.Validator;
-import top.continew.starter.web.util.SpringWebUtils;
+import top.continew.starter.web.util.ServletUtils;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -84,7 +84,7 @@ public abstract class AbstractLoginHandler<T extends LoginReq> implements LoginH
      * 认证
      *
      * @param user   用户信息
-     * @param client 终端信息
+     * @param client 客户端信息
      * @return token 令牌信息
      */
     protected String authenticate(UserDO user, ClientResp client) {
@@ -101,16 +101,16 @@ public abstract class AbstractLoginHandler<T extends LoginReq> implements LoginH
             .join(), passwordExpirationDaysFuture.join());
         BeanUtil.copyProperties(user, userContext);
         // 设置登录配置参数
-        SaLoginModel model = new SaLoginModel();
-        model.setActiveTimeout(client.getActiveTimeout());
-        model.setTimeout(client.getTimeout());
-        model.setDevice(client.getClientType());
+        SaLoginParameter loginParameter = new SaLoginParameter();
+        loginParameter.setActiveTimeout(client.getActiveTimeout());
+        loginParameter.setTimeout(client.getTimeout());
+        loginParameter.setDeviceType(client.getClientType());
         userContext.setClientType(client.getClientType());
-        model.setExtra(CLIENT_ID, client.getClientId());
+        loginParameter.setExtra(CLIENT_ID, client.getClientId());
         userContext.setClientId(client.getClientId());
         // 登录并缓存用户信息
-        StpUtil.login(userContext.getId(), model.setExtraData(BeanUtil.beanToMap(new UserExtraContext(SpringWebUtils
-            .getRequest()))));
+        StpUtil.login(userContext.getId(), loginParameter.setExtraData(BeanUtil
+            .beanToMap(new UserExtraContext(ServletUtils.getRequest()))));
         UserContextHolder.setContext(userContext);
         return StpUtil.getTokenValue();
     }

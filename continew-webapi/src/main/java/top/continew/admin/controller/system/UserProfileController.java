@@ -36,11 +36,12 @@ import top.continew.admin.common.util.SecureUtils;
 import top.continew.admin.system.enums.SocialSourceEnum;
 import top.continew.admin.system.model.entity.user.UserSocialDO;
 import top.continew.admin.system.model.req.user.UserBasicInfoUpdateReq;
-import top.continew.admin.system.model.req.user.UserEmailUpdateRequest;
+import top.continew.admin.system.model.req.user.UserEmailUpdateReq;
 import top.continew.admin.system.model.req.user.UserPasswordUpdateReq;
 import top.continew.admin.system.model.req.user.UserPhoneUpdateReq;
 import top.continew.admin.system.model.resp.AvatarResp;
 import top.continew.admin.system.model.resp.user.UserSocialBindResp;
+import top.continew.admin.system.service.NoticeService;
 import top.continew.admin.system.service.UserService;
 import top.continew.admin.system.service.UserSocialService;
 import top.continew.starter.cache.redisson.util.RedisUtils;
@@ -51,26 +52,27 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * 个人中心 API
+ * 个人信息 API
  *
  * @author Charles7c
  * @since 2023/1/2 11:41
  */
-@Tag(name = "个人中心 API")
+@Tag(name = "个人信息 API")
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/system/user")
-public class UserCenterController {
+@RequestMapping("/user/profile")
+public class UserProfileController {
 
     private static final String DECRYPT_FAILED = "当前密码解密失败";
     private static final String CAPTCHA_EXPIRED = "验证码已失效";
     private final UserService userService;
     private final UserSocialService userSocialService;
+    private final NoticeService noticeService;
     private final AuthRequestFactory authRequestFactory;
 
     @Operation(summary = "修改头像", description = "用户修改个人头像")
-    @PostMapping("/avatar")
+    @PatchMapping("/avatar")
     public AvatarResp updateAvatar(@NotNull(message = "头像不能为空") MultipartFile avatarFile) throws IOException {
         ValidationUtils.throwIf(avatarFile::isEmpty, "头像不能为空");
         String newAvatar = userService.updateAvatar(avatarFile, UserContextHolder.getUserId());
@@ -111,7 +113,7 @@ public class UserCenterController {
 
     @Operation(summary = "修改邮箱", description = "修改用户邮箱")
     @PatchMapping("/email")
-    public void updateEmail(@Validated @RequestBody UserEmailUpdateRequest updateReq) {
+    public void updateEmail(@Validated @RequestBody UserEmailUpdateReq updateReq) {
         String rawOldPassword = ExceptionUtils.exToNull(() -> SecureUtils.decryptByRsaPrivateKey(updateReq
             .getOldPassword()));
         ValidationUtils.throwIfBlank(rawOldPassword, DECRYPT_FAILED);
