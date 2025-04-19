@@ -1,7 +1,6 @@
 CREATE TABLE `edu_student` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(50) NOT NULL COMMENT '学生姓名',
-  `student_no` varchar(20) NOT NULL COMMENT '学生编号',
   `gender` tinyint DEFAULT '2' COMMENT '性别（0-未知 1-男 2-女）',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号码',
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
@@ -17,14 +16,12 @@ CREATE TABLE `edu_student` (
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
   `institution_id` bigint(20) NOT NULL COMMENT '所属机构ID',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_student_no` (`student_no`),
   CONSTRAINT `fk_student_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生表';
 
 CREATE TABLE `edu_teacher` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(50) NOT NULL COMMENT '教师姓名',
-  `teacher_no` varchar(20) NOT NULL COMMENT '教师工号',
    `score`  int NOT NULL DEFAULT 5  COMMENT '评分',
    `tags` varchar(100) DEFAULT NULL COMMENT '标签',
   `gender` tinyint DEFAULT '2' COMMENT '性别（0-未知 1-男 2-女）',
@@ -45,7 +42,6 @@ CREATE TABLE `edu_teacher` (
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
   `institution_id` bigint(20) NOT NULL COMMENT '所属机构ID',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_teacher_no` (`teacher_no`),
   CONSTRAINT `fk_teacher_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师表';
 
@@ -119,79 +115,41 @@ CREATE TABLE `edu_member_card` (
 
 CREATE TABLE `edu_institution` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `name` varchar(100) NOT NULL COMMENT '机构名称',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
-  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  PRIMARY KEY (`id`)
+   `name` varchar(100) NOT NULL COMMENT '机构名称',
+   `sid` varchar(100) NOT NULL COMMENT '机构SID',
+   `secret` varchar(100) NOT NULL COMMENT '机构SECRET',
+   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+   `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
+   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
+   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机构表';
 
-CREATE TABLE `edu_classin_institution` (
-   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `name` varchar(100) NOT NULL COMMENT '机构名称',
-  `sid` varchar(100) NOT NULL COMMENT '机构SID',
-  `secret` varchar(100) NOT NULL COMMENT '机构SECRET',
-  `institution_id` bigint(20) NOT NULL COMMENT '所属机构ID',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
-  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_classin_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin机构表';
+CREATE TABLE `classin_user` (
+    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
+    `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
+    `user_type` tinyint NOT NULL DEFAULT 0 COMMENT '成员类型（0：不是成员；1：学生；2：老师）',
+    `uid` varchar(50) DEFAULT NULL COMMENT 'Classin唯一映射关系',
+    `password` varchar(100) DEFAULT NULL COMMENT '密码',
+    `telephone` varchar(20) DEFAULT NULL COMMENT '手机号',
+    `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
+    `student_id` bigint(20) DEFAULT NULL COMMENT '关联学生ID',
+    `teacher_id` bigint(20) DEFAULT NULL COMMENT '关联教师ID',
+    `classin_institution_id` bigint(20) NOT NULL COMMENT '关联Classin机构ID',
+    `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+    `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
+    `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
+    PRIMARY KEY (`id`),
+    CONSTRAINT `fk_classin_user_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
+    CONSTRAINT `fk_classin_user_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`),
+    CONSTRAINT `fk_classin_user_institution` FOREIGN KEY (`classin_institution_id`) REFERENCES `edu_institution` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin用户表';
 
-CREATE TABLE `edu_classin_member` (
-   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `account` varchar(50) NOT NULL COMMENT '账号',
-  `name` varchar(50) NOT NULL COMMENT '名字',
-  `member_type` tinyint NOT NULL DEFAULT 0 COMMENT '成员类型（0：不是成员；1：学生；2：老师）',
-  `uid` varchar(50) NOT NULL COMMENT 'Classin唯一映射关系',
-  `password` varchar(100) NOT NULL COMMENT '密码',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
-  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin成员表';
-
-CREATE TABLE `edu_teacher_classin` (
-   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `teacher_id` bigint(20) NOT NULL COMMENT '教师ID',
-  `teacher_name` varchar(50) NOT NULL COMMENT '教师名称',
-  `classin_member_id` bigint(20) NOT NULL COMMENT 'Classin成员ID',
-  `classin_uid` varchar(50) NOT NULL COMMENT 'Classin唯一标识',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
-  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_teacher_classin_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`),
-  CONSTRAINT `fk_teacher_classin_classin_member` FOREIGN KEY (`classin_member_id`) REFERENCES `edu_classin_member` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师-Classin成员关联表';
-
-CREATE TABLE `edu_student_classin` (
-   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `student_id` bigint(20) NOT NULL COMMENT '学生ID',
-  `student_name` varchar(50) NOT NULL COMMENT '学生名称',
-  `classin_member_id` bigint(20) NOT NULL COMMENT 'Classin成员ID',
-  `classin_uid` varchar(50) NOT NULL COMMENT 'Classin唯一标识',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
-  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_student_classin_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
-  CONSTRAINT `fk_student_classin_classin_member` FOREIGN KEY (`classin_member_id`) REFERENCES `edu_classin_member` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生-Classin成员关联表';
-
-CREATE TABLE `edu_classin_course` (
-   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
+CREATE TABLE `classin_course` (
+  `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(100) NOT NULL COMMENT '课程名称',
   `head_teacher_uid` varchar(50) DEFAULT NULL COMMENT '班主任UID',
   `course_id` bigint(20) NOT NULL COMMENT '课程ID',
@@ -203,8 +161,8 @@ CREATE TABLE `edu_classin_course` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin课程表';
 
-CREATE TABLE `edu_classin_course_mapping` (
-   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
+CREATE TABLE `classin_course_mapping` (
+  `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `classin_course_id` bigint(20) NOT NULL COMMENT 'Classin课程ID',
   `student_classin_id` bigint(20) NOT NULL COMMENT '学生-Classin关联ID',
   `teacher_classin_id` bigint(20) NOT NULL COMMENT '教师-Classin关联ID',
@@ -218,7 +176,7 @@ CREATE TABLE `edu_classin_course_mapping` (
   `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
   PRIMARY KEY (`id`),
-  CONSTRAINT `fk_classin_course_mapping_classin_course` FOREIGN KEY (`classin_course_id`) REFERENCES `edu_classin_course` (`id`),
+  CONSTRAINT `fk_classin_course_mapping_classin_course` FOREIGN KEY (`classin_course_id`) REFERENCES `classin_course` (`id`),
   CONSTRAINT `fk_classin_course_mapping_student_classin` FOREIGN KEY (`student_classin_id`) REFERENCES `edu_student_classin` (`id`),
   CONSTRAINT `fk_classin_course_mapping_teacher_classin` FOREIGN KEY (`teacher_classin_id`) REFERENCES `edu_teacher_classin` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin课程映射表';

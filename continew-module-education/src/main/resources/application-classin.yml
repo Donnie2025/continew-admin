@@ -1,0 +1,8 @@
+classin:
+  api:
+    url: https://api.eeo.cn
+    register: /partner/api/course.api.php?action=register
+    addSchoolStudent: /partner/api/course.api.php?action=addSchoolStudent
+    addTeacher: /partner/api/course.api.php?action=addTeacher
+    appId: 67402266
+    appSecret: 1YqGfCpd

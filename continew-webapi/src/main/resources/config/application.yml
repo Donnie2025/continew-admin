@@ -256,6 +256,7 @@ spring:
     active: dev
     include:
       - generator
+      - classin
   ## 线程池配置（默认启用扩展配置，如未指定 corePoolSize、maxPoolSize 则根据机器配置自动设置）
   task:
     # 异步任务

@@ -111,8 +111,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version> <!-- 使用最新版本 -->
                 <configuration>
+                    <release>17</release>
                     <compilerArgument>-parameters</compilerArgument>
+
                 </configuration>
             </plugin>
             <!-- 单元测试相关插件 -->
