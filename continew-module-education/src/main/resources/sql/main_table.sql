@@ -6,7 +6,7 @@ CREATE TABLE `edu_student` (
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
   `register_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   `agent_id` bigint(20) DEFAULT NULL COMMENT '所属代理的ID',
-  `head_img` varchar(512) DEFAULT NULL COMMENT '头像地址',
+  `avatar` varchar(512) DEFAULT NULL COMMENT '头像地址',
   `password` varchar(100) NOT NULL COMMENT '密码',
   `remark` varchar(1024) DEFAULT NULL COMMENT '备注',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
@@ -19,6 +19,8 @@ CREATE TABLE `edu_student` (
   CONSTRAINT `fk_student_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生表';
 
+ALTER TABLE `edu_student` AUTO_INCREMENT = 1;
+
 CREATE TABLE `edu_teacher` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(50) NOT NULL COMMENT '教师姓名',
@@ -29,7 +31,7 @@ CREATE TABLE `edu_teacher` (
   `is_fixed` tinyint DEFAULT '1' COMMENT '是否固定（ 1-固定, 2-不固定）',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号码',
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
-  `head_img` varchar(512) DEFAULT NULL COMMENT '头像地址',
+  `avatar` varchar(512) DEFAULT NULL COMMENT '头像地址',
   `audio_url` varchar(512) DEFAULT NULL COMMENT '音频地址',
   `video_url` varchar(512) DEFAULT NULL COMMENT '视频地址',
   `brief_intro` varchar(256) DEFAULT NULL COMMENT '简介',
