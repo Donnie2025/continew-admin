@@ -362,10 +362,10 @@ CREATE TABLE IF NOT EXISTS `sys_sms_log`  (
 CREATE TABLE `edu_teacher` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(50) NOT NULL COMMENT '教师姓名',
-  `teacher_no` varchar(20) NOT NULL COMMENT '教师工号',
+  `rate` varchar(20) NOT NULL COMMENT '单价',
    `score`  int NOT NULL DEFAULT 5  COMMENT '评分',
    `tags` varchar(100) DEFAULT NULL COMMENT '标签',
-  `gender` tinyint DEFAULT '2' COMMENT '性别（0-未知 1-男 2-女）',
+  `gender` tinyint DEFAULT '2' COMMENT '性别（Male-男 Female-女）',
   `is_show` tinyint DEFAULT '1' COMMENT '是否展示（ 1-展示, 2-不展示）',
   `is_fixed` tinyint DEFAULT '1' COMMENT '是否固定（ 1-固定, 2-不固定）',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号码',

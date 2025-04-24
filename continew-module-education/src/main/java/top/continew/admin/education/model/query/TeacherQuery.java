@@ -48,13 +48,6 @@ public class TeacherQuery implements Serializable {
     private String name;
 
     /**
-     * 教师工号
-     */
-    @Schema(description = "教师工号")
-    @Query(type = QueryType.EQ)
-    private String teacherNo;
-
-    /**
      * 是否展示
      */
     @Schema(description = "是否展示")

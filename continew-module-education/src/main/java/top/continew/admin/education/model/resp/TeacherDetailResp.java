@@ -57,10 +57,10 @@ public class TeacherDetailResp extends BaseDetailResp {
     private Integer score;
 
     /**
-     * 评级
+     * 单价
      */
-    @Schema(description = "评级")
-    @ExcelProperty(value = "评级")
+    @Schema(description = "单价")
+    @ExcelProperty(value = "单价")
     private Integer rate;
 
     /**

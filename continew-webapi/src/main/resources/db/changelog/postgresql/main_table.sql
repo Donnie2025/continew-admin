@@ -623,8 +623,8 @@ CREATE TABLE edu_teacher (
 COMMENT ON TABLE edu_teacher IS '教师表';
 COMMENT ON COLUMN edu_teacher.id IS '主键ID';
 COMMENT ON COLUMN edu_teacher.name IS '教师姓名';
-COMMENT ON COLUMN edu_teacher.teacher_no IS '教师工号';
-COMMENT ON COLUMN edu_teacher.gender IS '性别（0-未知 1-男 2-女）';
+COMMENT ON COLUMN edu_teacher.rate IS '单价';
+COMMENT ON COLUMN edu_teacher.gender IS '性别（Male-男 Female-女）';
 COMMENT ON COLUMN edu_teacher.phone IS '手机号码';
 COMMENT ON COLUMN edu_teacher.email IS '邮箱';
 COMMENT ON COLUMN edu_teacher.description IS '描述';
