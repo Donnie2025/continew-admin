@@ -50,18 +50,18 @@ public class TeacherDetailResp extends BaseDetailResp {
     private String name;
 
     /**
-     * 教师工号
-     */
-    @Schema(description = "教师工号")
-    @ExcelProperty(value = "教师工号")
-    private String teacherNo;
-
-    /**
      * 评分
      */
     @Schema(description = "评分")
     @ExcelProperty(value = "评分")
     private Integer score;
+
+    /**
+     * 评级
+     */
+    @Schema(description = "评级")
+    @ExcelProperty(value = "评级")
+    private Integer rate;
 
     /**
      * 标签
@@ -71,11 +71,11 @@ public class TeacherDetailResp extends BaseDetailResp {
     private String tags;
 
     /**
-     * 性别（0-未知 1-男 2-女）
+     * 性别（male-男 female-女）
      */
-    @Schema(description = "性别（0-未知 1-男 2-女）")
-    @ExcelProperty(value = "性别（0-未知 1-男 2-女）")
-    private Integer gender;
+    @Schema(description = "性别（male-男 female-女）")
+    @ExcelProperty(value = "性别（male-男 female-女）")
+    private String gender;
 
     /**
      * 是否展示
@@ -110,7 +110,7 @@ public class TeacherDetailResp extends BaseDetailResp {
      */
     @Schema(description = "头像地址")
     @ExcelProperty(value = "头像地址")
-    private String headImg;
+    private String avatar;
 
     /**
      * 音频地址

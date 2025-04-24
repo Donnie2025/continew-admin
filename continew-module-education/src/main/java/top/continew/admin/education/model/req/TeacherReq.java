@@ -50,14 +50,6 @@ public class TeacherReq implements Serializable {
     private String name;
 
     /**
-     * 教师工号
-     */
-    @Schema(description = "教师工号")
-    @NotBlank(message = "教师工号不能为空")
-    @Length(max = 20, message = "教师工号长度不能超过 {max} 个字符")
-    private String teacherNo;
-
-    /**
      * 评分
      */
     @Schema(description = "评分")
@@ -65,10 +57,17 @@ public class TeacherReq implements Serializable {
     private Integer score;
 
     /**
-     * 性别（0-未知 1-男 2-女）
+     * 单价
      */
-    @Schema(description = "性别（0-未知 1-男 2-女）")
-    private Integer gender;
+    @Schema(description = "单价")
+    @NotNull(message = "单价不能为空")
+    private Integer rate;
+
+    /**
+     * 性别（male-男 female-女）
+     */
+    @Schema(description = "性别（male-男 female-女）")
+    private String gender;
 
     /**
      * 是否展示
@@ -103,7 +102,7 @@ public class TeacherReq implements Serializable {
      */
     @Schema(description = "头像地址")
     @Length(max = 512, message = "头像地址长度不能超过 {max} 个字符")
-    private String headImg;
+    private String avatar;
 
     /**
      * 音频地址

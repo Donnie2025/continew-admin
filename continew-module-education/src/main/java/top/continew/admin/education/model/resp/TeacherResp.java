@@ -45,16 +45,16 @@ public class TeacherResp extends BaseResp {
     private String name;
 
     /**
-     * 教师工号
-     */
-    @Schema(description = "教师工号")
-    private String teacherNo;
-
-    /**
      * 评分
      */
     @Schema(description = "评分")
     private Integer score;
+
+    /**
+     * 单价
+     */
+    @Schema(description = "单价")
+    private Integer rate;
 
     /**
      * 标签
@@ -63,10 +63,10 @@ public class TeacherResp extends BaseResp {
     private String tags;
 
     /**
-     * 性别（0-未知 1-男 2-女）
+     * 性别（male-男 female-女）
      */
-    @Schema(description = "性别（0-未知 1-男 2-女）")
-    private Integer gender;
+    @Schema(description = "性别（male-男 female-女）")
+    private String gender;
 
     /**
      * 是否展示
@@ -96,7 +96,7 @@ public class TeacherResp extends BaseResp {
      * 头像地址
      */
     @Schema(description = "头像地址")
-    private String headImg;
+    private String avatar;
 
     /**
      * 音频地址

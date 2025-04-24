@@ -16,10 +16,8 @@
 
 package top.continew.admin.education.model.entity;
 
-import lombok.Data;
-
 import com.baomidou.mybatisplus.annotation.TableName;
-
+import lombok.Data;
 import top.continew.admin.common.model.entity.BaseDO;
 
 import java.io.Serial;
@@ -43,11 +41,6 @@ public class TeacherDO extends BaseDO {
     private String name;
 
     /**
-     * 教师工号
-     */
-    private String teacherNo;
-
-    /**
      * 评分
      */
     private Integer score;
@@ -58,9 +51,9 @@ public class TeacherDO extends BaseDO {
     private String tags;
 
     /**
-     * 性别（0-未知 1-男 2-女）
+     * 性别（male-男 female-女）
      */
-    private Integer gender;
+    private String gender;
 
     /**
      * 是否展示
@@ -85,7 +78,7 @@ public class TeacherDO extends BaseDO {
     /**
      * 头像地址
      */
-    private String headImg;
+    private String avatar;
 
     /**
      * 音频地址
@@ -116,4 +109,9 @@ public class TeacherDO extends BaseDO {
      * 状态
      */
     private Integer status;
+
+    /**
+     * 单价
+     */
+    private Integer rate;
 }
