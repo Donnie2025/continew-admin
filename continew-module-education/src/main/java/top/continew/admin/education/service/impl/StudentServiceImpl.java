@@ -18,7 +18,6 @@ package top.continew.admin.education.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.model.entity.StudentDO;
@@ -27,9 +26,6 @@ import top.continew.admin.education.model.req.StudentReq;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.service.StudentService;
-import top.continew.admin.system.service.FileService;
-import org.dromara.x.file.storage.core.FileInfo;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 学生管理业务实现
@@ -39,41 +35,4 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO, StudentResp, StudentDetailResp, StudentQuery, StudentReq> implements StudentService {
-
-    private final FileService fileService;
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long create(StudentReq req) {
-        // 处理头像上传
-        if (req.getAvatarFile() != null) {
-            FileInfo fileInfo = uploadAvatar(req.getAvatarFile());
-            req.setAvatar(fileInfo.getUrl());
-        }
-        return super.create(req);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void update(StudentReq req, Long id) {
-        // 处理头像上传
-        if (req.getAvatarFile() != null) {
-            FileInfo fileInfo = uploadAvatar(req.getAvatarFile());
-            req.setAvatar(fileInfo.getUrl());
-        }
-        super.update(req, id);
-    }
-
-    /**
-     * 上传学生头像
-     *
-     * @param file 头像文件
-     * @return 文件信息
-     */
-    public FileInfo uploadAvatar(MultipartFile file) {
-        // 上传到默认存储，路径为：头像/年/月/日/
-        String path = "avatar/" + fileService.getDefaultFilePath();
-        return fileService.upload(file, path);
-    }
-}
+public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO, StudentResp, StudentDetailResp, StudentQuery, StudentReq> implements StudentService {}

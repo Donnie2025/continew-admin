@@ -16,8 +16,6 @@
 
 package top.continew.admin.education.service;
 
-import org.springframework.web.multipart.MultipartFile;
-import org.dromara.x.file.storage.core.FileInfo;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.StudentQuery;
 import top.continew.admin.education.model.req.StudentReq;
@@ -30,13 +28,4 @@ import top.continew.admin.education.model.resp.StudentResp;
  * @author don
  * @since 2025/04/20 01:32
  */
-public interface StudentService extends BaseService<StudentResp, StudentDetailResp, StudentQuery, StudentReq> {
-
-    /**
-     * 上传学生头像
-     *
-     * @param file 头像文件
-     * @return 文件信息
-     */
-    FileInfo uploadAvatar(MultipartFile file);
-}
+public interface StudentService extends BaseService<StudentResp, StudentDetailResp, StudentQuery, StudentReq> {}

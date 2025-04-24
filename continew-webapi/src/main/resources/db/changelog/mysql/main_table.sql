@@ -370,7 +370,7 @@ CREATE TABLE `edu_teacher` (
   `is_fixed` tinyint DEFAULT '1' COMMENT '是否固定（ 1-固定, 2-不固定）',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号码',
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
-  `head_img` varchar(512) DEFAULT NULL COMMENT '头像地址',
+  `avatar` varchar(512) DEFAULT NULL COMMENT '头像地址',
   `audio_url` varchar(512) DEFAULT NULL COMMENT '音频地址',
   `video_url` varchar(512) DEFAULT NULL COMMENT '视频地址',
   `brief_intro` varchar(256) DEFAULT NULL COMMENT '简介',

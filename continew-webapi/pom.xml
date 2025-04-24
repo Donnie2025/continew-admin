@@ -29,17 +29,20 @@
         <dependency>
             <groupId>top.continew</groupId>
             <artifactId>continew-module-system</artifactId>
+            <version>${revision}</version>
         </dependency>
 
         <dependency>
             <groupId>top.continew</groupId>
             <artifactId>continew-module-education</artifactId>
+            <version>${revision}</version>
         </dependency>
 
         <!-- 任务调度插件 -->
         <dependency>
             <groupId>top.continew</groupId>
             <artifactId>continew-plugin-schedule</artifactId>
+            <version>${revision}</version>
         </dependency>
 
         <!-- 能力开放插件 -->
@@ -77,6 +80,7 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
