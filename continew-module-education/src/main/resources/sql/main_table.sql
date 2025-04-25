@@ -47,34 +47,34 @@ CREATE TABLE `edu_teacher` (
   CONSTRAINT `fk_teacher_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师表';
 
-CREATE TABLE `edu_course` (
+CREATE TABLE `edu_slot` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `name` varchar(100) NOT NULL COMMENT '课程名字',
   `teacher_id` bigint(20) NOT NULL COMMENT '所属教师ID',
-  `teacher_name` varchar(50) DEFAULT NULL COMMENT '冗余教师名字',
+  `teacher_name` varchar(50) DEFAULT NULL COMMENT '教师名字',
   `start_date` varchar(8) NOT NULL COMMENT '开课日期（格式：YYYYMMDD）',
   `start_time` varchar(5) NOT NULL COMMENT '开课时间（格式：HH:MM）',
+  `weekday` tinyint(1) NOT NULL COMMENT '星期几（1：周一；2：周二；3：周三；4：周四；5：周五；6：周六；7：周日）',
   `duration` int NOT NULL DEFAULT 25 COMMENT '课程时长（单位为分钟）',
-  `is_online` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否在线教室（0：否；1：是）',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `is_online` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否在线教室（0：否；1：是）',
+  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  `institution_id` bigint(20) NOT NULL COMMENT '所属机构ID',
+  `institution_id` bigint(20) COMMENT '所属机构ID',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_course_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`),
   CONSTRAINT `fk_course_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='课程表';
 
-CREATE TABLE `edu_appointment` (
+CREATE TABLE `edu_booking` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
-  `course_id` bigint(20) NOT NULL COMMENT '所属课程ID',
+  `slot_id` bigint(20) NOT NULL COMMENT '所属课程ID',
   `student_id` bigint(20) NOT NULL COMMENT '所属学生ID',
   `student_name` varchar(50) NOT NULL COMMENT '所属学生姓名',
   `phone` varchar(20) NOT NULL COMMENT '预约手机号',
-  `member_card_id` bigint(20) DEFAULT NULL COMMENT '预约会员卡ID',
-  `member_card_name` varchar(100) DEFAULT NULL COMMENT '预约会员卡名称',
+  `card_id` bigint(20) DEFAULT NULL COMMENT '预约会员卡ID',
+  `card_name` varchar(100) DEFAULT NULL COMMENT '预约会员卡名称',
   `operator_name` varchar(50) NOT NULL COMMENT '操作人名字',
   `operate_time` datetime NOT NULL COMMENT '操作时间',
   `material_id` bigint(20) DEFAULT NULL COMMENT '预约教材ID',
@@ -82,32 +82,32 @@ CREATE TABLE `edu_appointment` (
   `lesson_name` varchar(100) DEFAULT NULL COMMENT '预约课节名字',
   `material_url` varchar(512) DEFAULT NULL COMMENT '预约教材链接',
   `remark` varchar(1024) DEFAULT NULL COMMENT '预约备注',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
   PRIMARY KEY (`id`),
-  CONSTRAINT `fk_appointment_course` FOREIGN KEY (`course_id`) REFERENCES `edu_course` (`id`),
-  CONSTRAINT `fk_appointment_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
-  CONSTRAINT `fk_appointment_member_card` FOREIGN KEY (`member_card_id`) REFERENCES `edu_member_card` (`id`)
+  CONSTRAINT `fk_booking_slot` FOREIGN KEY (`slot_id`) REFERENCES `edu_slot` (`id`),
+  CONSTRAINT `fk_booking_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
+  CONSTRAINT `fk_booking_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='预约表';
 
-CREATE TABLE `edu_member_card` (
+CREATE TABLE `edu_card` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(100) NOT NULL COMMENT '会员卡名称',
   `type` tinyint NOT NULL COMMENT '会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡无限期；4：储蓄卡有限期）',
-  `is_online_purchase` tinyint NOT NULL DEFAULT 1 COMMENT '是否支持线上购卡（1：支持；2：不支持）',
-  `available_times` int DEFAULT NULL COMMENT '可用次数',
+  `is_online_sale` tinyint DEFAULT NULL DEFAULT 1 COMMENT '是否支持线上购卡（1：支持；0：不支持）',
+  `times` int DEFAULT NULL COMMENT '可用次数',
   `valid_days` int DEFAULT NULL COMMENT '有效天数',
-  `available_balance` decimal(10,2) DEFAULT NULL COMMENT '可用余额',
-  `is_agent_only` tinyint NOT NULL DEFAULT 2 COMMENT '是否仅代理可售（1：是；2：否）',
+  `balance` decimal(10,2) DEFAULT NULL COMMENT '可用余额',
+  `is_agent_only` tinyint NOT NULL DEFAULT 0 COMMENT '是否仅代理可售（1：是；0：否）',
   `agent_price` decimal(10,2) DEFAULT NULL COMMENT '代理售卖价格',
-  `is_renewable` tinyint NOT NULL DEFAULT 2 COMMENT '是否可续费（1：是；2：否）',
+  `is_renewable` tinyint NOT NULL DEFAULT 0 COMMENT '是否可续费（1：是；0：否）',
   `renew_times` int DEFAULT NULL COMMENT '续费次数',
   `renew_days` int DEFAULT NULL COMMENT '续费天数',
   `renew_price` decimal(10,2) DEFAULT NULL COMMENT '续费价格',
-  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `create_user` bigint(20)   NOT NULL                    COMMENT '创建人',
