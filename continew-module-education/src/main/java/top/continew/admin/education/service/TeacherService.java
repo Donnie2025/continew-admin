@@ -22,10 +22,20 @@ import top.continew.admin.education.model.req.TeacherReq;
 import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
 
+import java.util.List;
+
 /**
  * 教师业务接口
  *
  * @author donnie
  * @since 2025/04/04 18:33
  */
-public interface TeacherService extends BaseService<TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> {}
+public interface TeacherService extends BaseService<TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> {
+
+    /**
+     * 查询所有状态为活跃的教师列表
+     *
+     * @return 教师列表
+     */
+    List<TeacherResp> listActiveTeachers();
+}

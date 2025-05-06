@@ -19,6 +19,7 @@ package top.continew.admin.controller.education;
 import top.continew.starter.extension.crud.enums.Api;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,8 @@ import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.service.TeacherService;
 
+import java.util.List;
+
 /**
  * 教师管理 API
  *
@@ -40,4 +43,11 @@ import top.continew.admin.education.service.TeacherService;
 @RestController
 @CrudRequestMapping(value = "/education/teacher", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
-public class TeacherController extends BaseController<TeacherService, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> {}
+public class TeacherController extends BaseController<TeacherService, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> {
+
+    @GetMapping("/active")
+    @Operation(summary = "查询活跃教师列表", description = "查询所有状态为活跃的教师列表，按照排序字段升序排列")
+    public List<TeacherResp> listActiveTeachers() {
+        return this.baseService.listActiveTeachers();
+    }
+}

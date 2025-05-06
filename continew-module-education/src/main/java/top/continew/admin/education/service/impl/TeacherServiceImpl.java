@@ -19,6 +19,7 @@ package top.continew.admin.education.service.impl;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.BeanUtils;
 
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.TeacherMapper;
@@ -28,6 +29,9 @@ import top.continew.admin.education.model.req.TeacherReq;
 import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.service.TeacherService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 教师业务实现
@@ -37,4 +41,31 @@ import top.continew.admin.education.service.TeacherService;
  */
 @Service
 @RequiredArgsConstructor
-public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> implements TeacherService {}
+public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> implements TeacherService {
+
+    @Override
+    public List<TeacherResp> listActiveTeachers() {
+        return this.baseMapper.selectList(
+            new LambdaQueryWrapper<TeacherDO>()
+                .eq(TeacherDO::getStatus, 1)
+                .orderByAsc(TeacherDO::getSort)
+        ).stream()
+            .map(this::convert)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 将 TeacherDO 转换为 TeacherResp
+     *
+     * @param entity TeacherDO 实体
+     * @return TeacherResp 响应对象
+     */
+    private TeacherResp convert(TeacherDO entity) {
+        if (entity == null) {
+            return null;
+        }
+        TeacherResp resp = new TeacherResp();
+        BeanUtils.copyProperties(entity, resp);
+        return resp;
+    }
+}
