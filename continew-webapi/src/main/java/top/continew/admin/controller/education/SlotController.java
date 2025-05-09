@@ -22,6 +22,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -47,6 +49,8 @@ import top.continew.admin.education.service.SlotService;
     Api.EXPORT})
 public class SlotController extends BaseController<SlotService, SlotResp, SlotDetailResp, SlotQuery, SlotReq> {
 
+    private static final Logger log = LoggerFactory.getLogger(SlotController.class);
+
     @Autowired
     private SlotService slotService;
 
@@ -60,5 +64,31 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
     @PostMapping("/batch")
     public R<List<SlotResp>> batchCreateSlot(@RequestBody BatchSlotReq batchSlotReq) {
         return R.ok(slotService.batchCreateSlot(batchSlotReq));
+    }
+
+    /**
+     * 根据日期范围和教师ID查询可用课时
+     *
+     * @param teacherId 教师ID
+     * @param startDate 开始日期（格式：YYYYMMDD）
+     * @param endDate 结束日期（格式：YYYYMMDD）
+     * @return 课时列表
+     */
+    @Operation(summary = "根据日期范围和教师ID查询可用课时")
+    @GetMapping("/available")
+    public R<List<SlotResp>> listAvailableSlots(
+            @RequestParam("teacherId") Long teacherId,
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        log.info("查询可用课时, 教师ID: {}, 开始日期: {}, 结束日期: {}", teacherId, startDate, endDate);
+        
+        // 使用基础分页查询实现
+        SlotQuery query = new SlotQuery();
+        query.setTeacherId(teacherId);
+        query.setDateRange(startDate, endDate);
+        query.setStatus(1); // 状态为1表示可用
+        
+        List<SlotResp> result = slotService.list(query, null);
+        return R.ok(result);
     }
 }

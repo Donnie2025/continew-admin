@@ -48,6 +48,13 @@ public class SlotQuery implements Serializable {
     private List<Long> ids;
 
     /**
+     * 教师ID
+     */
+    @Schema(description = "教师ID")
+    @Query(type = QueryType.EQ)
+    private Long teacherId;
+
+    /**
      * 教师名字
      */
     @Schema(description = "教师名字")
@@ -60,4 +67,36 @@ public class SlotQuery implements Serializable {
     @Schema(description = "开课日期（格式：YYYYMMDD）")
     @Query(type = QueryType.EQ)
     private String startDate;
+
+    /**
+     * 开始日期（范围查询用，格式：YYYYMMDD）
+     */
+    @Schema(description = "开始日期（格式：YYYYMMDD）")
+    @Query(columns = "start_date", type = QueryType.GE)
+    private String startDateBegin;
+
+    /**
+     * 结束日期（范围查询用，格式：YYYYMMDD）
+     */
+    @Schema(description = "结束日期（格式：YYYYMMDD）")
+    @Query(columns = "start_date", type = QueryType.LE)
+    private String startDateEnd;
+
+    /**
+     * 状态（1：启用；0：禁用）
+     */
+    @Schema(description = "状态（1：启用；0：禁用）")
+    @Query(type = QueryType.EQ)
+    private Integer status;
+
+    /**
+     * 设置日期范围
+     *
+     * @param start 开始日期
+     * @param end 结束日期
+     */
+    public void setDateRange(String start, String end) {
+        this.startDateBegin = start;
+        this.startDateEnd = end;
+    }
 }
