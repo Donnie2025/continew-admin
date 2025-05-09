@@ -16,6 +16,7 @@
 
 package top.continew.admin.education.mapper;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import top.continew.starter.data.mp.base.BaseMapper;
 import top.continew.admin.education.model.entity.SlotDO;
 
@@ -25,4 +26,23 @@ import top.continew.admin.education.model.entity.SlotDO;
  * @author don
  * @since 2025/04/25 23:24
  */
-public interface SlotMapper extends BaseMapper<SlotDO> {}
+public interface SlotMapper extends BaseMapper<SlotDO> {
+    
+    /**
+     * 检查是否已存在相同老师、日期、时间且状态为1的课时记录
+     *
+     * @param teacherId 老师ID
+     * @param startDate 上课日期 (格式: YYYYMMDD)
+     * @param startTime 上课时间 (格式: HH:mm)
+     * @return 存在返回该记录，不存在返回null
+     */
+    default SlotDO checkExistingSlot(Long teacherId, String startDate, String startTime) {
+        LambdaQueryWrapper<SlotDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SlotDO::getTeacherId, teacherId)
+                    .eq(SlotDO::getStartDate, startDate)
+                    .eq(SlotDO::getStartTime, startTime)
+                    .eq(SlotDO::getStatus, 1); // 状态为1的记录
+        
+        return this.selectOne(queryWrapper);
+    }
+}

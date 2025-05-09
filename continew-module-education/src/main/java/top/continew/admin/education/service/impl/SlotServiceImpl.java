@@ -78,6 +78,8 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
         log.info("处理的日期列表: {}", req.getDates());
         log.info("处理的时间列表: {}", req.getTimes());
 
+        int skippedCount = 0; // 统计跳过的记录数
+
         // 遍历所有日期
         for (String dateStr : req.getDates()) {
             // 解析日期并计算是周几
@@ -90,6 +92,17 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
 
             // 遍历所有时间段
             for (String time : req.getTimes()) {
+                // 先检查是否已存在相同老师、日期、时间且状态为1的课时记录
+                SlotDO existingSlot = this.baseMapper.checkExistingSlot(req.getTeacherId(), formattedDate, time);
+                
+                if (existingSlot != null) {
+                    // 已存在记录，跳过创建
+                    log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", 
+                            req.getTeacherId(), formattedDate, time, existingSlot.getId());
+                    skippedCount++;
+                    continue;
+                }
+                
                 // 创建课程时间请求
                 SlotReq slotReq = new SlotReq();
                 slotReq.setTeacherId(req.getTeacherId());
@@ -123,11 +136,37 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
             SlotQuery query = new SlotQuery();
             query.setIds(createdIds);
             result = this.list(query, new SortQuery());
-            log.info("批量创建课程时间完成，共创建{}个时间段", result.size());
+            log.info("批量创建课程时间完成，共创建{}个时间段，跳过{}个重复记录", result.size(), skippedCount);
         } else {
-            log.warn("批量创建课程时间失败，未创建任何记录");
+            if (skippedCount > 0) {
+                log.warn("批量创建课程时间完成，未创建任何记录，全部{}个记录都是重复的", skippedCount);
+            } else {
+                log.warn("批量创建课程时间失败，未创建任何记录");
+            }
         }
 
         return result;
+    }
+
+    /**
+     * 重写创建方法，增加重复检查逻辑
+     *
+     * @param req 创建请求
+     * @return 创建的ID
+     */
+    @Override
+    public Long create(SlotReq req) {
+        // 先检查是否已存在相同老师、日期、时间且状态为1的课时记录
+        SlotDO existingSlot = this.baseMapper.checkExistingSlot(req.getTeacherId(), req.getStartDate(), req.getStartTime());
+        
+        if (existingSlot != null) {
+            // 已存在记录，返回已存在记录的ID而不是创建新记录
+            log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", 
+                    req.getTeacherId(), req.getStartDate(), req.getStartTime(), existingSlot.getId());
+            return existingSlot.getId();
+        }
+        
+        // 不存在记录，调用父类方法创建新记录
+        return super.create(req);
     }
 }
