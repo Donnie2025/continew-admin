@@ -45,13 +45,8 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
 
     @Override
     public List<TeacherResp> listActiveTeachers() {
-        return this.baseMapper.selectList(
-            new LambdaQueryWrapper<TeacherDO>()
-                .eq(TeacherDO::getStatus, 1)
-                .orderByAsc(TeacherDO::getSort)
-        ).stream()
-            .map(this::convert)
-            .collect(Collectors.toList());
+        return this.baseMapper.selectList(new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
+            .orderByAsc(TeacherDO::getSort)).stream().map(this::convert).collect(Collectors.toList());
     }
 
     /**
