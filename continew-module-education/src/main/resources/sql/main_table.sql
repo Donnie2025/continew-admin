@@ -96,13 +96,14 @@ CREATE TABLE `edu_booking` (
 CREATE TABLE `edu_card` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(100) NOT NULL COMMENT '会员卡名称',
-  `type` tinyint NOT NULL COMMENT '会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡无限期；4：储蓄卡有限期）',
+  `type` tinyint NOT NULL COMMENT '会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）',
   `is_online_sale` tinyint DEFAULT NULL DEFAULT 1 COMMENT '是否支持线上购卡（1：支持；0：不支持）',
-  `times` int DEFAULT NULL COMMENT '可用次数',
-  `valid_days` int DEFAULT NULL COMMENT '有效天数',
-  `balance` decimal(10,2) DEFAULT NULL COMMENT '可用余额',
+  `available_count` int DEFAULT NULL COMMENT '可用次数',
+  `available_day` int DEFAULT NULL COMMENT '有效天数',
+  `available_balance` decimal(10,2) DEFAULT NULL COMMENT '可用余额',
   `is_agent_only` tinyint NOT NULL DEFAULT 0 COMMENT '是否仅代理可售（1：是；0：否）',
-  `agent_price` decimal(10,2) DEFAULT NULL COMMENT '代理售卖价格',
+  `price` decimal(10,2) DEFAULT NULL COMMENT '代理售卖价格',
+  `sort` INT NOT NULL DEFAULT 999 COMMENT '排序字段，值越小排序越靠前',
   `is_renewable` tinyint NOT NULL DEFAULT 0 COMMENT '是否可续费（1：是；0：否）',
   `renew_times` int DEFAULT NULL COMMENT '续费次数',
   `renew_days` int DEFAULT NULL COMMENT '续费天数',
@@ -182,3 +183,47 @@ CREATE TABLE `classin_course_mapping` (
   CONSTRAINT `fk_classin_course_mapping_student_classin` FOREIGN KEY (`student_classin_id`) REFERENCES `edu_student_classin` (`id`),
   CONSTRAINT `fk_classin_course_mapping_teacher_classin` FOREIGN KEY (`teacher_classin_id`) REFERENCES `edu_teacher_classin` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin课程映射表';
+
+-- 学生会员卡绑定表
+CREATE TABLE `edu_stu_card` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `stu_id` bigint(20) NOT NULL COMMENT '学生ID',
+  `stu_name` varchar(50) COMMENT '学生姓名',
+  `card_id` bigint(20) NOT NULL COMMENT '会员卡ID',
+  `card_name` varchar(100) NOT NULL COMMENT '会员卡名称',
+  `card_type` tinyint NOT NULL COMMENT '会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）',
+  `balance` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '剩余次数/余额',
+  `expire_date` date DEFAULT NULL COMMENT '到期日期',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
+  `card_status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '卡状态（1：启用，学生端可见；0：禁用，学生端不可见，后台管理系统可见）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) NOT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_stu_card_student` FOREIGN KEY (`stu_id`) REFERENCES `edu_student` (`id`),
+  CONSTRAINT `fk_stu_card_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生会员卡绑定表';
+
+CREATE TABLE `edu_transaction` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `stu_card_id` bigint(20) NOT NULL COMMENT '学生会员卡绑定表ID',
+  `stu_id` bigint(20) NOT NULL COMMENT '学生ID',
+  `stu_name` varchar(50) COMMENT '学生姓名',
+  `card_id` bigint(20) NOT NULL COMMENT '会员卡ID',
+  `card_name` varchar(100) COMMENT '会员卡名称',
+  `type` varchar(32) NOT NULL COMMENT '变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）',
+  `debit_amount` decimal(10,2) DEFAULT 0 COMMENT '支出金额（扣款）',
+  `credit_amount` decimal(10,2) DEFAULT 0 COMMENT '收入金额（充值/收入）',
+  `debit_days` int DEFAULT 0 COMMENT '减少有效期天数',
+  `credit_days` int DEFAULT 0 COMMENT '增加有效期天数',
+  `before_amount` decimal(10,2) DEFAULT 0 COMMENT '变动前余额/次数',
+  `after_amount` decimal(10,2) DEFAULT 0 COMMENT '变动后余额/次数',
+  `actual_amount` decimal(10,2) DEFAULT 0 COMMENT '实收金额',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `operator_id` bigint(20) DEFAULT NULL COMMENT '操作人ID',
+  `operator_name` varchar(50) DEFAULT NULL COMMENT '操作人姓名',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_transaction_stu_card` FOREIGN KEY (`stu_card_id`) REFERENCES `edu_stu_card` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生会员卡交易流水表';
