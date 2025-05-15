@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.education.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -26,16 +42,14 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class CardServiceImpl extends BaseServiceImpl<CardMapper, CardDO, CardResp, CardDetailResp, CardQuery, CardReq> implements CardService {
-    
+
     @Override
     public List<CardResp> listActiveCards() {
         // 查询状态为1的会员卡，首先按sort字段升序排列，如果sort相同，则按更新时间倒序排列
         LambdaQueryWrapper<CardDO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(CardDO::getStatus, 1)
-                   .orderByAsc(CardDO::getSort)
-                   .orderByDesc(CardDO::getUpdateTime);
+        queryWrapper.eq(CardDO::getStatus, 1).orderByAsc(CardDO::getSort).orderByDesc(CardDO::getUpdateTime);
         List<CardDO> cardDOList = baseMapper.selectList(queryWrapper);
-        
+
         // 转换为响应对象
         return BeanUtil.copyToList(cardDOList, CardResp.class);
     }

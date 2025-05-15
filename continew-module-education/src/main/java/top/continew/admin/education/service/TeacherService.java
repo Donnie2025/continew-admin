@@ -35,7 +35,8 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
     /**
      * 查询所有状态为活跃的教师列表
      *
+     * @param name 教师姓名(可选)
      * @return 教师列表
      */
-    List<TeacherResp> listActiveTeachers();
+    List<TeacherResp> listActiveTeachers(String name);
 }

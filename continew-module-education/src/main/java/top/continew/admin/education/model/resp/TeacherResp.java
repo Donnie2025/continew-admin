@@ -123,6 +123,12 @@ public class TeacherResp extends BaseResp {
     private String description;
 
     /**
+     * 所属组
+     */
+    @Schema(description = "所属组")
+    private String groupName;
+
+    /**
      * 排序
      */
     @Schema(description = "排序")

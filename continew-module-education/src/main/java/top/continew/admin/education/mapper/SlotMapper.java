@@ -27,7 +27,7 @@ import top.continew.admin.education.model.entity.SlotDO;
  * @since 2025/04/25 23:24
  */
 public interface SlotMapper extends BaseMapper<SlotDO> {
-    
+
     /**
      * 检查是否已存在相同老师、日期、时间且状态为1的课时记录
      *
@@ -39,10 +39,10 @@ public interface SlotMapper extends BaseMapper<SlotDO> {
     default SlotDO checkExistingSlot(Long teacherId, String startDate, String startTime) {
         LambdaQueryWrapper<SlotDO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SlotDO::getTeacherId, teacherId)
-                    .eq(SlotDO::getStartDate, startDate)
-                    .eq(SlotDO::getStartTime, startTime)
-                    .eq(SlotDO::getStatus, 1); // 状态为1的记录
-        
+            .eq(SlotDO::getStartDate, startDate)
+            .eq(SlotDO::getStartTime, startTime)
+            .eq(SlotDO::getStatus, 1); // 状态为1的记录
+
         return this.selectOne(queryWrapper);
     }
 }

@@ -133,6 +133,13 @@ public class TeacherReq implements Serializable {
     private String description;
 
     /**
+     * 所属组
+     */
+    @Schema(description = "所属组")
+    @Length(max = 100, message = "所属组长度不能超过 {max} 个字符")
+    private String groupName;
+
+    /**
      * 排序
      */
     @Schema(description = "排序")

@@ -21,6 +21,10 @@
             <artifactId>continew-common</artifactId>
         </dependency>
 
-
+        <!-- SnailJob客户端 -->
+        <dependency>
+            <groupId>top.continew</groupId>
+            <artifactId>continew-plugin-schedule</artifactId>
+        </dependency>
     </dependencies>
 </project> 

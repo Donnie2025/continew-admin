@@ -36,6 +36,7 @@ CREATE TABLE `edu_teacher` (
   `video_url` varchar(512) DEFAULT NULL COMMENT '视频地址',
   `brief_intro` varchar(256) DEFAULT NULL COMMENT '简介',
   `description` varchar(1024) DEFAULT NULL COMMENT '描述',
+  `group_name` varchar(100) DEFAULT NULL COMMENT '所属组',
   `sort`        int          NOT NULL DEFAULT 999        COMMENT '排序',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -222,8 +223,34 @@ CREATE TABLE `edu_transaction` (
   `actual_amount` decimal(10,2) DEFAULT 0 COMMENT '实收金额',
   `remark` varchar(255) DEFAULT NULL COMMENT '备注',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) NOT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
   `operator_id` bigint(20) DEFAULT NULL COMMENT '操作人ID',
   `operator_name` varchar(50) DEFAULT NULL COMMENT '操作人姓名',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_transaction_stu_card` FOREIGN KEY (`stu_card_id`) REFERENCES `edu_stu_card` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生会员卡交易流水表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='会员卡交易流水表';
+
+CREATE TABLE `edu_salary` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `teacher_id` bigint(20) NOT NULL COMMENT '教师ID',
+  `teacher_name` varchar(50) NOT NULL COMMENT '教师姓名',
+  `start_date` date NOT NULL COMMENT '起始日期',
+  `end_date` date NOT NULL COMMENT '结束日期',
+  `course_count` int NOT NULL DEFAULT 0 COMMENT '课程总数',
+  `course_amount` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '课程总金额',
+  `deduction_amount` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '扣款金额',
+  `tip_amount` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '小费金额',
+  `final_amount` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '最终支付金额',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（0：未结算；1：已结算）',
+  `rate` int NOT NULL DEFAULT 0 COMMENT '单价',
+  `group_name` varchar(100) DEFAULT NULL COMMENT '所属组',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) NOT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_teacher_salary_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师工资表';

@@ -101,6 +101,11 @@ public class TeacherDO extends BaseDO {
     private String description;
 
     /**
+     * 所属组
+     */
+    private String groupName;
+
+    /**
      * 排序
      */
     private Integer sort;

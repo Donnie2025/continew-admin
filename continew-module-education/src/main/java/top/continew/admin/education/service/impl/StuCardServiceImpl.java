@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.education.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
@@ -33,28 +49,28 @@ import java.math.BigDecimal;
 public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO, StuCardResp, StuCardDetailResp, StuCardQuery, StuCardReq> implements StuCardService {
 
     private final TransactionMapper transactionMapper;
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public StuCardResp bindCard(StuCardBindReq req) {
         // 1. 创建会员卡绑定记录
         StuCardDO stuCardDO = new StuCardDO();
         BeanUtil.copyProperties(req, stuCardDO);
-        
+
         // 设置状态为启用
         stuCardDO.setStatus(1);
         stuCardDO.setCardStatus(1);
-        
+
         // 获取会员卡原始balance值 (首次绑卡时为0)
         BigDecimal originalBalance = BigDecimal.ZERO;
         // 计算新的balance = 原始balance + 充值次数
         BigDecimal newBalance = originalBalance.add(req.getBalance());
         // 设置最终的balance值
         stuCardDO.setBalance(newBalance);
-        
+
         // 保存会员卡绑定记录
         baseMapper.insert(stuCardDO);
-        
+
         // 2. 创建交易记录
         TransactionDO transactionDO = new TransactionDO();
         transactionDO.setStuCardId(stuCardDO.getId());
@@ -68,16 +84,16 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         transactionDO.setAfterAmount(newBalance); // 变动后余额
         transactionDO.setActualAmount(req.getActualAmount()); // 实收金额
         transactionDO.setRemark(req.getRemark());
-        
+
         // 设置操作人信息
         Long currentUserId = UserContextHolder.getUserId();
         String currentUsername = UserContextHolder.getUsername();
         transactionDO.setOperatorId(currentUserId);
         transactionDO.setOperatorName(currentUsername);
-        
+
         // 保存交易记录
         transactionMapper.insert(transactionDO);
-        
+
         // 返回绑定结果
         return BeanUtil.copyProperties(stuCardDO, StuCardResp.class);
     }

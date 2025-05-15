@@ -17,12 +17,12 @@
 package top.continew.admin.education.mapper;
 
 import top.continew.starter.data.mp.base.BaseMapper;
-import top.continew.admin.education.model.entity.TransactionDO;
+import top.continew.admin.education.model.entity.SalaryDO;
 
 /**
- * 订单 Mapper
+ * 薪资 Mapper
  *
  * @author don
- * @since 2025/05/10 22:11
+ * @since 2025/05/13 22:43
  */
-public interface TransactionMapper extends BaseMapper<TransactionDO> {}
+public interface SalaryMapper extends BaseMapper<SalaryDO> {}

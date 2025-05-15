@@ -16,7 +16,6 @@
 
 package top.continew.admin.education.service.impl;
 
-import cn.hutool.core.date.DateUtil;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -85,7 +84,7 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
             // 解析日期并计算是周几
             java.time.LocalDate localDate = java.time.LocalDate.parse(dateStr);
             int dayOfWeek = localDate.getDayOfWeek().getValue(); // 1=周一, 7=周日
-            
+
             // 将YYYY-MM-DD格式转换为YYYYMMDD格式
             String formattedDate = dateStr.replace("-", "");
             log.debug("处理日期: {} -> {}, 星期: {}", dateStr, formattedDate, dayOfWeek);
@@ -94,15 +93,15 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
             for (String time : req.getTimes()) {
                 // 先检查是否已存在相同老师、日期、时间且状态为1的课时记录
                 SlotDO existingSlot = this.baseMapper.checkExistingSlot(req.getTeacherId(), formattedDate, time);
-                
+
                 if (existingSlot != null) {
                     // 已存在记录，跳过创建
-                    log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", 
-                            req.getTeacherId(), formattedDate, time, existingSlot.getId());
+                    log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", req
+                        .getTeacherId(), formattedDate, time, existingSlot.getId());
                     skippedCount++;
                     continue;
                 }
-                
+
                 // 创建课程时间请求
                 SlotReq slotReq = new SlotReq();
                 slotReq.setTeacherId(req.getTeacherId());
@@ -115,7 +114,7 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
                 // 设置可选字段
                 if (req.getDuration() != null) {
                     slotReq.setDuration(req.getDuration());
-                }else{
+                } else {
                     slotReq.setDuration(25);
                 }
 
@@ -157,15 +156,16 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
     @Override
     public Long create(SlotReq req) {
         // 先检查是否已存在相同老师、日期、时间且状态为1的课时记录
-        SlotDO existingSlot = this.baseMapper.checkExistingSlot(req.getTeacherId(), req.getStartDate(), req.getStartTime());
-        
+        SlotDO existingSlot = this.baseMapper.checkExistingSlot(req.getTeacherId(), req.getStartDate(), req
+            .getStartTime());
+
         if (existingSlot != null) {
             // 已存在记录，返回已存在记录的ID而不是创建新记录
-            log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", 
-                    req.getTeacherId(), req.getStartDate(), req.getStartTime(), existingSlot.getId());
+            log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", req.getTeacherId(), req.getStartDate(), req
+                .getStartTime(), existingSlot.getId());
             return existingSlot.getId();
         }
-        
+
         // 不存在记录，调用父类方法创建新记录
         return super.create(req);
     }

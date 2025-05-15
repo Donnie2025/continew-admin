@@ -93,7 +93,7 @@ public class SlotQuery implements Serializable {
      * 设置日期范围
      *
      * @param start 开始日期
-     * @param end 结束日期
+     * @param end   结束日期
      */
     public void setDateRange(String start, String end) {
         this.startDateBegin = start;

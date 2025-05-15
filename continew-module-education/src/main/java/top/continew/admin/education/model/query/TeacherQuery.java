@@ -55,6 +55,13 @@ public class TeacherQuery implements Serializable {
     private Integer isShow;
 
     /**
+     * 所属组
+     */
+    @Schema(description = "所属组")
+    @Query(type = QueryType.EQ)
+    private String groupName;
+
+    /**
      * 排序
      */
     @Schema(description = "排序")

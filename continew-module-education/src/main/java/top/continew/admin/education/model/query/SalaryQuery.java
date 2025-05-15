@@ -27,36 +27,50 @@ import java.io.Serializable;
 import java.time.*;
 
 /**
- * 订单查询条件
+ * 薪资查询条件
  *
  * @author don
- * @since 2025/05/10 22:11
+ * @since 2025/05/13 22:43
  */
 @Data
-@Schema(description = "订单查询条件")
-public class TransactionQuery implements Serializable {
+@Schema(description = "薪资查询条件")
+public class SalaryQuery implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
-     * 学生ID
+     * 教师姓名
      */
-    @Schema(description = "学生ID")
+    @Schema(description = "教师姓名")
     @Query(type = QueryType.EQ)
-    private Long stuId;
+    private String teacherName;
 
     /**
-     * 会员卡ID
+     * 起始日期
      */
-    @Schema(description = "会员卡ID")
-    @Query(type = QueryType.EQ)
-    private Long cardId;
+    @Schema(description = "起始日期")
+    @Query(type = QueryType.GE)
+    private LocalDate startDate;
 
     /**
-     * 变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）
+     * 结束日期
      */
-    @Schema(description = "变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）")
+    @Schema(description = "结束日期")
+    @Query(type = QueryType.LE)
+    private LocalDate endDate;
+
+    /**
+     * 状态（0：未结算；1：已结算）
+     */
+    @Schema(description = "状态（0：未结算；1：已结算）")
     @Query(type = QueryType.EQ)
-    private String type;
+    private Integer status;
+
+    /**
+     * 所属组
+     */
+    @Schema(description = "所属组")
+    @Query(type = QueryType.EQ)
+    private String groupName;
 }

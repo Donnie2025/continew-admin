@@ -23,98 +23,84 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import top.continew.admin.common.model.entity.BaseDO;
 
 import java.io.Serial;
+import java.time.*;
 import java.math.BigDecimal;
 
 /**
- * 订单实体
+ * 薪资实体
  *
  * @author don
- * @since 2025/05/10 22:11
+ * @since 2025/05/13 22:43
  */
 @Data
-@TableName("edu_transaction")
-public class TransactionDO extends BaseDO {
+@TableName("edu_salary")
+public class SalaryDO extends BaseDO {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
-     * 学生会员卡绑定表ID
+     * 教师ID
      */
-    private Long stuCardId;
+    private Long teacherId;
 
     /**
-     * 学生ID
+     * 教师姓名
      */
-    private Long stuId;
+    private String teacherName;
 
     /**
-     * 学生姓名
+     * 起始日期
      */
-    private String stuName;
+    private LocalDate startDate;
 
     /**
-     * 会员卡ID
+     * 结束日期
      */
-    private Long cardId;
+    private LocalDate endDate;
 
     /**
-     * 会员卡名称
+     * 课程总数
      */
-    private String cardName;
+    private Integer courseCount;
 
     /**
-     * 变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）
+     * 课程总金额
      */
-    private String type;
+    private BigDecimal courseAmount;
 
     /**
-     * 支出金额（扣款）
+     * 扣款金额
      */
-    private BigDecimal debitAmount;
+    private BigDecimal deductionAmount;
 
     /**
-     * 收入金额（充值/收入）
+     * 小费金额
      */
-    private BigDecimal creditAmount;
+    private BigDecimal tipAmount;
 
     /**
-     * 减少有效期天数
+     * 最终支付金额
      */
-    private Integer debitDays;
+    private BigDecimal finalAmount;
 
     /**
-     * 增加有效期天数
+     * 状态（0：未结算；1：已结算）
      */
-    private Integer creditDays;
+    private Integer status;
 
     /**
-     * 变动前余额/次数
+     * 单价
      */
-    private BigDecimal beforeAmount;
+    private Integer rate;
 
     /**
-     * 变动后余额/次数
+     * 所属组
      */
-    private BigDecimal afterAmount;
-
-    /**
-     * 实收金额
-     */
-    private BigDecimal actualAmount;
+    private String groupName;
 
     /**
      * 备注
      */
     private String remark;
-
-    /**
-     * 操作人ID
-     */
-    private Long operatorId;
-
-    /**
-     * 操作人姓名
-     */
-    private String operatorName;
 }

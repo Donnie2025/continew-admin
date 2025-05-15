@@ -44,9 +44,12 @@ import java.util.stream.Collectors;
 public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> implements TeacherService {
 
     @Override
-    public List<TeacherResp> listActiveTeachers() {
-        return this.baseMapper.selectList(new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
-            .orderByAsc(TeacherDO::getSort)).stream().map(this::convert).collect(Collectors.toList());
+    public List<TeacherResp> listActiveTeachers(String name) {
+        LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
+            .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name)
+            .orderByAsc(TeacherDO::getSort);
+
+        return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
     }
 
     /**
