@@ -46,8 +46,8 @@ import java.util.List;
 public class TeacherController extends BaseController<TeacherService, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> {
 
     @GetMapping("/active")
-    @Operation(summary = "查询活跃教师列表", description = "查询所有状态为活跃的教师列表，按照排序字段升序排列")
-    public List<TeacherResp> listActiveTeachers() {
-        return this.baseService.listActiveTeachers();
+    @Operation(summary = "查询活跃教师列表", description = "查询所有状态为活跃的教师列表，按照排序字段升序排列，可选择按教师姓名进行模糊查询")
+    public List<TeacherResp> listActiveTeachers(@RequestParam(required = false) String name) {
+        return this.baseService.listActiveTeachers(name);
     }
 }

@@ -71,23 +71,22 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
      *
      * @param teacherId 教师ID
      * @param startDate 开始日期（格式：YYYYMMDD）
-     * @param endDate 结束日期（格式：YYYYMMDD）
+     * @param endDate   结束日期（格式：YYYYMMDD）
      * @return 课时列表
      */
     @Operation(summary = "根据日期范围和教师ID查询可用课时")
     @GetMapping("/available")
-    public R<List<SlotResp>> listAvailableSlots(
-            @RequestParam("teacherId") Long teacherId,
-            @RequestParam("startDate") String startDate,
-            @RequestParam("endDate") String endDate) {
+    public R<List<SlotResp>> listAvailableSlots(@RequestParam("teacherId") Long teacherId,
+                                                @RequestParam("startDate") String startDate,
+                                                @RequestParam("endDate") String endDate) {
         log.info("查询可用课时, 教师ID: {}, 开始日期: {}, 结束日期: {}", teacherId, startDate, endDate);
-        
+
         // 使用基础分页查询实现
         SlotQuery query = new SlotQuery();
         query.setTeacherId(teacherId);
         query.setDateRange(startDate, endDate);
         query.setStatus(1); // 状态为1表示可用
-        
+
         List<SlotResp> result = slotService.list(query, null);
         return R.ok(result);
     }
