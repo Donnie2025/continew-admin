@@ -78,6 +78,13 @@ public class SlotReq implements Serializable {
     private Integer duration;
 
     /**
+     * 学生数量
+     */
+    @Schema(description = "学生数量")
+    @Min(value = 0, message = "学生数量不能小于0")
+    private Integer studentCount;
+
+    /**
      * 是否在线教室（0：否；1：是）
      */
     @Schema(description = "是否在线教室（0：否；1：是）")

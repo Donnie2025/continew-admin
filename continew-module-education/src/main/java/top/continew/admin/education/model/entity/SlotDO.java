@@ -68,6 +68,11 @@ public class SlotDO extends BaseDO {
     private Integer duration;
 
     /**
+     * 学生数量
+     */
+    private Integer studentCount;
+
+    /**
      * 是否在线教室（0：否；1：是）
      */
     private Boolean isOnline;

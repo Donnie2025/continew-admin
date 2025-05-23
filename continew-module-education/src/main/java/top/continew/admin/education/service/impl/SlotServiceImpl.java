@@ -118,6 +118,13 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
                     slotReq.setDuration(25);
                 }
 
+                // 设置学生数量
+                if (req.getStudentCount() != null) {
+                    slotReq.setStudentCount(req.getStudentCount());
+                } else {
+                    slotReq.setStudentCount(1); // 默认为1
+                }
+
                 if (req.getInstitutionId() != null) {
                     slotReq.setInstitutionId(req.getInstitutionId());
                 }

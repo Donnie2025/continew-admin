@@ -57,6 +57,9 @@ public class BatchSlotReq implements Serializable {
     @Schema(description = "课程时长（单位为分钟）")
     private Integer duration;
 
+    @Schema(description = "学生数量")
+    private Integer studentCount;
+
     @Schema(description = "所属机构ID")
     private Long institutionId;
 
