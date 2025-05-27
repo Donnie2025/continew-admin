@@ -19,6 +19,8 @@ package top.continew.admin.controller.education;
 import top.continew.starter.extension.crud.enums.Api;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +31,9 @@ import top.continew.admin.education.model.req.StudentReq;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.service.StudentService;
+import net.dreamlu.mica.core.result.R;
+
+import java.util.List;
 
 /**
  * 学生管理管理 API
@@ -40,4 +45,17 @@ import top.continew.admin.education.service.StudentService;
 @RestController
 @CrudRequestMapping(value = "/education/student", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
-public class StudentController extends BaseController<StudentService, StudentResp, StudentDetailResp, StudentQuery, StudentReq> {}
+public class StudentController extends BaseController<StudentService, StudentResp, StudentDetailResp, StudentQuery, StudentReq> {
+
+    /**
+     * 搜索学生
+     *
+     * @param keyword 关键字（姓名或手机号）
+     * @return 学生列表
+     */
+    @GetMapping("/search")
+    @Operation(summary = "搜索学生", description = "根据关键字搜索启用状态的学生")
+    public R<List<StudentResp>> search(@Parameter(description = "关键字（姓名或手机号）") @RequestParam String keyword) {
+        return R.success(baseService.searchStudents(keyword));
+    }
+}

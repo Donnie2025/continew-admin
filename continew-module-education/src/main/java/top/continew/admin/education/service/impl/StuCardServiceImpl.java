@@ -37,6 +37,12 @@ import top.continew.admin.education.model.resp.StuCardResp;
 import top.continew.admin.education.service.StuCardService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 /**
  * 会员绑卡业务实现
@@ -96,5 +102,31 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
 
         // 返回绑定结果
         return BeanUtil.copyProperties(stuCardDO, StuCardResp.class);
+    }
+
+    @Override
+    public List<StuCardResp> getAvailableCards(Long stuId, Long teacherId) {
+        if (stuId == null) {
+            return new ArrayList<>();
+        }
+
+        // 构建查询条件
+        LambdaQueryWrapper<StuCardDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(StuCardDO::getStuId, stuId)
+            .eq(StuCardDO::getStatus, 1)  // 启用状态
+            .eq(StuCardDO::getCardStatus, 1)  // 卡状态启用
+            .gt(StuCardDO::getBalance, 0)  // 余额大于0
+            .and(wrapper -> wrapper.isNull(StuCardDO::getExpireDate)  // 无过期日期
+                .or()
+                .ge(StuCardDO::getExpireDate, LocalDate.now())  // 或未过期
+            );
+
+        // 查询结果
+        List<StuCardDO> stuCardList = baseMapper.selectList(queryWrapper);
+
+        // 转换为响应对象
+        return stuCardList.stream()
+            .map(card -> BeanUtil.copyProperties(card, StuCardResp.class))
+            .collect(Collectors.toList());
     }
 }

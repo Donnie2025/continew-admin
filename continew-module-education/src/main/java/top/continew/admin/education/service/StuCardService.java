@@ -23,6 +23,8 @@ import top.continew.admin.education.model.req.StuCardReq;
 import top.continew.admin.education.model.resp.StuCardDetailResp;
 import top.continew.admin.education.model.resp.StuCardResp;
 
+import java.util.List;
+
 /**
  * 会员绑卡业务接口
  *
@@ -38,4 +40,13 @@ public interface StuCardService extends BaseService<StuCardResp, StuCardDetailRe
      * @return 绑定结果
      */
     StuCardResp bindCard(StuCardBindReq req);
+
+    /**
+     * 获取会员可用的会员卡列表
+     *
+     * @param stuId     会员ID
+     * @param teacherId 教师ID（可选，用于筛选可用于特定教师的会员卡）
+     * @return 可用会员卡列表
+     */
+    List<StuCardResp> getAvailableCards(Long stuId, Long teacherId);
 }

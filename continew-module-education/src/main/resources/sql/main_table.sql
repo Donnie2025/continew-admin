@@ -71,6 +71,8 @@ CREATE TABLE `edu_slot` (
 CREATE TABLE `edu_booking` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `slot_id` bigint(20) NOT NULL COMMENT '所属课程ID',
+  `start_date` varchar(8) NOT NULL COMMENT '开课日期（格式：YYYYMMDD）',
+  `start_time` varchar(5) NOT NULL COMMENT '开课时间（格式：HH:MM）',
   `student_id` bigint(20) NOT NULL COMMENT '所属学生ID',
   `student_name` varchar(50) NOT NULL COMMENT '所属学生姓名',
   `phone` varchar(20) NOT NULL COMMENT '预约手机号',

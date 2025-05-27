@@ -17,26 +17,15 @@
 package top.continew.admin.education.service;
 
 import top.continew.starter.extension.crud.service.BaseService;
-import top.continew.admin.education.model.query.StudentQuery;
-import top.continew.admin.education.model.req.StudentReq;
-import top.continew.admin.education.model.resp.StudentDetailResp;
-import top.continew.admin.education.model.resp.StudentResp;
-
-import java.util.List;
+import top.continew.admin.education.model.query.BookingQuery;
+import top.continew.admin.education.model.req.BookingReq;
+import top.continew.admin.education.model.resp.BookingDetailResp;
+import top.continew.admin.education.model.resp.BookingResp;
 
 /**
- * 学生管理业务接口
+ * 预约业务接口
  *
  * @author don
- * @since 2025/04/20 01:32
+ * @since 2025/05/23 23:25
  */
-public interface StudentService extends BaseService<StudentResp, StudentDetailResp, StudentQuery, StudentReq> {
-
-    /**
-     * 搜索学生
-     *
-     * @param keyword 关键字（姓名或手机号）
-     * @return 学生列表
-     */
-    List<StudentResp> searchStudents(String keyword);
-}
+public interface BookingService extends BaseService<BookingResp, BookingDetailResp, BookingQuery, BookingReq> {}
