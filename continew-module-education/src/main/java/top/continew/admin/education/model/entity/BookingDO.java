@@ -71,7 +71,7 @@ public class BookingDO extends BaseDO {
     /**
      * 预约会员卡ID
      */
-    private Long cardId;
+    private Long stuCardId;
 
     /**
      * 预约会员卡名称

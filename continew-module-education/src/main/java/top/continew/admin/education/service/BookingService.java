@@ -22,10 +22,22 @@ import top.continew.admin.education.model.req.BookingReq;
 import top.continew.admin.education.model.resp.BookingDetailResp;
 import top.continew.admin.education.model.resp.BookingResp;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 预约业务接口
  *
  * @author don
  * @since 2025/05/23 23:25
  */
-public interface BookingService extends BaseService<BookingResp, BookingDetailResp, BookingQuery, BookingReq> {}
+public interface BookingService extends BaseService<BookingResp, BookingDetailResp, BookingQuery, BookingReq> {
+    
+    /**
+     * 根据课时ID列表查询对应的预约信息
+     *
+     * @param slotIds 课时ID列表
+     * @return 课时ID到学生姓名列表的映射
+     */
+    Map<Long, List<String>> findStudentNamesBySlotIds(List<Long> slotIds);
+}

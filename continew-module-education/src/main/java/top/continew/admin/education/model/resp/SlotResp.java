@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import top.continew.admin.common.model.resp.BaseResp;
 import java.io.Serial;
 import java.time.*;
+import java.util.List;
 
 /**
  * 课程管理信息
@@ -96,4 +97,10 @@ public class SlotResp extends BaseResp {
      */
     @Schema(description = "所属机构ID")
     private Long institutionId;
+
+    /**
+     * 学生姓名（预约者姓名）
+     */
+    @Schema(description = "学生姓名（预约者姓名）")
+    private List<String> studentNameList;
 }

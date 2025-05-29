@@ -26,6 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
@@ -36,6 +38,7 @@ import top.continew.admin.education.model.req.BatchSlotReq;
 import top.continew.admin.education.model.resp.SlotDetailResp;
 import top.continew.admin.education.model.resp.SlotResp;
 import top.continew.admin.education.service.SlotService;
+import top.continew.admin.education.service.BookingService;
 
 /**
  * 课程管理管理 API
@@ -53,6 +56,9 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
 
     @Autowired
     private SlotService slotService;
+    
+    @Autowired
+    private BookingService bookingService;
 
     /**
      * 批量添加课程时间
@@ -88,6 +94,29 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
         query.setStatus(1); // 状态为1表示可用
 
         List<SlotResp> result = slotService.list(query, null);
+        
+        // 如果查询结果不为空，关联查询预约信息
+        if (result != null && !result.isEmpty()) {
+            // 提取所有课时ID
+            List<Long> slotIds = result.stream()
+                .map(SlotResp::getId)
+                .collect(Collectors.toList());
+            
+            // 查询所有相关的预约信息
+            Map<Long, List<String>> studentNamesMap = bookingService.findStudentNamesBySlotIds(slotIds);
+            
+            // 设置学生姓名
+            result.forEach(slot -> {
+                List<String> studentNames = studentNamesMap.get(slot.getId());
+                if (studentNames != null && !studentNames.isEmpty()) {
+                    // 直接设置学生名字列表
+                    slot.setStudentNameList(studentNames);
+                }
+            });
+            
+            log.info("已关联查询预约信息，共{}条课时，{}条有预约", result.size(), studentNamesMap.size());
+        }
+        
         return R.ok(result);
     }
 }
