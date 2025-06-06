@@ -44,9 +44,9 @@ public class StudentDO extends BaseDO {
     private String name;
 
     /**
-     * 性别（0-未知 1-男 2-女）
+     * 性别（male-男 female-女）
      */
-    private Integer gender;
+    private String gender;
 
     /**
      * 手机号码
