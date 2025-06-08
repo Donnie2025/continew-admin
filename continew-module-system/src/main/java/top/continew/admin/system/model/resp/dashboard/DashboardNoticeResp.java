@@ -52,4 +52,10 @@ public class DashboardNoticeResp implements Serializable {
      */
     @Schema(description = "类型（取值于字典 notice_type）", example = "1")
     private String type;
+
+    /**
+     * 是否置顶
+     */
+    @Schema(description = "是否置顶", example = "false")
+    private Boolean isTop;
 }

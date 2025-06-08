@@ -19,6 +19,7 @@ package top.continew.admin.system.service;
 import top.continew.admin.system.model.query.MessageQuery;
 import top.continew.admin.system.model.req.MessageReq;
 import top.continew.admin.system.model.resp.message.MessageResp;
+import top.continew.admin.system.model.resp.message.MessageUnreadResp;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 
@@ -28,6 +29,7 @@ import java.util.List;
  * 消息业务接口
  *
  * @author Bull-BCLS
+ * @author Charles7c
  * @since 2023/10/15 19:05
  */
 public interface MessageService {
@@ -42,12 +44,29 @@ public interface MessageService {
     PageResp<MessageResp> page(MessageQuery query, PageQuery pageQuery);
 
     /**
+     * 将消息标记已读
+     *
+     * @param ids    消息ID（为空则将所有消息标记已读）
+     * @param userId 用户ID
+     */
+    void readMessage(List<Long> ids, Long userId);
+
+    /**
+     * 查询未读消息数量
+     *
+     * @param userId   用户 ID
+     * @param isDetail 是否查询详情
+     * @return 未读消息数量
+     */
+    MessageUnreadResp countUnreadByUserId(Long userId, Boolean isDetail);
+
+    /**
      * 新增
      *
      * @param req        请求参数
      * @param userIdList 接收人列表
      */
-    void add(MessageReq req, List<Long> userIdList);
+    void add(MessageReq req, List<String> userIdList);
 
     /**
      * 删除

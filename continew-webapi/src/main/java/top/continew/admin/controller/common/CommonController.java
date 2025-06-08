@@ -35,12 +35,12 @@ import top.continew.admin.system.enums.OptionCategoryEnum;
 import top.continew.admin.system.model.query.*;
 import top.continew.admin.system.model.resp.file.FileUploadResp;
 import top.continew.admin.system.service.*;
-import top.continew.starter.core.constant.StringConstants;
 import top.continew.starter.core.validation.ValidationUtils;
 import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.LabelValueResp;
 import top.continew.starter.log.annotation.Log;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -66,12 +66,12 @@ public class CommonController {
     private final OptionService optionService;
 
     @Operation(summary = "上传文件", description = "上传文件")
+    @Parameter(name = "parentPath", description = "上级目录", example = "/", in = ParameterIn.QUERY)
     @PostMapping("/file")
-    public FileUploadResp upload(@NotNull(message = "文件不能为空") MultipartFile file, String path) {
+    public FileUploadResp upload(@NotNull(message = "文件不能为空") @RequestPart MultipartFile file,
+                                 @RequestParam(required = false) String parentPath) throws IOException {
         ValidationUtils.throwIf(file::isEmpty, "文件不能为空");
-        FileInfo fileInfo = fileService.upload(file, StrUtil.isNotBlank(path)
-            ? StrUtil.appendIfMissing(path, StringConstants.SLASH)
-            : "/");
+        FileInfo fileInfo = fileService.upload(file, parentPath);
         return FileUploadResp.builder()
             .id(fileInfo.getId())
             .url(fileInfo.getUrl())

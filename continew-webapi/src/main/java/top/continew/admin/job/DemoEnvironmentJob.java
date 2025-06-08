@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package top.continew.admin.controller.schedule;
+package top.continew.admin.job;
 
 import cn.hutool.core.util.StrUtil;
 import com.aizuda.snailjob.client.job.core.annotation.JobExecutor;
@@ -53,8 +53,9 @@ public class DemoEnvironmentJob {
     private final DictMapper dictMapper;
     private final StorageMapper storageMapper;
     private final NoticeMapper noticeMapper;
+    private final NoticeLogMapper noticeLogMapper;
     private final MessageMapper messageMapper;
-    private final MessageUserMapper messageUserMapper;
+    private final MessageLogMapper messageLogMapper;
     private final UserMapper userMapper;
     private final UserRoleMapper userRoleMapper;
     private final UserSocialMapper userSocialMapper;
@@ -109,7 +110,8 @@ public class DemoEnvironmentJob {
             InterceptorIgnoreHelper.handle(IgnoreStrategy.builder().blockAttack(true).build());
             SnailJobLog.REMOTE.info("演示环境待清理数据项检测完成，开始执行清理。");
             // 清理关联数据
-            messageUserMapper.lambdaUpdate().gt(MessageUserDO::getMessageId, MESSAGE_FLAG).remove();
+            noticeLogMapper.lambdaUpdate().gt(NoticeLogDO::getNoticeId, DELETE_FLAG).remove();
+            messageLogMapper.lambdaUpdate().gt(MessageLogDO::getMessageId, MESSAGE_FLAG).remove();
             userRoleMapper.lambdaUpdate().notIn(UserRoleDO::getRoleId, ROLE_FLAG).remove();
             userRoleMapper.lambdaUpdate().notIn(UserRoleDO::getUserId, USER_FLAG).remove();
             roleDeptMapper.lambdaUpdate().notIn(RoleDeptDO::getRoleId, ROLE_FLAG).remove();

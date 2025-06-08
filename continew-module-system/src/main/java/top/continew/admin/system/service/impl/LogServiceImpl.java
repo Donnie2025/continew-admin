@@ -123,7 +123,7 @@ public class LogServiceImpl implements LogService {
             .and(StrUtil.isNotBlank(createUserString), q -> q.like("t2.username", createUserString)
                 .or()
                 .like("t2.nickname", createUserString))
-            .eq(null != status, "t1.status", status)
+            .eq(status != null, "t1.status", status)
             .between(CollUtil.isNotEmpty(createTimeList), "t1.create_time", CollUtil.getFirst(createTimeList), CollUtil
                 .getLast(createTimeList));
     }

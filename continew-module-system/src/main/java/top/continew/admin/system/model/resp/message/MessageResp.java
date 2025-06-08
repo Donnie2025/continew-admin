@@ -16,11 +16,8 @@
 
 package top.continew.admin.system.model.resp.message;
 
-import cn.crane4j.annotation.Assemble;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import top.continew.admin.common.constant.ContainerConstants;
 import top.continew.admin.system.enums.MessageTypeEnum;
 
 import java.io.Serial;
@@ -61,8 +58,14 @@ public class MessageResp implements Serializable {
     /**
      * 类型
      */
-    @Schema(description = "类型（1：系统消息）", example = "1")
+    @Schema(description = "类型", example = "1")
     private MessageTypeEnum type;
+
+    /**
+     * 跳转路径
+     */
+    @Schema(description = "跳转路径", example = "/user/profile")
+    private String path;
 
     /**
      * 是否已读
@@ -75,19 +78,6 @@ public class MessageResp implements Serializable {
      */
     @Schema(description = "读取时间", example = "2023-08-08 23:59:59", type = "string")
     private LocalDateTime readTime;
-
-    /**
-     * 创建人
-     */
-    @JsonIgnore
-    @Assemble(prop = ":createUserString", container = ContainerConstants.USER_NICKNAME)
-    private Long createUser;
-
-    /**
-     * 创建人
-     */
-    @Schema(description = "创建人", example = "超级管理员")
-    private String createUserString;
 
     /**
      * 创建时间

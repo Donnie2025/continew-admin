@@ -24,7 +24,6 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.json.JSONUtil;
 import com.xkcoding.justauth.autoconfigure.JustAuthProperties;
-
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import me.zhyd.oauth.AuthRequestBuilder;
@@ -54,12 +53,9 @@ import top.continew.admin.system.service.UserSocialService;
 import top.continew.starter.core.autoconfigure.project.ProjectProperties;
 import top.continew.starter.core.exception.BadRequestException;
 import top.continew.starter.core.validation.ValidationUtils;
-import top.continew.starter.messaging.websocket.util.WebSocketUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * 第三方账号登录处理器
@@ -93,12 +89,12 @@ public class SocialLoginHandler extends AbstractLoginHandler<SocialLoginReq> {
         String openId = authUser.getUuid();
         UserSocialDO userSocial = userSocialService.getBySourceAndOpenId(source, openId);
         UserDO user;
-        if (null == userSocial) {
+        if (userSocial == null) {
             String username = authUser.getUsername();
             String nickname = authUser.getNickname();
             UserDO existsUser = userService.getByUsername(username);
             String randomStr = RandomUtil.randomString(RandomUtil.BASE_CHAR, 5);
-            if (null != existsUser || !ReUtil.isMatch(RegexConstants.USERNAME, username)) {
+            if (existsUser != null || !ReUtil.isMatch(RegexConstants.USERNAME, username)) {
                 username = randomStr + IdUtil.fastSimpleUUID();
             }
             if (!ReUtil.isMatch(RegexConstants.GENERAL_NAME, nickname)) {
@@ -107,7 +103,7 @@ public class SocialLoginHandler extends AbstractLoginHandler<SocialLoginReq> {
             user = new UserDO();
             user.setUsername(username);
             user.setNickname(nickname);
-            if (Objects.nonNull(authUser.getGender())) {
+            if (authUser.getGender() != null) {
                 user.setGender(GenderEnum.valueOf(authUser.getGender().name()));
             }
             user.setAvatar(authUser.getAvatar());
@@ -168,15 +164,10 @@ public class SocialLoginHandler extends AbstractLoginHandler<SocialLoginReq> {
      * @param user 用户信息
      */
     private void sendSecurityMsg(UserDO user) {
-        MessageReq req = new MessageReq();
-        MessageTemplateEnum socialRegister = MessageTemplateEnum.SOCIAL_REGISTER;
-        req.setTitle(socialRegister.getTitle().formatted(projectProperties.getName()));
-        req.setContent(socialRegister.getContent().formatted(user.getNickname()));
-        req.setType(MessageTypeEnum.SECURITY);
-        messageService.add(req, CollUtil.toList(user.getId()));
-        List<String> tokenList = StpUtil.getTokenValueListByLoginId(user.getId());
-        for (String token : tokenList) {
-            WebSocketUtils.sendMessage(token, "1");
-        }
+        MessageTemplateEnum template = MessageTemplateEnum.SOCIAL_REGISTER;
+        MessageReq req = new MessageReq(MessageTypeEnum.SECURITY);
+        req.setTitle(template.getTitle().formatted(projectProperties.getName()));
+        req.setContent(template.getContent().formatted(user.getNickname()));
+        messageService.add(req, CollUtil.toList(user.getId().toString()));
     }
 }

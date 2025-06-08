@@ -18,10 +18,6 @@ package top.continew.admin.system.model.query;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import top.continew.admin.system.enums.MessageTypeEnum;
-import top.continew.starter.data.core.annotation.Query;
-import top.continew.starter.data.core.annotation.QueryIgnore;
-import top.continew.starter.data.core.enums.QueryType;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -49,26 +45,23 @@ public class MessageQuery implements Serializable {
      * 标题
      */
     @Schema(description = "标题", example = "欢迎注册 xxx")
-    @Query(type = QueryType.LIKE)
     private String title;
 
     /**
      * 类型
      */
     @Schema(description = "类型", example = "1")
-    private MessageTypeEnum type;
+    private Integer type;
 
     /**
      * 是否已读
      */
     @Schema(description = "是否已读", example = "true")
-    @QueryIgnore
     private Boolean isRead;
 
     /**
      * 用户 ID
      */
     @Schema(hidden = true)
-    @QueryIgnore
     private Long userId;
 }

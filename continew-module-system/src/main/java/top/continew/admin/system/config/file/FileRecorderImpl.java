@@ -16,28 +16,27 @@
 
 package top.continew.admin.system.config.file;
 
-import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ClassUtil;
-import cn.hutool.core.util.EscapeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
-import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.recorder.FileRecorder;
 import org.dromara.x.file.storage.core.upload.FilePartInfo;
 import org.springframework.stereotype.Component;
-import top.continew.admin.common.context.UserContextHolder;
-import top.continew.admin.system.enums.FileTypeEnum;
 import top.continew.admin.system.mapper.FileMapper;
 import top.continew.admin.system.mapper.StorageMapper;
 import top.continew.admin.system.model.entity.FileDO;
 import top.continew.admin.system.model.entity.StorageDO;
 import top.continew.starter.core.constant.StringConstants;
+import top.continew.starter.core.util.URLUtils;
 
-import java.util.Optional;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 文件记录实现类
@@ -52,60 +51,31 @@ public class FileRecorderImpl implements FileRecorder {
 
     private final FileMapper fileMapper;
     private final StorageMapper storageMapper;
-    private final IdentifierGenerator identifierGenerator;
 
-    /**
-     * 文件信息存储
-     *
-     * @param fileInfo 文件信息对象
-     * @return 是否保存成功
-     */
     @Override
     public boolean save(FileInfo fileInfo) {
-        FileDO file = new FileDO();
-        Number id = identifierGenerator.nextId(fileInfo);
-        file.setId(id.longValue());
-        fileInfo.setId(String.valueOf(id.longValue()));
-        String originalFilename = EscapeUtil.unescape(fileInfo.getOriginalFilename());
-        file.setName(StrUtil.contains(originalFilename, StringConstants.DOT)
-            ? StrUtil.subBefore(originalFilename, StringConstants.DOT, true)
-            : originalFilename);
+        // 保存文件信息
+        FileDO file = new FileDO(fileInfo);
         StorageDO storage = (StorageDO)fileInfo.getAttr().get(ClassUtil.getClassName(StorageDO.class, false));
-        String filePath = StrUtil.appendIfMissing(fileInfo.getPath(), StringConstants.SLASH);
-        // 处理fileInfo中存储的地址
-        fileInfo.setUrl(URLUtil.normalize(storage.getDomain() + filePath + fileInfo.getFilename()));
-        fileInfo.setThUrl(URLUtil.normalize(storage.getDomain() + filePath + fileInfo.getThFilename()));
-        file.setUrl(fileInfo.getUrl());
-        file.setSize(fileInfo.getSize());
-        String absPath = fileInfo.getPath();
-        String tempAbsPath = absPath.length() > 1 ? StrUtil.removeSuffix(absPath, StringConstants.SLASH) : absPath;
-        String[] pathArr = tempAbsPath.split(StringConstants.SLASH);
-        if (pathArr.length > 1) {
-            file.setParentPath(pathArr[pathArr.length - 1]);
-        } else {
-            file.setParentPath(StringConstants.SLASH);
-        }
-        file.setAbsPath(tempAbsPath);
-        file.setExtension(fileInfo.getExt());
-        file.setType(FileTypeEnum.getByExtension(file.getExtension()));
-        file.setContentType(fileInfo.getContentType());
-        file.setSha256(fileInfo.getHashInfo().getSha256());
-        file.setMetadata(JSONUtil.toJsonStr(fileInfo.getMetadata()));
-        file.setThumbnailUrl(fileInfo.getThUrl());
-        file.setThumbnailSize(fileInfo.getThSize());
-        file.setThumbnailMetadata(JSONUtil.toJsonStr(fileInfo.getThMetadata()));
         file.setStorageId(storage.getId());
-        file.setCreateTime(DateUtil.toLocalDateTime(fileInfo.getCreateTime()));
-        file.setUpdateUser(UserContextHolder.getUserId());
-        file.setUpdateTime(file.getCreateTime());
         fileMapper.insert(file);
+        // 方便文件上传完成后获取文件信息
+        fileInfo.setId(String.valueOf(file.getId()));
+        if (!URLUtils.isHttpUrl(fileInfo.getUrl())) {
+            String prefix = storage.getUrlPrefix();
+            String url = URLUtil.normalize(prefix + fileInfo.getUrl(), false, true);
+            fileInfo.setUrl(url);
+            if (StrUtil.isNotBlank(fileInfo.getThUrl())) {
+                fileInfo.setThUrl(URLUtil.normalize(prefix + fileInfo.getThUrl(), false, true));
+            }
+        }
         return true;
     }
 
     @Override
     public FileInfo getByUrl(String url) {
         FileDO file = this.getFileByUrl(url);
-        if (null == file) {
+        if (file == null) {
             return null;
         }
         StorageDO storageDO = storageMapper.lambdaQuery().eq(StorageDO::getId, file.getStorageId()).one();
@@ -115,7 +85,10 @@ public class FileRecorderImpl implements FileRecorder {
     @Override
     public boolean delete(String url) {
         FileDO file = this.getFileByUrl(url);
-        return fileMapper.lambdaUpdate().eq(FileDO::getUrl, file.getUrl()).remove();
+        if (file == null) {
+            return false;
+        }
+        return fileMapper.lambdaUpdate().eq(FileDO::getId, file.getId()).remove();
     }
 
     @Override
@@ -140,10 +113,30 @@ public class FileRecorderImpl implements FileRecorder {
      * @return 文件信息
      */
     private FileDO getFileByUrl(String url) {
-        Optional<FileDO> fileOptional = fileMapper.lambdaQuery().eq(FileDO::getUrl, url).oneOpt();
-        return fileOptional.orElseGet(() -> fileMapper.lambdaQuery()
-            .likeLeft(FileDO::getUrl, StrUtil.subAfter(url, StringConstants.SLASH, true))
-            .oneOpt()
-            .orElse(null));
+        LambdaQueryChainWrapper<FileDO> queryWrapper = fileMapper.lambdaQuery()
+            .eq(FileDO::getName, StrUtil.subAfter(url, StringConstants.SLASH, true));
+        // 非 HTTP URL 场景
+        if (!URLUtils.isHttpUrl(url)) {
+            return queryWrapper.eq(FileDO::getPath, StrUtil.prependIfMissing(url, StringConstants.SLASH)).one();
+        }
+        // HTTP URL 场景
+        List<FileDO> list = queryWrapper.list();
+        if (CollUtil.isEmpty(list)) {
+            return null;
+        }
+        if (list.size() == 1) {
+            return list.get(0);
+        }
+        // 结合存储配置进行匹配
+        List<StorageDO> storageList = storageMapper.selectByIds(list.stream().map(FileDO::getStorageId).toList());
+        Map<Long, StorageDO> storageMap = storageList.stream()
+            .collect(Collectors.toMap(StorageDO::getId, storage -> storage));
+        return list.stream().filter(file -> {
+            // http://localhost:8000/file/user/avatar/6825e687db4174e7a297a5f8.png => http://localhost:8000/file/user/avatar
+            String urlPrefix = StrUtil.subBefore(url, StringConstants.SLASH, true);
+            // http://localhost:8000/file/ + /user/avatar => http://localhost:8000/file/user/avatar
+            StorageDO storage = storageMap.get(file.getStorageId());
+            return urlPrefix.equals(URLUtil.normalize(storage.getUrlPrefix() + file.getParentPath(), false, true));
+        }).findFirst().orElse(null);
     }
 }

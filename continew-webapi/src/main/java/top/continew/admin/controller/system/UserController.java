@@ -86,7 +86,7 @@ public class UserController extends BaseController<UserService, UserResp, UserDe
     @Operation(summary = "解析导入数据", description = "解析导入数据")
     @SaCheckPermission("system:user:import")
     @PostMapping("/import/parse")
-    public UserImportParseResp parseImport(@NotNull(message = "文件不能为空") MultipartFile file) {
+    public UserImportParseResp parseImport(@NotNull(message = "文件不能为空") @RequestPart MultipartFile file) {
         ValidationUtils.throwIf(file::isEmpty, "文件不能为空");
         return baseService.parseImport(file);
     }

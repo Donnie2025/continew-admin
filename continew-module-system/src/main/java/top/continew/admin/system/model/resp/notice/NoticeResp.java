@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package top.continew.admin.system.model.resp;
+package top.continew.admin.system.model.resp.notice;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -46,32 +46,10 @@ public class NoticeResp extends BaseResp {
     private String title;
 
     /**
-     * 类型（取值于字典 notice_type）
+     * 分类（取值于字典 notice_type）
      */
-    @Schema(description = "类型（取值于字典 notice_type）", example = "1")
+    @Schema(description = "分类（取值于字典 notice_type）", example = "1")
     private String type;
-
-    /**
-     * 生效时间
-     */
-    @Schema(description = "生效时间", example = "2023-08-08 00:00:00", type = "string")
-    private LocalDateTime effectiveTime;
-
-    /**
-     * 终止时间
-     */
-    @Schema(description = "终止时间", example = "2023-08-08 23:59:59", type = "string")
-    private LocalDateTime terminateTime;
-
-    /**
-     * 状态
-     *
-     * @return 公告状态
-     */
-    @Schema(description = "状态", example = "1")
-    public NoticeStatusEnum getStatus() {
-        return NoticeStatusEnum.getStatus(effectiveTime, terminateTime);
-    }
 
     /**
      * 通知范围
@@ -80,8 +58,38 @@ public class NoticeResp extends BaseResp {
     private NoticeScopeEnum noticeScope;
 
     /**
-     * 指定用户
+     * 通知方式
      */
-    @Schema(description = "指定用户", example = "[1,2,3]")
-    private List<String> noticeUsers;
+    @Schema(description = "通知方式", example = "[1,2]")
+    private List<Integer> noticeMethods;
+
+    /**
+     * 是否定时
+     */
+    @Schema(description = "是否定时", example = "false")
+    private Boolean isTiming;
+
+    /**
+     * 发布时间
+     */
+    @Schema(description = "发布时间", example = "2023-08-08 00:00:00", type = "string")
+    private LocalDateTime publishTime;
+
+    /**
+     * 是否置顶
+     */
+    @Schema(description = "是否置顶", example = "false")
+    private Boolean isTop;
+
+    /**
+     * 状态
+     */
+    @Schema(description = "状态", example = "3")
+    private NoticeStatusEnum status;
+
+    /**
+     * 是否已读
+     */
+    @Schema(description = "是否已读", example = "false")
+    private Boolean isRead;
 }

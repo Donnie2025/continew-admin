@@ -17,32 +17,37 @@
 package top.continew.admin.system.service.impl;
 
 import cn.crane4j.annotation.AutoOperate;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import top.continew.admin.system.enums.MessageTypeEnum;
+import top.continew.admin.system.enums.NoticeScopeEnum;
 import top.continew.admin.system.mapper.MessageMapper;
 import top.continew.admin.system.model.entity.MessageDO;
 import top.continew.admin.system.model.query.MessageQuery;
 import top.continew.admin.system.model.req.MessageReq;
 import top.continew.admin.system.model.resp.message.MessageResp;
+import top.continew.admin.system.model.resp.message.MessageTypeUnreadResp;
+import top.continew.admin.system.model.resp.message.MessageUnreadResp;
+import top.continew.admin.system.service.MessageLogService;
 import top.continew.admin.system.service.MessageService;
-import top.continew.admin.system.service.MessageUserService;
-import top.continew.starter.core.validation.CheckUtils;
-import top.continew.starter.data.mp.util.QueryWrapperHelper;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
+import top.continew.starter.messaging.websocket.util.WebSocketUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 消息业务实现
  *
  * @author Bull-BCLS
+ * @author Charles7c
  * @since 2023/10/15 19:05
  */
 @Service
@@ -50,32 +55,71 @@ import java.util.List;
 public class MessageServiceImpl implements MessageService {
 
     private final MessageMapper baseMapper;
-    private final MessageUserService messageUserService;
+    private final MessageLogService messageLogService;
 
     @Override
     @AutoOperate(type = MessageResp.class, on = "list")
     public PageResp<MessageResp> page(MessageQuery query, PageQuery pageQuery) {
-        QueryWrapper<MessageDO> queryWrapper = QueryWrapperHelper.build(query, pageQuery.getSort());
-        queryWrapper.apply(null != query.getUserId(), "t2.user_id={0}", query.getUserId())
-            .apply(null != query.getIsRead(), "t2.is_read={0}", query.getIsRead());
-        IPage<MessageResp> page = baseMapper.selectPageByUserId(new Page<>(pageQuery.getPage(), pageQuery
-            .getSize()), queryWrapper);
+        IPage<MessageResp> page = baseMapper.selectMessagePage(new Page<>(pageQuery.getPage(), pageQuery
+            .getSize()), query);
         return PageResp.build(page);
     }
 
     @Override
+    public void readMessage(List<Long> ids, Long userId) {
+        if (CollUtil.isEmpty(ids)) {
+            // 查询当前用户的未读消息
+            List<MessageDO> list = baseMapper.selectUnreadListByUserId(userId);
+            ids = list.stream().map(MessageDO::getId).toList();
+        }
+        messageLogService.addWithMessageId(ids, userId);
+    }
+
+    @Override
+    public MessageUnreadResp countUnreadByUserId(Long userId, Boolean isDetail) {
+        MessageUnreadResp result = new MessageUnreadResp();
+        Long total = 0L;
+        if (Boolean.TRUE.equals(isDetail)) {
+            List<MessageTypeUnreadResp> detailList = new ArrayList<>();
+            for (MessageTypeEnum messageType : MessageTypeEnum.values()) {
+                MessageTypeUnreadResp resp = new MessageTypeUnreadResp();
+                resp.setType(messageType);
+                Long count = baseMapper.selectUnreadCountByUserIdAndType(userId, messageType.getValue());
+                resp.setCount(count);
+                detailList.add(resp);
+                total += count;
+            }
+            result.setDetails(detailList);
+        } else {
+            total = baseMapper.selectUnreadCountByUserIdAndType(userId, null);
+        }
+        result.setTotal(total);
+        return result;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
-    public void add(MessageReq req, List<Long> userIdList) {
-        CheckUtils.throwIf(() -> CollUtil.isEmpty(userIdList), "消息接收人不能为空");
+    public void add(MessageReq req, List<String> userIdList) {
         MessageDO message = BeanUtil.copyProperties(req, MessageDO.class);
+        message.setScope(CollUtil.isEmpty(userIdList) ? NoticeScopeEnum.ALL : NoticeScopeEnum.USER);
+        message.setUsers(userIdList);
         baseMapper.insert(message);
-        messageUserService.add(message.getId(), userIdList);
+        // 发送消息给指定在线用户
+        if (CollUtil.isNotEmpty(userIdList)) {
+            userIdList.parallelStream().forEach(userId -> {
+                List<String> tokenList = StpUtil.getTokenValueListByLoginId(userId);
+                tokenList.parallelStream().forEach(token -> WebSocketUtils.sendMessage(token, "1"));
+            });
+            return;
+        }
+        // 发送消息给所有在线用户
+        // TODO WebSocketUtils.sendMessage("1");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(List<Long> ids) {
         baseMapper.deleteByIds(ids);
-        messageUserService.deleteByMessageIds(ids);
+        messageLogService.deleteByMessageIds(ids);
     }
 }

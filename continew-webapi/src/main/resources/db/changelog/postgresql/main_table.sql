@@ -360,43 +360,47 @@ COMMENT ON TABLE  "sys_log"                    IS '系统日志表';
 CREATE TABLE IF NOT EXISTS "sys_message" (
     "id"          int8         NOT NULL,
     "title"       varchar(50)  NOT NULL,
-    "content"     varchar(255) DEFAULT NULL,
+    "content"     text         DEFAULT NULL,
     "type"        int2         NOT NULL DEFAULT 1,
-    "create_user" int8         DEFAULT NULL,
+    "path"        varchar(255) DEFAULT NULL,
+    "scope"       int2         NOT NULL DEFAULT 1,
+    "users"       json         DEFAULT NULL,
     "create_time" timestamp    NOT NULL,
     PRIMARY KEY ("id")
 );
 COMMENT ON COLUMN "sys_message"."id"          IS 'ID';
 COMMENT ON COLUMN "sys_message"."title"       IS '标题';
 COMMENT ON COLUMN "sys_message"."content"     IS '内容';
-COMMENT ON COLUMN "sys_message"."type"        IS '类型（1：系统消息）';
-COMMENT ON COLUMN "sys_message"."create_user" IS '创建人';
+COMMENT ON COLUMN "sys_message"."type"        IS '类型（1：系统消息；2：安全消息）';
+COMMENT ON COLUMN "sys_message"."path"        IS '跳转路径';
+COMMENT ON COLUMN "sys_message"."scope"       IS '通知范围（1：所有人；2：指定用户）';
+COMMENT ON COLUMN "sys_message"."users"       IS '通知用户';
 COMMENT ON COLUMN "sys_message"."create_time" IS '创建时间';
 COMMENT ON TABLE  "sys_message"               IS '消息表';
 
-CREATE TABLE IF NOT EXISTS "sys_message_user" (
+CREATE TABLE IF NOT EXISTS "sys_message_log" (
     "message_id" int8      NOT NULL,
     "user_id"    int8      NOT NULL,
-    "is_read"    bool      NOT NULL DEFAULT false,
     "read_time"  timestamp DEFAULT NULL,
     PRIMARY KEY ("message_id", "user_id")
 );
-COMMENT ON COLUMN "sys_message_user"."message_id" IS '消息ID';
-COMMENT ON COLUMN "sys_message_user"."user_id"    IS '用户ID';
-COMMENT ON COLUMN "sys_message_user"."is_read"    IS '是否已读';
-COMMENT ON COLUMN "sys_message_user"."read_time"  IS '读取时间';
-COMMENT ON TABLE  "sys_message_user"              IS '消息和用户关联表';
+COMMENT ON COLUMN "sys_message_log"."message_id" IS '消息ID';
+COMMENT ON COLUMN "sys_message_log"."user_id"    IS '用户ID';
+COMMENT ON COLUMN "sys_message_log"."read_time"  IS '读取时间';
+COMMENT ON TABLE  "sys_message_log"              IS '消息日志表';
 
 CREATE TABLE IF NOT EXISTS "sys_notice" (
     "id"             int8         NOT NULL,
     "title"          varchar(150) NOT NULL,
     "content"        text         NOT NULL,
     "type"           varchar(30)  NOT NULL,
-    "effective_time" timestamp    DEFAULT NULL,
-    "terminate_time" timestamp    DEFAULT NULL,
     "notice_scope"   int2         NOT NULL DEFAULT 1,
     "notice_users"   json         DEFAULT NULL,
-    "sort"           int4         NOT NULL DEFAULT 999,
+    "notice_methods" json         DEFAULT NULL,
+    "is_timing"      bool         NOT NULL DEFAULT false,
+    "publish_time"   timestamp    DEFAULT NULL,
+    "is_top"         bool         NOT NULL DEFAULT false,
+    "status"         int2         NOT NULL DEFAULT 1,
     "create_user"    int8         NOT NULL,
     "create_time"    timestamp    NOT NULL,
     "update_user"    int8         DEFAULT NULL,
@@ -408,17 +412,30 @@ CREATE INDEX "idx_notice_update_user" ON "sys_notice" ("update_user");
 COMMENT ON COLUMN "sys_notice"."id"             IS 'ID';
 COMMENT ON COLUMN "sys_notice"."title"          IS '标题';
 COMMENT ON COLUMN "sys_notice"."content"        IS '内容';
-COMMENT ON COLUMN "sys_notice"."type"           IS '类型';
-COMMENT ON COLUMN "sys_notice"."effective_time" IS '生效时间';
-COMMENT ON COLUMN "sys_notice"."terminate_time" IS '终止时间';
+COMMENT ON COLUMN "sys_notice"."type"           IS '分类';
 COMMENT ON COLUMN "sys_notice"."notice_scope"   IS '通知范围（1：所有人；2：指定用户）';
 COMMENT ON COLUMN "sys_notice"."notice_users"   IS '通知用户';
-COMMENT ON COLUMN "sys_notice"."sort"           IS '排序';
+COMMENT ON COLUMN "sys_notice"."notice_methods" IS '通知方式（1：系统消息；2：登录弹窗）';
+COMMENT ON COLUMN "sys_notice"."is_timing"      IS '是否定时';
+COMMENT ON COLUMN "sys_notice"."publish_time"   IS '发布时间';
+COMMENT ON COLUMN "sys_notice"."is_top"         IS '是否置顶';
+COMMENT ON COLUMN "sys_notice"."status"         IS '状态（1：草稿；2：待发布；3：已发布）';
 COMMENT ON COLUMN "sys_notice"."create_user"    IS '创建人';
 COMMENT ON COLUMN "sys_notice"."create_time"    IS '创建时间';
 COMMENT ON COLUMN "sys_notice"."update_user"    IS '修改人';
 COMMENT ON COLUMN "sys_notice"."update_time"    IS '修改时间';
 COMMENT ON TABLE  "sys_notice"                  IS '公告表';
+
+CREATE TABLE IF NOT EXISTS "sys_notice_log" (
+    "notice_id" int8      NOT NULL,
+    "user_id"   int8      NOT NULL,
+    "read_time" timestamp DEFAULT NULL,
+    PRIMARY KEY ("notice_id", "user_id")
+);
+COMMENT ON COLUMN "sys_notice_log"."notice_id" IS '消息ID';
+COMMENT ON COLUMN "sys_notice_log"."user_id"   IS '用户ID';
+COMMENT ON COLUMN "sys_notice_log"."read_time" IS '读取时间';
+COMMENT ON TABLE  "sys_notice_log"             IS '公告日志表';
 
 CREATE TABLE IF NOT EXISTS "sys_storage" (
     "id"          int8         NOT NULL,
@@ -428,8 +445,8 @@ CREATE TABLE IF NOT EXISTS "sys_storage" (
     "access_key"  varchar(255) DEFAULT NULL,
     "secret_key"  varchar(255) DEFAULT NULL,
     "endpoint"    varchar(255) DEFAULT NULL,
-    "bucket_name" varchar(255) DEFAULT NULL,
-    "domain"      varchar(255) NOT NULL DEFAULT '',
+    "bucket_name" varchar(255) NOT NULL,
+    "domain"      varchar(255) DEFAULT NULL,
     "description" varchar(200) DEFAULT NULL,
     "is_default"  bool         NOT NULL DEFAULT false,
     "sort"        int4         NOT NULL DEFAULT 999,
@@ -465,17 +482,17 @@ COMMENT ON TABLE  "sys_storage"               IS '存储表';
 CREATE TABLE IF NOT EXISTS "sys_file" (
     "id"                 int8         NOT NULL,
     "name"               varchar(255) NOT NULL,
-    "size"               int8         NOT NULL,
-    "url"                varchar(512) NOT NULL,
+    "original_name"      varchar(255) NOT NULL,
+    "size"               int8         DEFAULT NULL,
     "parent_path"        varchar(512) NOT NULL DEFAULT '/',
-    "abs_path"           varchar(512) NOT NULL,
+    "path"               varchar(512) NOT NULL,
     "extension"          varchar(100) DEFAULT NULL,
-    "content_type"       varchar(64)  NOT NULL,
+    "content_type"       varchar(255) DEFAULT NULL,
     "type"               int2         NOT NULL DEFAULT 1,
     "sha256"       		 varchar(256) NOT NULL,
     "metadata"           text         DEFAULT NULL,
+    "thumbnail_name"     varchar(255) DEFAULT NULL,
     "thumbnail_size"     int8         DEFAULT NULL,
-    "thumbnail_url"      varchar(512) DEFAULT NULL,
     "thumbnail_metadata" text         DEFAULT NULL,
     "storage_id"         int8         NOT NULL,
     "create_user"        int8         NOT NULL,
@@ -484,24 +501,23 @@ CREATE TABLE IF NOT EXISTS "sys_file" (
     "update_time"        timestamp    DEFAULT NULL,
     PRIMARY KEY ("id")
 );
-CREATE INDEX "idx_file_url" ON "sys_file" ("url");
 CREATE INDEX "idx_file_type" ON "sys_file" ("type");
 CREATE INDEX "idx_file_sha256" ON "sys_file" ("sha256");
 CREATE INDEX "idx_file_storage_id" ON "sys_file" ("storage_id");
 CREATE INDEX "idx_file_create_user" ON "sys_file" ("create_user");
 COMMENT ON COLUMN "sys_file"."id"                 IS 'ID';
 COMMENT ON COLUMN "sys_file"."name"               IS '名称';
+COMMENT ON COLUMN "sys_file"."original_name"      IS '原始名称';
 COMMENT ON COLUMN "sys_file"."size"               IS '大小（字节）';
-COMMENT ON COLUMN "sys_file"."url"                IS 'URL';
 COMMENT ON COLUMN "sys_file"."parent_path"        IS '上级目录';
-COMMENT ON COLUMN "sys_file"."abs_path"           IS '绝对路径';
+COMMENT ON COLUMN "sys_file"."path"               IS '路径';
 COMMENT ON COLUMN "sys_file"."extension"          IS '扩展名';
 COMMENT ON COLUMN "sys_file"."content_type"       IS '内容类型';
 COMMENT ON COLUMN "sys_file"."type"               IS '类型（0: 目录；1：其他；2：图片；3：文档；4：视频；5：音频）';
 COMMENT ON COLUMN "sys_file"."sha256"             IS 'SHA256值';
 COMMENT ON COLUMN "sys_file"."metadata"           IS '元数据';
+COMMENT ON COLUMN "sys_file"."thumbnail_name"     IS '缩略图名称';
 COMMENT ON COLUMN "sys_file"."thumbnail_size"     IS '缩略图大小（字节)';
-COMMENT ON COLUMN "sys_file"."thumbnail_url"      IS '缩略图URL';
 COMMENT ON COLUMN "sys_file"."thumbnail_metadata" IS '缩略图元数据';
 COMMENT ON COLUMN "sys_file"."storage_id"         IS '存储ID';
 COMMENT ON COLUMN "sys_file"."create_user"        IS '创建人';
@@ -553,6 +569,7 @@ CREATE TABLE IF NOT EXISTS "sys_sms_config" (
     "max_retries"     int4         DEFAULT NULL,
     "maximum"         int4         DEFAULT NULL,
     "supplier_config" text         DEFAULT NULL ,
+    "is_default"      bool         NOT NULL DEFAULT false,
     "status"          int2         NOT NULL DEFAULT 1,
     "create_user"     int8         NOT NULL,
     "create_time"     timestamp    NOT NULL,
@@ -574,6 +591,7 @@ COMMENT ON COLUMN "sys_sms_config"."retry_interval"  IS '重试间隔（单位�
 COMMENT ON COLUMN "sys_sms_config"."max_retries"     IS '重试次数';
 COMMENT ON COLUMN "sys_sms_config"."maximum"         IS '发送上限';
 COMMENT ON COLUMN "sys_sms_config"."supplier_config" IS '各个厂商独立配置';
+COMMENT ON COLUMN "sys_sms_config"."is_default"      IS '是否为默认配置';
 COMMENT ON COLUMN "sys_sms_config"."status"          IS '状态（1：启用；2：禁用）';
 COMMENT ON COLUMN "sys_sms_config"."create_user"     IS '创建人';
 COMMENT ON COLUMN "sys_sms_config"."create_time"     IS '创建时间';

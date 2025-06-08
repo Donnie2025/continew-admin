@@ -16,13 +16,16 @@
 
 package top.continew.admin.controller.system;
 
-import com.xkcoding.justauth.AuthRequestFactory;
+import com.xkcoding.justauth.autoconfigure.JustAuthProperties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import me.zhyd.oauth.AuthRequestBuilder;
+import me.zhyd.oauth.config.AuthConfig;
 import me.zhyd.oauth.model.AuthCallback;
 import me.zhyd.oauth.model.AuthResponse;
 import me.zhyd.oauth.model.AuthUser;
@@ -41,10 +44,10 @@ import top.continew.admin.system.model.req.user.UserPasswordUpdateReq;
 import top.continew.admin.system.model.req.user.UserPhoneUpdateReq;
 import top.continew.admin.system.model.resp.AvatarResp;
 import top.continew.admin.system.model.resp.user.UserSocialBindResp;
-import top.continew.admin.system.service.NoticeService;
 import top.continew.admin.system.service.UserService;
 import top.continew.admin.system.service.UserSocialService;
 import top.continew.starter.cache.redisson.util.RedisUtils;
+import top.continew.starter.core.exception.BadRequestException;
 import top.continew.starter.core.util.ExceptionUtils;
 import top.continew.starter.core.validation.ValidationUtils;
 
@@ -68,8 +71,7 @@ public class UserProfileController {
     private static final String CAPTCHA_EXPIRED = "验证码已失效";
     private final UserService userService;
     private final UserSocialService userSocialService;
-    private final NoticeService noticeService;
-    private final AuthRequestFactory authRequestFactory;
+    private final JustAuthProperties authProperties;
 
     @Operation(summary = "修改头像", description = "用户修改个人头像")
     @PatchMapping("/avatar")
@@ -113,7 +115,7 @@ public class UserProfileController {
 
     @Operation(summary = "修改邮箱", description = "修改用户邮箱")
     @PatchMapping("/email")
-    public void updateEmail(@Validated @RequestBody UserEmailUpdateReq updateReq) {
+    public void updateEmail(@Valid @RequestBody UserEmailUpdateReq updateReq) {
         String rawOldPassword = ExceptionUtils.exToNull(() -> SecureUtils.decryptByRsaPrivateKey(updateReq
             .getOldPassword()));
         ValidationUtils.throwIfBlank(rawOldPassword, DECRYPT_FAILED);
@@ -142,7 +144,7 @@ public class UserProfileController {
     @Parameter(name = "source", description = "来源", example = "gitee", in = ParameterIn.PATH)
     @PostMapping("/social/{source}")
     public void bindSocial(@PathVariable String source, @RequestBody AuthCallback callback) {
-        AuthRequest authRequest = authRequestFactory.get(source);
+        AuthRequest authRequest = this.getAuthRequest(source);
         AuthResponse<AuthUser> response = authRequest.login(callback);
         ValidationUtils.throwIf(!response.ok(), response.getMsg());
         AuthUser authUser = response.getData();
@@ -154,5 +156,14 @@ public class UserProfileController {
     @DeleteMapping("/social/{source}")
     public void unbindSocial(@PathVariable String source) {
         userSocialService.deleteBySourceAndUserId(source, UserContextHolder.getUserId());
+    }
+
+    private AuthRequest getAuthRequest(String source) {
+        try {
+            AuthConfig authConfig = authProperties.getType().get(source.toUpperCase());
+            return AuthRequestBuilder.builder().source(source).authConfig(authConfig).build();
+        } catch (Exception e) {
+            throw new BadRequestException("暂不支持 [%s] 平台账号登录".formatted(source));
+        }
     }
 }

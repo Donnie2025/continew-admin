@@ -169,7 +169,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
         DisEnableStatusEnum newStatus = req.getStatus();
         CheckUtils.throwIf(DisEnableStatusEnum.DISABLE.equals(newStatus) && ObjectUtil.equal(id, UserContextHolder
             .getUserId()), "不允许禁用当前用户");
-        UserDO oldUser = super.getById(id);
+        UserDO oldUser = this.getById(id);
         if (Boolean.TRUE.equals(oldUser.getIsSystem())) {
             CheckUtils.throwIfEqual(DisEnableStatusEnum.DISABLE, newStatus, "[{}] 是系统内置用户，不允许禁用", oldUser
                 .getNickname());
@@ -200,9 +200,12 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
     public void delete(List<Long> ids) {
         CheckUtils.throwIf(CollUtil.contains(ids, UserContextHolder.getUserId()), "不允许删除当前用户");
         List<UserDO> list = baseMapper.lambdaQuery()
-            .select(UserDO::getNickname, UserDO::getIsSystem)
+            .select(UserDO::getId, UserDO::getNickname, UserDO::getIsSystem)
             .in(UserDO::getId, ids)
             .list();
+        List<Long> idList = list.stream().map(UserDO::getId).toList();
+        Collection<Long> subtractIds = CollUtil.subtract(ids, idList);
+        CheckUtils.throwIfNotEmpty(subtractIds, "所选用户 [{}] 不存在", CollUtil.join(subtractIds, StringConstants.COMMA));
         Optional<UserDO> isSystemData = list.stream().filter(UserDO::getIsSystem).findFirst();
         CheckUtils.throwIf(isSystemData::isPresent, "所选用户 [{}] 是系统内置用户，不允许删除", isSystemData.orElseGet(UserDO::new)
             .getNickname());
@@ -370,7 +373,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
 
     @Override
     public void resetPassword(UserPasswordResetReq req, Long id) {
-        super.getById(id);
+        this.getById(id);
         baseMapper.lambdaUpdate()
             .set(UserDO::getPassword, req.getNewPassword())
             .set(UserDO::getPwdResetTime, LocalDateTime.now())
@@ -380,7 +383,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
 
     @Override
     public void updateRole(UserRoleUpdateReq updateReq, Long id) {
-        super.getById(id);
+        this.getById(id);
         List<Long> roleIds = updateReq.getRoleIds();
         // 保存用户和角色关联
         userRoleService.assignRolesToUser(roleIds, id);
@@ -392,7 +395,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
     public String updateAvatar(MultipartFile avatarFile, Long id) throws IOException {
         String avatarImageType = FileNameUtil.extName(avatarFile.getOriginalFilename());
         CheckUtils.throwIf(!StrUtil.equalsAnyIgnoreCase(avatarImageType, avatarSupportSuffix), "头像仅支持 {} 格式的图片", String
-            .join(StringConstants.CHINESE_COMMA, avatarSupportSuffix));
+            .join(StringConstants.COMMA, avatarSupportSuffix));
         // 上传新头像
         UserDO user = super.getById(id);
         FileInfo fileInfo = fileService.upload(avatarFile, avatarPath);
@@ -505,7 +508,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
         List<Long> userIdList = query.getUserIds();
         // 获取排除用户 ID 列表
         List<Long> excludeUserIdList = null;
-        if (null != query.getRoleId()) {
+        if (query.getRoleId() != null) {
             excludeUserIdList = userRoleService.listUserIdByRoleId(query.getRoleId());
         }
         return new QueryWrapper<UserDO>().and(StrUtil.isNotBlank(description), q -> q.like("t1.username", description)
@@ -513,10 +516,10 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
             .like("t1.nickname", description)
             .or()
             .like("t1.description", description))
-            .eq(null != status, "t1.status", status)
+            .eq(status != null, "t1.status", status)
             .between(CollUtil.isNotEmpty(createTimeList), "t1.create_time", CollUtil.getFirst(createTimeList), CollUtil
                 .getLast(createTimeList))
-            .and(null != deptId && !SysConstants.SUPER_DEPT_ID.equals(deptId), q -> {
+            .and(deptId != null && !SysConstants.SUPER_DEPT_ID.equals(deptId), q -> {
                 List<Long> deptIdList = deptService.listChildren(deptId)
                     .stream()
                     .map(DeptDO::getId)
@@ -679,7 +682,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
      * @return 是否存在
      */
     private boolean isNameExists(String name, Long id) {
-        return baseMapper.lambdaQuery().eq(UserDO::getUsername, name).ne(null != id, UserDO::getId, id).exists();
+        return baseMapper.lambdaQuery().eq(UserDO::getUsername, name).ne(id != null, UserDO::getId, id).exists();
     }
 
     /**
@@ -691,7 +694,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
      */
     private boolean isEmailExists(String email, Long id) {
         Long count = baseMapper.selectCountByEmail(email, id);
-        return null != count && count > 0;
+        return count != null && count > 0;
     }
 
     /**
@@ -703,7 +706,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
      */
     private boolean isPhoneExists(String phone, Long id) {
         Long count = baseMapper.selectCountByPhone(phone, id);
-        return null != count && count > 0;
+        return count != null && count > 0;
     }
 
     /**
@@ -725,10 +728,22 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, UserDO, UserRes
      */
     private void updateContext(Long id) {
         UserContext userContext = UserContextHolder.getContext(id);
-        if (null != userContext) {
+        if (userContext != null) {
             userContext.setRoles(roleService.listByUserId(id));
             userContext.setPermissions(roleService.listPermissionByUserId(id));
             UserContextHolder.setContext(userContext);
         }
+    }
+
+    /**
+     * 根据 ID 获取用户信息（数据权限）
+     *
+     * @param id ID
+     * @return 用户信息
+     */
+    private UserDO getById(Long id) {
+        UserDO user = baseMapper.lambdaQuery().eq(UserDO::getId, id).one();
+        CheckUtils.throwIfNull(user, "用户不存在");
+        return user;
     }
 }

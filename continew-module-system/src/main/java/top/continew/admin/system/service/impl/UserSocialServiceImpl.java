@@ -51,7 +51,7 @@ public class UserSocialServiceImpl implements UserSocialService {
 
     @Override
     public void saveOrUpdate(UserSocialDO userSocial) {
-        if (null == userSocial.getCreateTime()) {
+        if (userSocial.getCreateTime() == null) {
             baseMapper.insert(userSocial);
         } else {
             baseMapper.lambdaUpdate()

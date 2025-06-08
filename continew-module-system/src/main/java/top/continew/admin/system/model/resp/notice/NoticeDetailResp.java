@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package top.continew.admin.system.model.resp;
+package top.continew.admin.system.model.resp.notice;
 
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
@@ -53,53 +53,63 @@ public class NoticeDetailResp extends BaseDetailResp {
     private String title;
 
     /**
+     * 分类（取值于字典 notice_type）
+     */
+    @Schema(description = "分类（取值于字典 notice_type）", example = "1")
+    @ExcelProperty(value = "分类", converter = ExcelDictConverter.class, order = 3)
+    @DictExcelProperty("notice_type")
+    private String type;
+
+    /**
      * 内容
      */
     @Schema(description = "内容", example = "这是公告内容")
     private String content;
 
     /**
-     * 类型（取值于字典 notice_type）
+     * 通知范围
      */
-    @Schema(description = "类型（取值于字典 notice_type）", example = "1")
-    @ExcelProperty(value = "类型", converter = ExcelDictConverter.class, order = 3)
-    @DictExcelProperty("notice_type")
-    private String type;
+    @Schema(description = "通知范围", example = "2")
+    @ExcelProperty(value = "通知范围", converter = ExcelBaseEnumConverter.class, order = 4)
+    private NoticeScopeEnum noticeScope;
+
+    /**
+     * 通知用户
+     */
+    @Schema(description = "通知用户", example = "[1,2,3]")
+    private List<String> noticeUsers;
+
+    /**
+     * 通知方式
+     */
+    @Schema(description = "通知方式", example = "[1,2]")
+    private List<Integer> noticeMethods;
+
+    /**
+     * 是否定时
+     */
+    @Schema(description = "是否定时", example = "false")
+    @ExcelProperty(value = "是否定时", order = 5)
+    private Boolean isTiming;
+
+    /**
+     * 发布时间
+     */
+    @Schema(description = "发布时间", example = "2023-08-08 00:00:00", type = "string")
+    @ExcelProperty(value = "发布时间", order = 6)
+    private LocalDateTime publishTime;
+
+    /**
+     * 是否置顶
+     */
+    @Schema(description = "是否置顶", example = "false")
+    @ExcelProperty(value = "是否置顶", order = 7)
+    private Boolean isTop;
 
     /**
      * 状态
      */
-    @Schema(description = "状态", example = "1")
-    @ExcelProperty(value = "状态", converter = ExcelBaseEnumConverter.class, order = 4)
+    @Schema(description = "状态", example = "3")
+    @ExcelProperty(value = "状态", converter = ExcelBaseEnumConverter.class, order = 8)
     private NoticeStatusEnum status;
-
-    /**
-     * 生效时间
-     */
-    @Schema(description = "生效时间", example = "2023-08-08 00:00:00", type = "string")
-    @ExcelProperty(value = "生效时间", order = 5)
-    private LocalDateTime effectiveTime;
-
-    /**
-     * 终止时间
-     */
-    @Schema(description = "终止时间", example = "2023-08-08 23:59:59", type = "string")
-    @ExcelProperty(value = "终止时间", order = 6)
-    private LocalDateTime terminateTime;
-
-    /**
-     * 通知范围
-     */
-    @Schema(description = "通知范围", example = "2")
-    private NoticeScopeEnum noticeScope;
-
-    /**
-     * 指定用户
-     */
-    @Schema(description = "指定用户", example = "[1,2,3]")
-    private List<String> noticeUsers;
-
-    public NoticeStatusEnum getStatus() {
-        return NoticeStatusEnum.getStatus(effectiveTime, terminateTime);
-    }
 }

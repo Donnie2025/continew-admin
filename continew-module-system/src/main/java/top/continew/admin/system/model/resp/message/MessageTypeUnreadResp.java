@@ -39,7 +39,7 @@ public class MessageTypeUnreadResp implements Serializable {
     /**
      * 类型
      */
-    @Schema(description = "类型（1：系统消息）", example = "1")
+    @Schema(description = "类型", example = "1")
     private MessageTypeEnum type;
 
     /**

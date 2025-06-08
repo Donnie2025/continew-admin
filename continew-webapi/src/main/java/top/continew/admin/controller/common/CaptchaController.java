@@ -38,7 +38,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.dromara.sms4j.api.SmsBlend;
 import org.dromara.sms4j.api.entity.SmsResponse;
-import org.dromara.sms4j.comm.constant.SupplierConstant;
 import org.dromara.sms4j.core.factory.SmsFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.validation.annotation.Validated;
@@ -48,7 +47,9 @@ import top.continew.admin.common.config.properties.CaptchaProperties;
 import top.continew.admin.common.constant.CacheConstants;
 import top.continew.admin.common.constant.SysConstants;
 import top.continew.admin.system.enums.OptionCategoryEnum;
+import top.continew.admin.system.model.entity.SmsConfigDO;
 import top.continew.admin.system.service.OptionService;
+import top.continew.admin.system.service.SmsConfigService;
 import top.continew.starter.cache.redisson.util.RedisUtils;
 import top.continew.starter.captcha.graphic.core.GraphicCaptchaService;
 import top.continew.starter.core.autoconfigure.project.ProjectProperties;
@@ -88,6 +89,7 @@ public class CaptchaController {
     private final CaptchaService behaviorCaptchaService;
     private final GraphicCaptchaService graphicCaptchaService;
     private final OptionService optionService;
+    private final SmsConfigService smsConfigService;
 
     @Log(ignore = true)
     @Operation(summary = "获取行为验证码", description = "获取行为验证码（Base64编码）")
@@ -202,14 +204,17 @@ public class CaptchaController {
         CaptchaProperties.CaptchaSms captchaSms = captchaProperties.getSms();
         // 生成验证码
         String captcha = RandomUtil.randomNumbers(captchaSms.getLength());
-        // 发送验证码
         Long expirationInMinutes = captchaSms.getExpirationInMinutes();
-        SmsBlend smsBlend = SmsFactory.getBySupplier(SupplierConstant.CLOOPEN);
+        // 获取短信配置
+        SmsConfigDO smsConfig = smsConfigService.getDefaultConfig();
+        SmsBlend smsBlend = smsConfig != null
+            ? SmsFactory.getBySupplier(smsConfig.getSupplier())
+            : SmsFactory.getSmsBlend();
         Map<String, String> messageMap = MapUtil.newHashMap(2, true);
-        messageMap.put("captcha", captcha);
-        messageMap.put("expirationInMinutes", String.valueOf(expirationInMinutes));
-        SmsResponse smsResponse = smsBlend.sendMessage(phone, captchaSms
-            .getTemplateId(), (LinkedHashMap<String, String>)messageMap);
+        messageMap.put(captchaSms.getCodeKey(), captcha);
+        messageMap.put(captchaSms.getTimeKey(), String.valueOf(expirationInMinutes));
+        // 发送验证码
+        SmsResponse smsResponse = smsBlend.sendMessage(phone, (LinkedHashMap<String, String>)messageMap);
         CheckUtils.throwIf(!smsResponse.isSuccess(), "验证码发送失败");
         // 保存验证码
         String captchaKey = CacheConstants.CAPTCHA_KEY_PREFIX + phone;

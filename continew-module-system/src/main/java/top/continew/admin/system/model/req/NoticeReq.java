@@ -17,12 +17,12 @@
 package top.continew.admin.system.model.req;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
 import top.continew.admin.system.enums.NoticeScopeEnum;
+import top.continew.admin.system.enums.NoticeStatusEnum;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -58,25 +58,12 @@ public class NoticeReq implements Serializable {
     private String content;
 
     /**
-     * 类型（取值于字典 notice_type）
+     * 分类（取值于字典 notice_type）
      */
-    @Schema(description = "类型（取值于字典 notice_type）", example = "1")
-    @NotBlank(message = "类型不能为空")
-    @Length(max = 30, message = "类型长度不能超过 {max} 个字符")
+    @Schema(description = "分类（取值于字典 notice_type）", example = "1")
+    @NotBlank(message = "分类不能为空")
+    @Length(max = 30, message = "分类长度不能超过 {max} 个字符")
     private String type;
-
-    /**
-     * 生效时间
-     */
-    @Schema(description = "生效时间", example = "2023-08-08 00:00:00", type = "string")
-    private LocalDateTime effectiveTime;
-
-    /**
-     * 终止时间
-     */
-    @Schema(description = "终止时间", example = "2023-08-08 23:59:59", type = "string")
-    @Future(message = "终止时间必须是未来时间")
-    private LocalDateTime terminateTime;
 
     /**
      * 通知范围
@@ -86,8 +73,38 @@ public class NoticeReq implements Serializable {
     private NoticeScopeEnum noticeScope;
 
     /**
-     * 指定用户
+     * 通知用户
      */
-    @Schema(description = "指定用户", example = "[1,2,3]")
+    @Schema(description = "通知用户", example = "[1,2,3]")
     private List<String> noticeUsers;
+
+    /**
+     * 通知方式
+     */
+    @Schema(description = "通知方式", example = "[1,2]")
+    private List<Integer> noticeMethods;
+
+    /**
+     * 是否定时
+     */
+    @Schema(description = "是否定时", example = "false")
+    private Boolean isTiming;
+
+    /**
+     * 发布时间
+     */
+    @Schema(description = "发布时间", example = "2023-08-08 00:00:00", type = "string")
+    private LocalDateTime publishTime;
+
+    /**
+     * 是否置顶
+     */
+    @Schema(description = "是否置顶", example = "false")
+    private Boolean isTop;
+
+    /**
+     * 状态
+     */
+    @Schema(description = "状态", example = "3")
+    private NoticeStatusEnum status;
 }

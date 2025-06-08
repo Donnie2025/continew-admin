@@ -102,7 +102,7 @@ public class DictItemServiceImpl extends BaseServiceImpl<DictItemMapper, DictIte
         return baseMapper.lambdaQuery()
             .eq(DictItemDO::getValue, value)
             .eq(DictItemDO::getDictId, dictId)
-            .ne(null != id, DictItemDO::getId, id)
+            .ne(id != null, DictItemDO::getId, id)
             .exists();
     }
 

@@ -16,11 +16,8 @@
 
 package top.continew.admin.system.model.query;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import top.continew.starter.data.core.annotation.Query;
-import top.continew.starter.data.core.enums.QueryType;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -42,18 +39,17 @@ public class NoticeQuery implements Serializable {
      * 标题
      */
     @Schema(description = "标题", example = "这是公告标题")
-    @Query(type = QueryType.LIKE)
     private String title;
 
     /**
-     * 类型
+     * 分类（取值于字典 notice_type）
      */
-    @Schema(description = "类型", example = "1")
+    @Schema(description = "分类（取值于字典 notice_type）", example = "1")
     private String type;
 
     /**
      * 用户 ID
      */
-    @JsonIgnore
+    @Schema(hidden = true)
     private Long userId;
 }

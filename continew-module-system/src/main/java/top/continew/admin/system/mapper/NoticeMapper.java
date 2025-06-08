@@ -21,8 +21,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Param;
 import top.continew.admin.system.model.entity.NoticeDO;
 import top.continew.admin.system.model.query.NoticeQuery;
-import top.continew.admin.system.model.resp.NoticeDetailResp;
 import top.continew.admin.system.model.resp.dashboard.DashboardNoticeResp;
+import top.continew.admin.system.model.resp.notice.NoticeResp;
 import top.continew.starter.data.mp.base.BaseMapper;
 
 import java.util.List;
@@ -36,19 +36,27 @@ import java.util.List;
 public interface NoticeMapper extends BaseMapper<NoticeDO> {
 
     /**
-     * 查询仪表盘公告列表
-     *
-     * @param userId 用户 ID
-     * @return 仪表盘公告列表
-     */
-    List<DashboardNoticeResp> selectDashboardList(@Param("userId") Long userId);
-
-    /**
      * 分页查询公告列表
      *
      * @param page  分页条件
      * @param query 查询条件
      * @return 公告列表
      */
-    IPage<NoticeDetailResp> selectNoticePage(@Param("page") Page<NoticeDO> page, @Param("query") NoticeQuery query);
+    IPage<NoticeResp> selectNoticePage(@Param("page") Page<NoticeDO> page, @Param("query") NoticeQuery query);
+
+    /**
+     * 查询未读公告数量
+     *
+     * @param userId 用户 ID
+     * @return 未读公告数量
+     */
+    Long selectUnreadCountByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询仪表盘公告列表
+     *
+     * @param userId 用户 ID
+     * @return 仪表盘公告列表
+     */
+    List<DashboardNoticeResp> selectDashboardList(@Param("userId") Long userId);
 }

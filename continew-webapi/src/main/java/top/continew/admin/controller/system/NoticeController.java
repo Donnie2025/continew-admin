@@ -16,14 +16,16 @@
 
 package top.continew.admin.controller.system;
 
+import cn.hutool.core.collection.CollUtil;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.common.controller.BaseController;
+import top.continew.admin.system.enums.NoticeMethodEnum;
 import top.continew.admin.system.enums.NoticeScopeEnum;
 import top.continew.admin.system.model.query.NoticeQuery;
 import top.continew.admin.system.model.req.NoticeReq;
-import top.continew.admin.system.model.resp.NoticeDetailResp;
-import top.continew.admin.system.model.resp.NoticeResp;
+import top.continew.admin.system.model.resp.notice.NoticeDetailResp;
+import top.continew.admin.system.model.resp.notice.NoticeResp;
 import top.continew.admin.system.service.NoticeService;
 import top.continew.starter.core.validation.ValidationUtils;
 import top.continew.starter.extension.crud.annotation.CrudApi;
@@ -31,7 +33,8 @@ import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
 
 import java.lang.reflect.Method;
-import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 公告管理 API
@@ -52,15 +55,18 @@ public class NoticeController extends BaseController<NoticeService, NoticeResp, 
             return;
         }
         NoticeReq req = (NoticeReq)args[0];
-        // 校验生效时间
-        LocalDateTime effectiveTime = req.getEffectiveTime();
-        LocalDateTime terminateTime = req.getTerminateTime();
-        if (null != effectiveTime && null != terminateTime) {
-            ValidationUtils.throwIf(terminateTime.isBefore(effectiveTime), "终止时间必须晚于生效时间");
-        }
         // 校验通知范围
         if (NoticeScopeEnum.USER.equals(req.getNoticeScope())) {
             ValidationUtils.throwIfEmpty(req.getNoticeUsers(), "通知用户不能为空");
+        }
+        // 校验通知方式
+        List<Integer> noticeMethods = req.getNoticeMethods();
+        if (CollUtil.isNotEmpty(noticeMethods)) {
+            List<Integer> validMethods = Arrays.stream(NoticeMethodEnum.values())
+                .map(NoticeMethodEnum::getValue)
+                .toList();
+            noticeMethods.forEach(method -> ValidationUtils.throwIf(!validMethods
+                .contains(method), "通知方式 [{}] 不正确", method));
         }
     }
 }

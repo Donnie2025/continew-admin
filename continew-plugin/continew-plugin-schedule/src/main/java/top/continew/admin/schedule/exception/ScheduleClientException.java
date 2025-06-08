@@ -14,26 +14,23 @@
  * limitations under the License.
  */
 
-package top.continew.admin.system.mapper;
+package top.continew.admin.schedule.exception;
 
-import org.apache.ibatis.annotations.Param;
-import top.continew.admin.system.model.entity.MessageUserDO;
-import top.continew.starter.data.mp.base.BaseMapper;
+import top.continew.starter.core.exception.BaseException;
 
 /**
- * 消息和用户 Mapper
+ * 调度客户端异常
  *
- * @author Bull-BCLS
- * @since 2023/10/15 20:25
+ * @author Charles7c
+ * @since 2025/5/21 22:05
  */
-public interface MessageUserMapper extends BaseMapper<MessageUserDO> {
+public class ScheduleClientException extends BaseException {
 
-    /**
-     * 根据用户 ID 和消息类型查询未读消息数量
-     *
-     * @param userId 用户 ID
-     * @param type   消息类型
-     * @return 未读消息信息
-     */
-    Long selectUnreadCountByUserIdAndType(@Param("userId") Long userId, @Param("type") Integer type);
+    public ScheduleClientException(String message) {
+        super(message);
+    }
+
+    public ScheduleClientException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

@@ -218,31 +218,34 @@ CREATE TABLE IF NOT EXISTS `sys_log` (
 CREATE TABLE IF NOT EXISTS `sys_message` (
     `id`          bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
     `title`       varchar(50)  NOT NULL                    COMMENT '标题',
-    `content`     varchar(255) DEFAULT NULL                COMMENT '内容',
-    `type`        tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '类型（1：系统消息）',
-    `create_user` bigint(20)   DEFAULT NULL                COMMENT '创建人',
+    `content`     text         DEFAULT NULL                COMMENT '内容',
+    `type`        tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '类型（1：系统消息；2：安全消息）',
+    `path`        varchar(255) DEFAULT NULL                COMMENT '跳转路径',
+    `scope`       tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '通知范围（1：所有人；2：指定用户）',
+    `users`       json         DEFAULT NULL                COMMENT '通知用户',
     `create_time` datetime     NOT NULL                    COMMENT '创建时间',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表';
 
-CREATE TABLE IF NOT EXISTS `sys_message_user` (
-    `message_id` bigint(20) NOT NULL              COMMENT '消息ID',
-    `user_id`    bigint(11) NOT NULL              COMMENT '用户ID',
-    `is_read`    bit(1)     NOT NULL DEFAULT b'0' COMMENT '是否已读',
-    `read_time`  datetime   DEFAULT NULL          COMMENT '读取时间',
+CREATE TABLE IF NOT EXISTS `sys_message_log` (
+    `message_id` bigint(20) NOT NULL     COMMENT '消息ID',
+    `user_id`    bigint(20) NOT NULL     COMMENT '用户ID',
+    `read_time`  datetime   DEFAULT NULL COMMENT '读取时间',
     PRIMARY KEY (`message_id`, `user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息和用户关联表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息日志表';
 
 CREATE TABLE IF NOT EXISTS `sys_notice` (
     `id`             bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
     `title`          varchar(150) NOT NULL                    COMMENT '标题',
     `content`        mediumtext   NOT NULL                    COMMENT '内容',
-    `type`           varchar(30)  NOT NULL                    COMMENT '类型',
-    `effective_time` datetime     DEFAULT NULL                COMMENT '生效时间',
-    `terminate_time` datetime     DEFAULT NULL                COMMENT '终止时间',
+    `type`           varchar(30)  NOT NULL                    COMMENT '分类',
     `notice_scope`   tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '通知范围（1：所有人；2：指定用户）',
     `notice_users`   json         DEFAULT NULL                COMMENT '通知用户',
-    `sort`           int          NOT NULL DEFAULT 999        COMMENT '排序',
+    `notice_methods` json         DEFAULT NULL                COMMENT '通知方式（1：系统消息；2：登录弹窗）',
+    `is_timing`      bit(1)       NOT NULL DEFAULT b'0'       COMMENT '是否定时',
+    `publish_time`   datetime     DEFAULT NULL                COMMENT '发布时间',
+    `is_top`         bit(1)       NOT NULL DEFAULT b'0'       COMMENT '是否置顶',
+    `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：草稿；2：待发布；3：已发布）',
     `create_user`    bigint(20)   NOT NULL                    COMMENT '创建人',
     `create_time`    datetime     NOT NULL                    COMMENT '创建时间',
     `update_user`    bigint(20)   DEFAULT NULL                COMMENT '修改人',
@@ -252,6 +255,13 @@ CREATE TABLE IF NOT EXISTS `sys_notice` (
     INDEX `idx_update_user`(`update_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公告表';
 
+CREATE TABLE IF NOT EXISTS `sys_notice_log` (
+    `notice_id` bigint(20) NOT NULL     COMMENT '公告ID',
+    `user_id`   bigint(20) NOT NULL     COMMENT '用户ID',
+    `read_time` datetime   DEFAULT NULL COMMENT '读取时间',
+    PRIMARY KEY (`notice_id`, `user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公告日志表';
+
 CREATE TABLE IF NOT EXISTS `sys_storage` (
     `id`          bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
     `name`        varchar(100) NOT NULL                    COMMENT '名称',
@@ -260,8 +270,8 @@ CREATE TABLE IF NOT EXISTS `sys_storage` (
     `access_key`  varchar(255) DEFAULT NULL                COMMENT 'Access Key',
     `secret_key`  varchar(255) DEFAULT NULL                COMMENT 'Secret Key',
     `endpoint`    varchar(255) DEFAULT NULL                COMMENT 'Endpoint',
-    `bucket_name` varchar(255) DEFAULT NULL                COMMENT 'Bucket',
-    `domain`      varchar(255) NOT NULL DEFAULT ''         COMMENT '域名',
+    `bucket_name` varchar(255) NOT NULL                    COMMENT 'Bucket',
+    `domain`      varchar(255) DEFAULT NULL                COMMENT '域名',
     `description` varchar(200) DEFAULT NULL                COMMENT '描述',
     `is_default`  bit(1)       NOT NULL DEFAULT b'0'       COMMENT '是否为默认存储',
     `sort`        int          NOT NULL DEFAULT 999        COMMENT '排序',
@@ -279,17 +289,17 @@ CREATE TABLE IF NOT EXISTS `sys_storage` (
 CREATE TABLE IF NOT EXISTS `sys_file` (
     `id`                 bigint(20)    NOT NULL AUTO_INCREMENT     COMMENT 'ID',
     `name`               varchar(255)  NOT NULL                    COMMENT '名称',
-    `size`               bigint(20)    NOT NULL                    COMMENT '大小（字节）',
-    `url`                varchar(512)  NOT NULL                    COMMENT 'URL',
-    `parent_path`        varchar(512)  DEFAULT '/'                 COMMENT '上级目录',
-    `abs_path`           varchar(1024) NOT NULL                    COMMENT '绝对路径',
-    `extension`          varchar(100)  DEFAULT NULL                COMMENT '扩展名',
-    `content_type`       varchar(64)   NOT NULL                    COMMENT '内容类型',
+    `original_name`      varchar(255)  NOT NULL                    COMMENT '原始名称',
+    `size`               bigint(20)    DEFAULT NULL                COMMENT '大小（字节）',
+    `parent_path`        varchar(512)  NOT NULL DEFAULT '/'        COMMENT '上级目录',
+    `path`               varchar(512)  NOT NULL                    COMMENT '路径',
+    `extension`          varchar(32)   DEFAULT NULL                COMMENT '扩展名',
+    `content_type`       varchar(255)  DEFAULT NULL                COMMENT '内容类型',
     `type`               tinyint(1)    UNSIGNED NOT NULL DEFAULT 1 COMMENT '类型（0: 目录；1：其他；2：图片；3：文档；4：视频；5：音频）',
-    `sha256`             varchar(256)  NOT NULL                    COMMENT 'SHA256值',
+    `sha256`             varchar(256)  DEFAULT NULL                COMMENT 'SHA256值',
     `metadata`           text          DEFAULT NULL                COMMENT '元数据',
+    `thumbnail_name`     varchar(255)  DEFAULT NULL                COMMENT '缩略图名称',
     `thumbnail_size`     bigint(20)    DEFAULT NULL                COMMENT '缩略图大小（字节)',
-    `thumbnail_url`      varchar(512)  DEFAULT NULL                COMMENT '缩略图URL',
     `thumbnail_metadata` text          DEFAULT NULL                COMMENT '缩略图元数据',
     `storage_id`         bigint(20)    NOT NULL                    COMMENT '存储ID',
     `create_user`        bigint(20)    NOT NULL                    COMMENT '创建人',
@@ -297,9 +307,8 @@ CREATE TABLE IF NOT EXISTS `sys_file` (
     `update_user`        bigint(20)    DEFAULT NULL                COMMENT '修改人',
     `update_time`        datetime      DEFAULT NULL                COMMENT '修改时间',
     PRIMARY KEY (`id`),
-    INDEX `idx_url`(`url`),
-    INDEX `idx_sha256`(`sha256`),
     INDEX `idx_type`(`type`),
+    INDEX `idx_sha256`(`sha256`),
     INDEX `idx_storage_id`(`storage_id`),
     INDEX `idx_create_user`(`create_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件表';
@@ -335,6 +344,7 @@ CREATE TABLE IF NOT EXISTS `sys_sms_config`  (
     `max_retries`     int          DEFAULT NULL                COMMENT '重试次数',
     `maximum`         int          DEFAULT NULL                COMMENT '发送上限',
     `supplier_config` text         DEFAULT NULL                COMMENT '各个厂商独立配置',
+    `is_default`      bit(1)       NOT NULL DEFAULT b'0'       COMMENT '是否为默认配置',
     `status`          tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
     `create_user`     bigint(20)   NOT NULL                    COMMENT '创建人',
     `create_time`     datetime     NOT NULL                    COMMENT '创建时间',

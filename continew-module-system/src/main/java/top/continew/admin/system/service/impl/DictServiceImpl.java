@@ -86,7 +86,7 @@ public class DictServiceImpl extends BaseServiceImpl<DictMapper, DictDO, DictRes
      * @return 是否存在
      */
     private boolean isNameExists(String name, Long id) {
-        return baseMapper.lambdaQuery().eq(DictDO::getName, name).ne(null != id, DictDO::getId, id).exists();
+        return baseMapper.lambdaQuery().eq(DictDO::getName, name).ne(id != null, DictDO::getId, id).exists();
     }
 
     /**
@@ -97,6 +97,6 @@ public class DictServiceImpl extends BaseServiceImpl<DictMapper, DictDO, DictRes
      * @return 是否存在
      */
     private boolean isCodeExists(String code, Long id) {
-        return baseMapper.lambdaQuery().eq(DictDO::getCode, code).ne(null != id, DictDO::getId, id).exists();
+        return baseMapper.lambdaQuery().eq(DictDO::getCode, code).ne(id != null, DictDO::getId, id).exists();
     }
 }

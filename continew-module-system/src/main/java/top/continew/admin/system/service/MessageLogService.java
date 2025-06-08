@@ -16,41 +16,32 @@
 
 package top.continew.admin.system.service;
 
-import top.continew.admin.system.model.resp.message.MessageUnreadResp;
-
 import java.util.List;
 
 /**
- * 消息和用户关联业务接口
+ * 消息日志业务接口
  *
  * @author Bull-BCLS
+ * @author Charles7c
  * @since 2023/10/15 19:05
  */
-public interface MessageUserService {
-
-    /**
-     * 根据用户 ID 查询未读消息数量
-     *
-     * @param userId   用户 ID
-     * @param isDetail 是否查询详情
-     * @return 未读消息信息
-     */
-    MessageUnreadResp countUnreadMessageByUserId(Long userId, Boolean isDetail);
+public interface MessageLogService {
 
     /**
      * 新增
      *
-     * @param messageId  消息 ID
-     * @param userIdList 用户 ID 列表
+     * @param userIds   用户 ID 列表
+     * @param messageId 消息 ID
      */
-    void add(Long messageId, List<Long> userIdList);
+    void addWithMessageId(List<Long> userIds, Long messageId);
 
     /**
-     * 将消息标记已读
+     * 新增
      *
-     * @param ids 消息ID（为空则将所有消息标记已读）
+     * @param messageIds 消息 ID 列表
+     * @param userId     用户 ID
      */
-    void readMessage(List<Long> ids);
+    void addWithUserId(List<Long> messageIds, Long userId);
 
     /**
      * 根据消息 ID 删除

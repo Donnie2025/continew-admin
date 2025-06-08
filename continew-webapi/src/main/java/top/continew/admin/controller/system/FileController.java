@@ -18,19 +18,30 @@ package top.continew.admin.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.dromara.x.file.storage.core.FileInfo;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.system.model.query.FileQuery;
 import top.continew.admin.system.model.req.FileReq;
+import top.continew.admin.system.model.resp.file.FileDirCalcSizeResp;
 import top.continew.admin.system.model.resp.file.FileResp;
 import top.continew.admin.system.model.resp.file.FileStatisticsResp;
+import top.continew.admin.system.model.resp.file.FileUploadResp;
 import top.continew.admin.system.service.FileService;
+import top.continew.starter.core.validation.ValidationUtils;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.resp.IdResp;
 import top.continew.starter.log.annotation.Log;
+
+import java.io.IOException;
 
 /**
  * 文件管理 API
@@ -43,6 +54,48 @@ import top.continew.starter.log.annotation.Log;
 @RequiredArgsConstructor
 @CrudRequestMapping(value = "/system/file", api = {Api.PAGE, Api.UPDATE, Api.DELETE})
 public class FileController extends BaseController<FileService, FileResp, FileResp, FileQuery, FileReq> {
+
+    /**
+     * 上传文件
+     * <p>
+     * 公共上传文件请使用 {@link top.continew.admin.controller.common.CommonController#upload}
+     * </p>
+     *
+     * @param file       文件
+     * @param parentPath 上级目录
+     * @return 文件上传响应参数
+     * @throws IOException /
+     */
+    @Operation(summary = "上传文件", description = "上传文件")
+    @Parameter(name = "parentPath", description = "上级目录", example = "/", in = ParameterIn.QUERY)
+    @SaCheckPermission("system:file:upload")
+    @PostMapping("/upload")
+    public FileUploadResp upload(@NotNull(message = "文件不能为空") @RequestPart MultipartFile file,
+                                 @RequestParam(required = false) String parentPath) throws IOException {
+        ValidationUtils.throwIf(file::isEmpty, "文件不能为空");
+        FileInfo fileInfo = baseService.upload(file, parentPath);
+        return FileUploadResp.builder()
+            .id(fileInfo.getId())
+            .url(fileInfo.getUrl())
+            .thUrl(fileInfo.getThUrl())
+            .metadata(fileInfo.getMetadata())
+            .build();
+    }
+
+    @Operation(summary = "创建文件夹", description = "创建文件夹")
+    @SaCheckPermission("system:file:createDir")
+    @PostMapping("/dir")
+    public IdResp<Long> createDir(@Valid @RequestBody FileReq req) {
+        ValidationUtils.throwIfBlank(req.getParentPath(), "上级目录不能为空");
+        return new IdResp<>(baseService.createDir(req));
+    }
+
+    @Operation(summary = "计算文件夹大小", description = "计算文件夹大小")
+    @SaCheckPermission("system:file:calcDirSize")
+    @GetMapping("/dir/{id}/size")
+    public FileDirCalcSizeResp calcDirSize(@PathVariable Long id) {
+        return new FileDirCalcSizeResp(baseService.calcDirSize(id));
+    }
 
     @Log(ignore = true)
     @Operation(summary = "查询文件资源统计", description = "查询文件资源统计")
@@ -58,12 +111,5 @@ public class FileController extends BaseController<FileService, FileResp, FileRe
     @GetMapping("/check")
     public FileResp checkFile(String fileHash) {
         return baseService.check(fileHash);
-    }
-
-    @Operation(summary = "创建文件夹", description = "创建文件夹")
-    @ResponseBody
-    @PostMapping("/createDir")
-    public IdResp<Long> createDir(@RequestBody FileReq req) {
-        return baseService.createDir(req);
     }
 }

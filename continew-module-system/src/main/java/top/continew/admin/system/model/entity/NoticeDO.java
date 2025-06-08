@@ -22,6 +22,7 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import top.continew.admin.common.model.entity.BaseDO;
 import top.continew.admin.system.enums.NoticeScopeEnum;
+import top.continew.admin.system.enums.NoticeStatusEnum;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
@@ -51,19 +52,9 @@ public class NoticeDO extends BaseDO {
     private String content;
 
     /**
-     * 类型
+     * 分类（取值于字典 notice_type）
      */
     private String type;
-
-    /**
-     * 生效时间
-     */
-    private LocalDateTime effectiveTime;
-
-    /**
-     * 终止时间
-     */
-    private LocalDateTime terminateTime;
 
     /**
      * 通知范围
@@ -75,4 +66,30 @@ public class NoticeDO extends BaseDO {
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> noticeUsers;
+
+    /**
+     * 通知方式
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<Integer> noticeMethods;
+
+    /**
+     * 是否定时
+     */
+    private Boolean isTiming;
+
+    /**
+     * 发布时间
+     */
+    private LocalDateTime publishTime;
+
+    /**
+     * 是否置顶
+     */
+    private Boolean isTop;
+
+    /**
+     * 状态
+     */
+    private NoticeStatusEnum status;
 }

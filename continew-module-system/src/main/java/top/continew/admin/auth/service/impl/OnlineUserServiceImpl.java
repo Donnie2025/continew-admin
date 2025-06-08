@@ -73,7 +73,7 @@ public class OnlineUserServiceImpl implements OnlineUserService {
         for (Map.Entry<Long, List<String>> entry : tokenMap.entrySet()) {
             Long userId = entry.getKey();
             UserContext userContext = UserContextHolder.getContext(userId);
-            if (null == userContext || !this.isMatchNickname(query.getNickname(), userContext) || !this
+            if (userContext == null || !this.isMatchNickname(query.getNickname(), userContext) || !this
                 .isMatchClientId(query.getClientId(), userContext)) {
                 continue;
             }

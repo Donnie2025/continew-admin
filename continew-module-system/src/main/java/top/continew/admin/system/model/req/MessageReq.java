@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
 import top.continew.admin.system.enums.MessageTypeEnum;
 
@@ -33,6 +34,7 @@ import java.io.Serializable;
  * @since 2023/10/15 19:05
  */
 @Data
+@NoArgsConstructor
 @Schema(description = "消息创建请求参数")
 public class MessageReq implements Serializable {
 
@@ -58,7 +60,17 @@ public class MessageReq implements Serializable {
     /**
      * 类型
      */
-    @Schema(description = "类型（1：系统消息）", example = "1")
+    @Schema(description = "类型", example = "1")
     @NotNull(message = "类型无效")
     private MessageTypeEnum type;
+
+    /**
+     * 跳转路径
+     */
+    @Schema(description = "跳转路径", example = "/user/profile")
+    private String path;
+
+    public MessageReq(MessageTypeEnum type) {
+        this.type = type;
+    }
 }

@@ -119,7 +119,7 @@ public class MenuServiceImpl extends BaseServiceImpl<MenuMapper, MenuDO, MenuRes
         return baseMapper.lambdaQuery()
             .eq(MenuDO::getTitle, title)
             .eq(MenuDO::getParentId, parentId)
-            .ne(null != id, MenuDO::getId, id)
+            .ne(id != null, MenuDO::getId, id)
             .exists();
     }
 
@@ -134,7 +134,7 @@ public class MenuServiceImpl extends BaseServiceImpl<MenuMapper, MenuDO, MenuRes
         return baseMapper.lambdaQuery()
             .eq(MenuDO::getName, name)
             .ne(MenuDO::getType, MenuTypeEnum.BUTTON)
-            .ne(null != id, MenuDO::getId, id)
+            .ne(id != null, MenuDO::getId, id)
             .exists();
     }
 }

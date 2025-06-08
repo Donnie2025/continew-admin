@@ -22,19 +22,24 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.system.enums.NoticeScopeEnum;
+import top.continew.admin.system.model.query.MessageQuery;
 import top.continew.admin.system.model.query.NoticeQuery;
-import top.continew.admin.system.model.resp.NoticeDetailResp;
-import top.continew.admin.system.model.resp.NoticeResp;
+import top.continew.admin.system.model.resp.message.MessageResp;
+import top.continew.admin.system.model.resp.message.MessageUnreadResp;
+import top.continew.admin.system.model.resp.notice.NoticeDetailResp;
+import top.continew.admin.system.model.resp.notice.NoticeResp;
+import top.continew.admin.system.model.resp.notice.NoticeUnreadResp;
+import top.continew.admin.system.service.MessageService;
 import top.continew.admin.system.service.NoticeService;
 import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.req.IdsReq;
 import top.continew.starter.extension.crud.model.resp.BasePageResp;
+import top.continew.starter.extension.crud.model.resp.PageResp;
+import top.continew.starter.log.annotation.Log;
 
 /**
  * 个人消息 API
@@ -50,6 +55,47 @@ import top.continew.starter.extension.crud.model.resp.BasePageResp;
 public class UserMessageController {
 
     private final NoticeService noticeService;
+    private final MessageService messageService;
+
+    @Log(ignore = true)
+    @Operation(summary = "查询未读消息数量", description = "查询当前用户的未读消息数量")
+    @Parameter(name = "isDetail", description = "是否查询详情", example = "true", in = ParameterIn.QUERY)
+    @GetMapping("/unread")
+    public MessageUnreadResp countUnreadMessage(@RequestParam(required = false) Boolean detail) {
+        return messageService.countUnreadByUserId(UserContextHolder.getUserId(), detail);
+    }
+
+    @Operation(summary = "分页查询消息列表", description = "分页查询消息列表")
+    @GetMapping
+    public PageResp<MessageResp> page(MessageQuery query, @Validated PageQuery pageQuery) {
+        query.setUserId(UserContextHolder.getUserId());
+        return messageService.page(query, pageQuery);
+    }
+
+    @Operation(summary = "删除消息", description = "删除消息")
+    @DeleteMapping
+    public void delete(@Validated @RequestBody IdsReq req) {
+        messageService.delete(req.getIds());
+    }
+
+    @Operation(summary = "消息标记为已读", description = "将消息标记为已读状态")
+    @PatchMapping("/read")
+    public void read(@Validated @RequestBody IdsReq req) {
+        messageService.readMessage(req.getIds(), UserContextHolder.getUserId());
+    }
+
+    @Operation(summary = "消息全部已读", description = "将所有消息标记为已读状态")
+    @PatchMapping("/readAll")
+    public void readAll() {
+        messageService.readMessage(null, UserContextHolder.getUserId());
+    }
+
+    @Log(ignore = true)
+    @Operation(summary = "查询未读公告数量", description = "查询当前用户的未读公告数量")
+    @GetMapping("/notice/unread")
+    public NoticeUnreadResp countUnreadNotice() {
+        return noticeService.countUnreadByUserId(UserContextHolder.getUserId());
+    }
 
     @Operation(summary = "分页查询公告列表", description = "分页查询公告列表")
     @GetMapping("/notice")
@@ -66,6 +112,7 @@ public class UserMessageController {
         CheckUtils.throwIf(detail == null || (NoticeScopeEnum.USER.equals(detail.getNoticeScope()) && !detail
             .getNoticeUsers()
             .contains(UserContextHolder.getUserId().toString())), "公告不存在或无权限访问");
+        noticeService.readNotice(id, UserContextHolder.getUserId());
         return detail;
     }
 }

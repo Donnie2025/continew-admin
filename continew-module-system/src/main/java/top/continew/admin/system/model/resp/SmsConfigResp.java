@@ -20,9 +20,10 @@ import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import top.continew.admin.common.config.excel.DictExcelProperty;
+import top.continew.admin.common.config.excel.ExcelDictConverter;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.common.model.resp.BaseDetailResp;
-import top.continew.admin.system.enums.SmsSupplierEnum;
 import top.continew.starter.file.excel.converter.ExcelBaseEnumConverter;
 import top.continew.starter.security.mask.annotation.JsonMask;
 
@@ -52,10 +53,13 @@ public class SmsConfigResp extends BaseDetailResp {
 
     /**
      * 厂商
+     *
+     * @see org.dromara.sms4j.comm.constant.SupplierConstant
      */
     @Schema(description = "厂商", example = "cloopen")
-    @ExcelProperty(value = "厂商")
-    private SmsSupplierEnum supplier;
+    @ExcelProperty(value = "厂商", converter = ExcelDictConverter.class)
+    @DictExcelProperty("sms_supplier")
+    private String supplier;
 
     /**
      * Access Key
@@ -120,6 +124,13 @@ public class SmsConfigResp extends BaseDetailResp {
     @Schema(description = "各个厂商独立配置", example = "")
     @ExcelProperty(value = "各个厂商独立配置")
     private String supplierConfig;
+
+    /**
+     * 是否为默认存储
+     */
+    @Schema(description = "是否为默认存储", example = "true")
+    @ExcelProperty(value = "是否为默认存储")
+    private Boolean isDefault;
 
     /**
      * 状态

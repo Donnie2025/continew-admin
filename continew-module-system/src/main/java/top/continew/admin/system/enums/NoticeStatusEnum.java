@@ -21,8 +21,6 @@ import lombok.RequiredArgsConstructor;
 import top.continew.admin.common.constant.UiConstants;
 import top.continew.starter.core.enums.BaseEnum;
 
-import java.time.LocalDateTime;
-
 /**
  * 公告状态枚举
  *
@@ -34,39 +32,21 @@ import java.time.LocalDateTime;
 public enum NoticeStatusEnum implements BaseEnum<Integer> {
 
     /**
+     * 草稿
+     */
+    DRAFT(1, "草稿", UiConstants.COLOR_WARNING),
+
+    /**
      * 待发布
      */
-    PENDING_RELEASE(1, "待发布", UiConstants.COLOR_PRIMARY),
+    PENDING(2, "待发布", UiConstants.COLOR_PRIMARY),
 
     /**
      * 已发布
      */
-    PUBLISHED(2, "已发布", UiConstants.COLOR_SUCCESS),
-
-    /**
-     * 已过期
-     */
-    EXPIRED(3, "已过期", UiConstants.COLOR_ERROR),;
+    PUBLISHED(3, "已发布", UiConstants.COLOR_SUCCESS),;
 
     private final Integer value;
     private final String description;
     private final String color;
-
-    /**
-     * 获取公告状态
-     *
-     * @param effectiveTime 生效时间
-     * @param terminateTime 终止时间
-     * @return 公告状态
-     */
-    public static NoticeStatusEnum getStatus(LocalDateTime effectiveTime, LocalDateTime terminateTime) {
-        LocalDateTime now = LocalDateTime.now();
-        if (effectiveTime != null && effectiveTime.isAfter(now)) {
-            return PENDING_RELEASE;
-        }
-        if (terminateTime != null && terminateTime.isBefore(now)) {
-            return EXPIRED;
-        }
-        return PUBLISHED;
-    }
 }

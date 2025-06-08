@@ -230,7 +230,7 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
      * @return 是否存在
      */
     private boolean isNameExists(String name, Long id) {
-        return baseMapper.lambdaQuery().eq(RoleDO::getName, name).ne(null != id, RoleDO::getId, id).exists();
+        return baseMapper.lambdaQuery().eq(RoleDO::getName, name).ne(id != null, RoleDO::getId, id).exists();
     }
 
     /**
@@ -241,7 +241,7 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
      * @return 是否存在
      */
     private boolean isCodeExists(String code, Long id) {
-        return baseMapper.lambdaQuery().eq(RoleDO::getCode, code).ne(null != id, RoleDO::getId, id).exists();
+        return baseMapper.lambdaQuery().eq(RoleDO::getCode, code).ne(id != null, RoleDO::getId, id).exists();
     }
 
     /**
@@ -253,7 +253,7 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
         List<Long> userIdList = userRoleService.listUserIdByRoleId(roleId);
         userIdList.parallelStream().forEach(userId -> {
             UserContext userContext = UserContextHolder.getContext(userId);
-            if (null != userContext) {
+            if (userContext != null) {
                 userContext.setRoles(this.listByUserId(userId));
                 userContext.setPermissions(this.listPermissionByUserId(userId));
                 UserContextHolder.setContext(userContext);

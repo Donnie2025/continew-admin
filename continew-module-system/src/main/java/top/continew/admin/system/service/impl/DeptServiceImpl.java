@@ -150,7 +150,7 @@ public class DeptServiceImpl extends BaseServiceImpl<DeptMapper, DeptDO, DeptRes
         return baseMapper.lambdaQuery()
             .eq(DeptDO::getName, name)
             .eq(DeptDO::getParentId, parentId)
-            .ne(null != id, DeptDO::getId, id)
+            .ne(id != null, DeptDO::getId, id)
             .exists();
     }
 
