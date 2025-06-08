@@ -90,4 +90,10 @@ public class ClassinUserReq implements Serializable {
     @Schema(description = "关联Classin机构ID")
     @NotNull(message = "关联Classin机构ID不能为空")
     private Long classinInstitutionId;
+
+    /**
+     * 关联学生ID
+     */
+    @Schema(description = "关联学生ID")
+    private Long studentId;
 }

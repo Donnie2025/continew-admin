@@ -17,6 +17,7 @@
 package top.continew.admin.education.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,8 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
     @Autowired
     private ClassinUserClient classinUserClient;
 
+    private final ClassinUserMapper classinUserMapper;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(ClassinUserReq req) {
@@ -73,5 +76,15 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
         if (StrUtil.isNotBlank(req.getNickname()) && req.getNickname().length() > 24) {
             throw new IllegalArgumentException("昵称长度不能超过24个字符");
         }
+    }
+
+    @Override
+    public ClassinUserDO getByStudentId(Long studentId) {
+        if (studentId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<ClassinUserDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ClassinUserDO::getStudentId, studentId).eq(ClassinUserDO::getStatus, 1);
+        return classinUserMapper.selectOne(queryWrapper);
     }
 }

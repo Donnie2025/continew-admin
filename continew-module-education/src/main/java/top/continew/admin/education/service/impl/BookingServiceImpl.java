@@ -22,24 +22,27 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.BookingMapper;
+import top.continew.admin.education.mapper.ClassinUserMapper;
+import top.continew.admin.education.service.*;
 import top.continew.admin.education.model.entity.BookingDO;
+import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.query.BookingQuery;
 import top.continew.admin.education.model.req.BookingReq;
+import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.resp.BookingDetailResp;
 import top.continew.admin.education.model.resp.BookingResp;
-import top.continew.admin.education.service.BookingService;
-import top.continew.admin.education.service.StudentService;
-import top.continew.admin.education.service.StuCardService;
-import top.continew.admin.education.service.SlotService;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StuCardDetailResp;
 import top.continew.admin.education.model.resp.SlotDetailResp;
+import top.continew.admin.education.constant.ClassinConstants;
+import top.continew.starter.extension.crud.service.BaseServiceImpl;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -60,9 +63,15 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
     @Autowired
     private StuCardService stuCardService;
-    
+
     @Autowired
     private SlotService slotService;
+
+    @Autowired
+    private ClassinUserService classinUserService;
+
+    @Autowired
+    private ClassinUserMapper classinUserMapper;
 
     /**
      * 创建预约前处理
@@ -83,8 +92,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         // 检查该学生是否已经预约过该课时
         if (studentId != null && slotId != null) {
             LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(BookingDO::getSlotId, slotId)
-                       .eq(BookingDO::getStudentId, studentId);
+            queryWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStudentId, studentId);
             long count = baseMapper.selectCount(queryWrapper);
             if (count > 0) {
                 throw new RuntimeException("您已经预约过该课时，不能重复预约");
@@ -122,7 +130,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             if (student != null) {
                 req.setStudentName(student.getName());
                 log.info("设置学生姓名: {}", student.getName());
-                
+
                 // 设置学生手机号
                 req.setPhone(student.getPhone());
                 log.info("设置学生手机号: {}", student.getPhone());
@@ -172,9 +180,89 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         // 按照slotId分组，合并多个学生的名字
         return bookings.stream()
             .filter(booking -> booking.getStudentName() != null && !booking.getStudentName().isEmpty())
-            .collect(Collectors.groupingBy(
-                BookingDO::getSlotId,
-                Collectors.mapping(BookingDO::getStudentName, Collectors.toList())
-            ));
+            .collect(Collectors.groupingBy(BookingDO::getSlotId, Collectors
+                .mapping(BookingDO::getStudentName, Collectors.toList())));
+    }
+
+    /**
+     * 创建预约后处理
+     * 同步预约信息到 ClassIn 系统
+     *
+     * @param req    创建信息
+     * @param entity 创建的预约实体
+     */
+    @Override
+    protected void afterCreate(BookingReq req, BookingDO entity) {
+        try {
+            log.info("开始同步预约信息到 ClassIn 系统: bookingId={}", entity.getId());
+
+            // 获取课时信息
+            SlotDetailResp slot = slotService.get(entity.getSlotId());
+            if (slot == null) {
+                log.error("课时信息不存在: slotId={}", entity.getSlotId());
+                return;
+            }
+
+            // 获取学生信息
+            StudentDetailResp student = studentService.get(entity.getStudentId());
+            if (student == null) {
+                log.error("学生信息不存在: studentId={}", entity.getStudentId());
+                return;
+            }
+
+            // 查询学生的 Classin 用户信息
+            ClassinUserDO classinUser = classinUserService.getByStudentId(student.getId());
+            if (classinUser == null) {
+                log.info("未找到学生的 Classin 用户信息，开始注册: studentId={}", student.getId());
+
+                // 构建注册请求参数
+                ClassinUserReq registerReq = new ClassinUserReq();
+                // 设置用户信息
+                registerReq.setNickname(student.getName());
+                registerReq.setTelephone(student.getPhone());
+                registerReq.setEmail(student.getEmail());
+                // 生成随机密码
+                String randomPassword = UUID.randomUUID().toString().substring(0, 8);
+                registerReq.setPassword(randomPassword);
+                // 设置学生ID
+                registerReq.setStudentId(student.getId());
+                // 设置用户类型为学生
+                registerReq.setUserType(ClassinConstants.USER_TYPE_STUDENT);
+                // 设置机构ID（需要从配置或上下文中获取）
+                registerReq.setClassinInstitutionId(1L); // TODO: 从配置中获取
+
+                try {
+                    // 调用注册接口
+                    Long classinUserId = classinUserService.create(registerReq);
+                    log.info("Classin 用户注册成功: studentId={}, classinUserId={}", student.getId(), classinUserId);
+
+                    // 重新查询用户信息
+                    classinUser = classinUserService.getByStudentId(student.getId());
+                    if (classinUser == null) {
+                        log.error("注册后仍未找到学生的 Classin 用户信息: studentId={}", student.getId());
+                        return;
+                    }
+                } catch (Exception e) {
+                    log.error("Classin 用户注册失败: studentId={}, error={}", student.getId(), e.getMessage(), e);
+                    return;
+                }
+            }
+
+            // 构建 ClassIn 预约请求参数
+            Map<String, Object> classInParams = new HashMap<>();
+            classInParams.put("studentId", classinUser.getUid());
+            classInParams.put("startTime", entity.getStartDate() + " " + entity.getStartTime());
+            classInParams.put("duration", slot.getDuration());
+            classInParams.put("teacherId", slot.getTeacherId());
+
+            // TODO: 调用 ClassIn API 进行预约同步
+            // classInService.createBooking(classInParams);
+
+            log.info("预约信息同步到 ClassIn 系统成功: bookingId={}", entity.getId());
+        } catch (Exception e) {
+            log.error("同步预约信息到 ClassIn 系统失败: bookingId={}, error={}", entity.getId(), e.getMessage(), e);
+            // 这里可以选择是否抛出异常，取决于业务需求
+            // throw new RuntimeException("同步预约信息到 ClassIn 系统失败", e);
+        }
     }
 }

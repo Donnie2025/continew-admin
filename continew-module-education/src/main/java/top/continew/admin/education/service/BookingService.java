@@ -32,7 +32,7 @@ import java.util.Map;
  * @since 2025/05/23 23:25
  */
 public interface BookingService extends BaseService<BookingResp, BookingDetailResp, BookingQuery, BookingReq> {
-    
+
     /**
      * 根据课时ID列表查询对应的预约信息
      *

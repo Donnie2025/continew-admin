@@ -16,6 +16,7 @@
 
 package top.continew.admin.education.service;
 
+import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.query.ClassinUserQuery;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.resp.ClassinUserDetailResp;
@@ -27,4 +28,5 @@ import top.continew.starter.extension.crud.service.BaseService;
  */
 public interface ClassinUserService extends BaseService<ClassinUserResp, ClassinUserDetailResp, ClassinUserQuery, ClassinUserReq> {
 
+    ClassinUserDO getByStudentId(Long studentId);
 }
