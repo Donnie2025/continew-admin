@@ -56,7 +56,7 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
 
     @Autowired
     private SlotService slotService;
-    
+
     @Autowired
     private BookingService bookingService;
 
@@ -94,17 +94,15 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
         query.setStatus(1); // 状态为1表示可用
 
         List<SlotResp> result = slotService.list(query, null);
-        
+
         // 如果查询结果不为空，关联查询预约信息
         if (result != null && !result.isEmpty()) {
             // 提取所有课时ID
-            List<Long> slotIds = result.stream()
-                .map(SlotResp::getId)
-                .collect(Collectors.toList());
-            
+            List<Long> slotIds = result.stream().map(SlotResp::getId).collect(Collectors.toList());
+
             // 查询所有相关的预约信息
             Map<Long, List<String>> studentNamesMap = bookingService.findStudentNamesBySlotIds(slotIds);
-            
+
             // 设置学生姓名
             result.forEach(slot -> {
                 List<String> studentNames = studentNamesMap.get(slot.getId());
@@ -113,10 +111,10 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
                     slot.setStudentNameList(studentNames);
                 }
             });
-            
+
             log.info("已关联查询预约信息，共{}条课时，{}条有预约", result.size(), studentNamesMap.size());
         }
-        
+
         return R.ok(result);
     }
 }
