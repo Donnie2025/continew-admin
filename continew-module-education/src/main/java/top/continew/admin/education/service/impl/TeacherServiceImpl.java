@@ -52,6 +52,11 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
     }
 
+    @Override
+    public TeacherDO getByPhone(String phone) {
+        return this.baseMapper.selectByPhone(phone);
+    }
+
     /**
      * 将 TeacherDO 转换为 TeacherResp
      *

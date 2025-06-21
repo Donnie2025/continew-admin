@@ -16,78 +16,82 @@
 
 package top.continew.admin.education.service.impl;
 
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import top.continew.admin.education.client.ClassinUserClient;
+import top.continew.admin.common.enums.DisEnableStatusEnum;
+import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.mapper.ClassinUserMapper;
+import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.model.entity.ClassinUserDO;
+import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.query.ClassinUserQuery;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.resp.ClassinUserDetailResp;
 import top.continew.admin.education.model.resp.ClassinUserResp;
 import top.continew.admin.education.service.ClassinUserService;
+import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 /**
- * ClassIn用户Service实现类
+ * Classin用户业务实现
  *
  * @author donnie
  * @since 2025/04/12 20:49
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, ClassinUserDO, ClassinUserResp, ClassinUserDetailResp, ClassinUserQuery, ClassinUserReq> implements ClassinUserService {
 
-    @Autowired
-    private ClassinUserClient classinUserClient;
+    private final ClassinClient classinClient;
 
-    private final ClassinUserMapper classinUserMapper;
+    private final StudentMapper studentMapper;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public Long create(ClassinUserReq req) {
-        // 参数校验
-        validateCreateParams(req);
-        // 调用ClassIn注册接口
-        String classinUid = classinUserClient.registerClassin(req);
+        // 通过 registerStudentIfAbsent 方法来处理学生注册，此方法主要用于非学生角色的直接创建
+        String classinUid = classinClient.registerClassin(req);
         req.setClassinUid(classinUid);
         return super.create(req);
     }
 
-    /**
-     * 校验创建参数
-     */
-    private void validateCreateParams(ClassinUserReq req) {
-        if (StrUtil.isBlank(req.getTelephone()) && StrUtil.isBlank(req.getEmail())) {
-            throw new IllegalArgumentException("手机号和邮箱必须填写一个");
-        }
-        if (StrUtil.isBlank(req.getPassword())) {
-            throw new IllegalArgumentException("密码不能为空");
-        }
-        if (req.getPassword().length() < 6 || req.getPassword().length() > 20) {
-            throw new IllegalArgumentException("密码长度必须在6-20位之间");
-        }
-        if (StrUtil.isNotBlank(req.getNickname()) && req.getNickname().length() > 24) {
-            throw new IllegalArgumentException("昵称长度不能超过24个字符");
-        }
+    @Override
+    public ClassinUserDO getByMemberIdAndUserType(Long memberId, String userType) {
+        return this.baseMapper.selectOne(new LambdaQueryWrapper<ClassinUserDO>()
+            .eq(ClassinUserDO::getMemberId, memberId)
+            .eq(ClassinUserDO::getUserType, userType));
     }
 
     @Override
-    public ClassinUserDO getByMemberIdAndUserType(Long memberId, String userType) {
-        if (memberId == null) {
-            return null;
+    public ClassinUserDO registerStudentIfAbsent(Long studentId) {
+        // 1. 根据 studentId 查询 ClassinUserDO
+        ClassinUserDO classinUser = getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
+        if (classinUser != null) {
+            return classinUser;
         }
-        LambdaQueryWrapper<ClassinUserDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(ClassinUserDO::getMemberId, memberId)
-                    .eq(ClassinUserDO::getUserType, userType)
-                    .eq(ClassinUserDO::getStatus, 1);
-        return classinUserMapper.selectOne(queryWrapper);
+
+        // 2. 如果不存在，则自动注册
+        StudentDO student = studentMapper.selectById(studentId);
+        CheckUtils.throwIfNull(student, "ID为 {} 的学生不存在", studentId);
+
+        // 2.2 调用 Classin 注册接口
+        ClassinUserReq req = new ClassinUserReq();
+        req.setNickname(student.getName());
+        req.setTelephone(student.getPhone());
+        req.setPassword("123456"); // 默认密码
+        req.setUserType(ClassinConstants.USER_TYPE_STUDENT);
+        String classinUid = classinClient.registerClassin(req);
+
+        // 2.3 创建并保存 ClassinUserDO
+        ClassinUserDO newClassinUser = new ClassinUserDO();
+        newClassinUser.setMemberId(studentId);
+        newClassinUser.setUserType(ClassinConstants.USER_TYPE_STUDENT);
+        newClassinUser.setClassinUid(classinUid);
+        newClassinUser.setStatus(DisEnableStatusEnum.ENABLE.getValue());
+        this.baseMapper.insert(newClassinUser);
+
+        return newClassinUser;
     }
 }

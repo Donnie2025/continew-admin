@@ -28,18 +28,22 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Component;
 import top.continew.admin.education.config.ClassinProperties;
 import top.continew.admin.education.model.req.ClassinUserReq;
+import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
+import top.continew.admin.education.model.resp.classin.ClassinBaseResp;
+import top.continew.admin.education.model.resp.classin.ClassinErrorInfo;
 import top.continew.starter.core.exception.BusinessException;
+import top.continew.starter.json.jackson.util.JSONUtils;
 
 /**
- * ClassIn用户客户端
+ * ClassIn API 客户端
  *
- * @author donnie
+ * @author donnie, KAI
  * @since 2025/04/12 20:49
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ClassinUserClient {
+public class ClassinClient {
 
     private final ClassinProperties properties;
 
@@ -68,6 +72,9 @@ public class ClassinUserClient {
         }
         if (StrUtil.isBlank(properties.getAddTeacher())) {
             throw new IllegalStateException("ClassIn添加教师接口路径不能为空，请检查配置文件中的classin.api.addTeacher配置项");
+        }
+        if (StrUtil.isBlank(properties.getAddCourse())) {
+            throw new IllegalStateException("ClassIn新增课程接口路径不能为空，请检查配置文件中的classin.api.addCourse配置项");
         }
 
         log.info("ClassIn客户端初始化完成");
@@ -122,72 +129,105 @@ public class ClassinUserClient {
      * 调用ClassIn注册接口
      */
     public String registerClassin(ClassinUserReq req) {
+        // 校验注册参数
+        validateRegisterParams(req);
+
+        // 构建请求参数
+        JSONObject params = buildCommonParams();
+        // 手机号和邮箱二选一，且需要按照格式要求处理
+        if (StrUtil.isNotBlank(req.getTelephone())) {
+            params.set("telephone", req.getTelephone());
+        } else if (StrUtil.isNotBlank(req.getEmail())) {
+            params.set("email", req.getEmail());
+        }
+        params.set("password", req.getPassword());
+        params.set("addToSchoolMember", 0);
+        if (StrUtil.isNotBlank(req.getNickname())) {
+            params.set("nickname", StrUtil.maxLength(req.getNickname(), 24));
+        }
+
+        String apiUrl = properties.getUrl() + properties.getRegister();
+        ClassinBaseResp<String> resp = executePost(apiUrl, params, String.class);
+        
+        // 特殊处理：用户已注册也视为成功
+        if (resp.getErrorInfo().getErrno() == 135 || resp.getErrorInfo().getErrno() == 461) {
+            log.info("用户已在ClassIn注册，直接获取用户ID");
+            return resp.getData();
+        }
+
+        if (resp.getErrorInfo().getErrno() != 1) {
+            throw new BusinessException(String.format("注册失败（错误码：%d）：%s", resp.getErrorInfo().getErrno(), resp.getErrorInfo().getError()));
+        }
+        return resp.getData();
+    }
+
+    /**
+     * 调用 ClassIn 新增课程接口
+     */
+    public Long addCourse(ClassinCourseAddReq req) {
+        // 1. 构建请求参数
+        JSONObject params = buildCommonParams();
+        params.set("courseName", req.getCourseName());
+        if (StrUtil.isNotBlank(req.getMainTeacherUid())) {
+            params.set("mainTeacherUid", req.getMainTeacherUid());
+        }
+        if (StrUtil.isNotBlank(req.getCourseUniqueIdentity())) {
+            params.set("courseUniqueIdentity", req.getCourseUniqueIdentity());
+        }
+        if (req.getClassroomSettingId() != null) {
+            params.set("classroomSettingId", req.getClassroomSettingId());
+        }
+
+        // 2. 调用接口
+        String apiUrl = properties.getUrl() + properties.getAddCourse();
+        ClassinBaseResp<Long> resp = executePost(apiUrl, params, Long.class);
+
+        // 特殊处理：课程已存在也视为成功
+        if (resp.getErrorInfo().getErrno() == 398) {
+            return resp.getData();
+        }
+
+        if (resp.getErrorInfo().getErrno() != 1) {
+            throw new BusinessException(String.format("新增课程失败（错误码：%d）：%s", resp.getErrorInfo().getErrno(), resp.getErrorInfo().getError()));
+        }
+        return resp.getData();
+    }
+
+    /**
+     * 执行 POST 请求并处理通用响应
+     */
+    private <T> ClassinBaseResp<T> executePost(String apiUrl, JSONObject params, Class<T> dataType) {
         try {
-            // 校验注册参数
-            validateRegisterParams(req);
-
-            // 构建请求参数
-            JSONObject params = buildCommonParams();
-            // 手机号和邮箱二选一，且需要按照格式要求处理
-            if (StrUtil.isNotBlank(req.getTelephone())) {
-                params.set("telephone", req.getTelephone());
-            } else if (StrUtil.isNotBlank(req.getEmail())) {
-                params.set("email", req.getEmail());
-            }
-            // 设置密码（必填）
-            params.set("password", req.getPassword());
-            // 设置是否加入为机构成员
-            // 0：不加为机构成员；1：加为机构学生；2：加为机构老师
-            params.set("addToSchoolMember", 0);
-            // 设置昵称（选填，最长24位字符）
-            if (StrUtil.isNotBlank(req.getNickname())) {
-                if (req.getNickname().length() > 24) {
-                    params.set("nickname", req.getNickname().substring(0, 24));
-                } else {
-                    params.set("nickname", req.getNickname());
-                }
-            }
-            // 调用ClassIn注册接口
-            String apiUrl = properties.getUrl() + properties.getRegister();
-            log.debug("调用ClassIn注册接口: url={}, params={}", apiUrl, params);
-
+            log.debug("调用 ClassIn 接口: url={}, params={}", apiUrl, params);
             HttpResponse response = HttpRequest.post(apiUrl)
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .form(params)  // 使用form方式提交参数
+                .form(params)
                 .timeout(10000)
                 .execute();
 
-            // 解析响应
             String responseBody = response.body();
-            log.debug("ClassIn注册接口响应: {}", responseBody);
+            log.debug("ClassIn 接口响应: {}", responseBody);
 
             if (StrUtil.isBlank(responseBody)) {
-                throw new BusinessException("注册失败：接口响应为空");
+                throw new BusinessException("接口响应为空");
             }
-
+            
+            // 由于泛型嵌套，需要手动解析
             JSONObject result = JSONUtil.parseObj(responseBody);
-            JSONObject errorInfo = result.getJSONObject("error_info");
-            int code = errorInfo.getInt("errno", -1);
+            ClassinBaseResp<T> baseResp = new ClassinBaseResp<>();
+            baseResp.setErrorInfo(result.get("error_info", ClassinErrorInfo.class));
+            baseResp.setData(result.get("data", dataType));
 
-            // 处理错误码135的情况（手机号已注册）
-            if (code == 135 || code == 461) {  // 461是邮箱已注册的错误码
-                log.info("用户已在ClassIn注册，直接获取用户ID");
-                return result.getStr("data");
+            if (baseResp.getErrorInfo() == null) {
+                throw new BusinessException("接口响应格式错误，无法解析error_info");
             }
-
-            // 处理其他错误情况
-            if (code != 1) {
-                String errorMsg = errorInfo.getStr("error");
-                log.error("ClassIn注册接口调用失败: code={}, error={}, params={}", code, errorMsg, params);
-                throw new BusinessException(String.format("注册失败（错误码：%d）：%s", code, errorMsg));
-            }
-            return result.getStr("data");
+            return baseResp;
         } catch (Exception e) {
-            log.error("调用ClassIn注册接口异常: {}", e.getMessage());
+            log.error("调用ClassIn接口异常: {}", e.getMessage(), e);
             if (e instanceof BusinessException) {
-                throw (BusinessException)e;
+                throw (BusinessException) e;
             }
-            throw new BusinessException("注册失败：" + e.getMessage());
+            throw new BusinessException("调用ClassIn接口失败：" + e.getMessage());
         }
     }
 

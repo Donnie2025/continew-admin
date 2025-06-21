@@ -21,6 +21,7 @@ import top.continew.admin.education.model.query.TeacherQuery;
 import top.continew.admin.education.model.req.TeacherReq;
 import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
+import top.continew.admin.education.model.entity.TeacherDO;
 
 import java.util.List;
 
@@ -39,4 +40,11 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @return 教师列表
      */
     List<TeacherResp> listActiveTeachers(String name);
+
+    /**
+     * 根据手机号查询教师
+     * @param phone 手机号
+     * @return 教师实体
+     */
+    TeacherDO getByPhone(String phone);
 }

@@ -28,5 +28,20 @@ import top.continew.starter.extension.crud.service.BaseService;
  */
 public interface ClassinUserService extends BaseService<ClassinUserResp, ClassinUserDetailResp, ClassinUserQuery, ClassinUserReq> {
 
+    /**
+     * 根据成员ID和用户类型查询 Classin 用户
+     *
+     * @param memberId 成员ID
+     * @param userType 用户类型
+     * @return Classin 用户信息
+     */
     ClassinUserDO getByMemberIdAndUserType(Long memberId, String userType);
+
+    /**
+     * 如果学生不存在，则在 Classin 中注册并保存关联关系
+     *
+     * @param studentId 学生ID
+     * @return Classin 用户信息
+     */
+    ClassinUserDO registerStudentIfAbsent(Long studentId);
 }

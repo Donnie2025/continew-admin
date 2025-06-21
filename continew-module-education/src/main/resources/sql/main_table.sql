@@ -132,6 +132,23 @@ CREATE TABLE `edu_institution` (
    PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机构表';
 
+CREATE TABLE `edu_course` (
+  `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
+  `name` varchar(100) NOT NULL COMMENT '教室名称',
+  `main_teacher_id` bigint(20) DEFAULT NULL COMMENT '班主任ID',
+  `main_teacher_uid` varchar(50) DEFAULT NULL COMMENT 'Classin班主任ID',
+  `course_unique` varchar(32) NOT NULL COMMENT '机构课程唯一标识',
+  `course_uid` bigint(20) DEFAULT NULL     COMMENT 'classin教室ID',
+  `course_setting_id` bigint(20) DEFAULT NULL  COMMENT '教室设置ID',
+  `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `institution_id` bigint(20) COMMENT '所属机构ID',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20)   DEFAULT NULL                    COMMENT '创建人',
+  `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='班级表';
+
 CREATE TABLE `classin_user` (
     `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
     `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
@@ -158,6 +175,7 @@ CREATE TABLE `classin_course` (
   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(100) NOT NULL COMMENT '课程名称',
   `head_teacher_uid` varchar(50) DEFAULT NULL COMMENT '班主任UID',
+  `course_unique` varchar(32) NOT NULL COMMENT '机构课程唯一标识',
   `course_id` bigint(20) NOT NULL COMMENT '课程ID',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

@@ -52,6 +52,11 @@ public class ClassinProperties {
     private String addTeacher;
 
     /**
+     * 新增课程接口
+     */
+    private String addCourse;
+
+    /**
      * 应用ID
      */
     private String appId;
