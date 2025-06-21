@@ -269,45 +269,16 @@ mybatis-plus:
     db-config:
       # 主键类型（默认 assign_id，表示自行赋值）
       # auto 代表使用数据库自增策略（需要在表中设置好自增约束）
-      id-type: ASSIGN_ID
+      id-type: auto
   ## 扩展配置
   extension:
     enabled: true
     # Mapper 接口扫描包配置
     mapper-package: ${project.base-package}.**.mapper
-    # ID 生成器配置
-    id-generator:
-      type: COSID
     # 分页插件配置
     pagination:
       enabled: true
       db-type: MYSQL
-
---- ### CosId 配置
-cosid:
-  namespace: ${spring.application.name}
-  machine:
-    enabled: true
-    # 机器号分配器
-    distributor:
-      type: REDIS
-    guarder:
-      # 开启机器号守护
-      enabled: true
-  snowflake:
-    enabled: true
-    zone-id: Asia/Shanghai
-    epoch: 1577203200000
-    share:
-      # 开启时钟回拨同步
-      clock-sync: true
-      converter:
-        friendly:
-          pad-start: true
-    provider:
-      safe-js:
-        machine-bit: 7
-        sequence-bit: 9
 
 --- ### 认证配置
 auth:

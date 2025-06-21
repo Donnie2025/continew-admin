@@ -28,5 +28,5 @@ import top.continew.starter.extension.crud.service.BaseService;
  */
 public interface ClassinUserService extends BaseService<ClassinUserResp, ClassinUserDetailResp, ClassinUserQuery, ClassinUserReq> {
 
-    ClassinUserDO getByStudentId(Long studentId);
+    ClassinUserDO getByMemberIdAndUserType(Long memberId, String userType);
 }

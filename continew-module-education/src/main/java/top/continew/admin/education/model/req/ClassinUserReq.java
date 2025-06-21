@@ -50,18 +50,24 @@ public class ClassinUserReq implements Serializable {
     private String nickname;
 
     /**
-     * 成员类型（0：不是成员；1：学生；2：老师）
+     * 成员类型（STUDENT, TEACHER）
      */
-    @Schema(description = "成员类型（0：不是成员；1：学生；2：老师）")
-    @NotNull(message = "成员类型（0：不是成员；1：学生；2：老师）不能为空")
-    private Integer userType;
+    @Schema(description = "成员类型（STUDENT, TEACHER）")
+    @NotBlank(message = "成员类型不能为空")
+    private String userType;
 
     /**
      * Classin唯一映射关系
      */
     @Schema(description = "Classin唯一映射关系")
     @Length(max = 50, message = "Classin唯一映射关系长度不能超过 {max} 个字符")
-    private String uid;
+    private String classinUid;
+
+    /**
+     * 关联成员ID
+     */
+    @Schema(description = "关联成员ID")
+    private Long memberId;
 
     /**
      * 密码
@@ -92,8 +98,8 @@ public class ClassinUserReq implements Serializable {
     private Long classinInstitutionId;
 
     /**
-     * 关联学生ID
+     * 状态（1：启用；2：禁用）
      */
-    @Schema(description = "关联学生ID")
-    private Long studentId;
+    @Schema(description = "状态（1：启用；2：禁用）")
+    private Integer status;
 }

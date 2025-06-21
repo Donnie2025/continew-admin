@@ -19,6 +19,8 @@ package top.continew.admin.education.model.entity;
 import lombok.Data;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.IdType;
 
 import top.continew.admin.common.model.entity.BaseDO;
 
@@ -37,20 +39,28 @@ public class ClassinUserDO extends BaseDO {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
     /**
      * 昵称
      */
     private String nickname;
 
     /**
-     * 成员类型（0：不是成员；1：学生；2：老师）
+     * 成员类型（STUDENT, TEACHER）
      */
-    private Integer userType;
+    private String userType;
 
     /**
      * Classin唯一映射关系
      */
-    private String uid;
+    private String classinUid;
+
+    /**
+     * 关联学生/教师ID
+     */
+    private Long memberId;
 
     /**
      * 密码
@@ -66,16 +76,6 @@ public class ClassinUserDO extends BaseDO {
      * 邮箱
      */
     private String email;
-
-    /**
-     * 关联学生ID
-     */
-    private Long studentId;
-
-    /**
-     * 关联教师ID
-     */
-    private Long teacherId;
 
     /**
      * 关联Classin机构ID

@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.education.client.ClassinUserClient;
+import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.mapper.ClassinUserMapper;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.query.ClassinUserQuery;
@@ -56,7 +57,7 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
         validateCreateParams(req);
         // 调用ClassIn注册接口
         String classinUid = classinUserClient.registerClassin(req);
-        req.setUid(classinUid);
+        req.setClassinUid(classinUid);
         return super.create(req);
     }
 
@@ -79,12 +80,14 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
     }
 
     @Override
-    public ClassinUserDO getByStudentId(Long studentId) {
-        if (studentId == null) {
+    public ClassinUserDO getByMemberIdAndUserType(Long memberId, String userType) {
+        if (memberId == null) {
             return null;
         }
         LambdaQueryWrapper<ClassinUserDO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ClassinUserDO::getStudentId, studentId).eq(ClassinUserDO::getStatus, 1);
+            queryWrapper.eq(ClassinUserDO::getMemberId, memberId)
+                    .eq(ClassinUserDO::getUserType, userType)
+                    .eq(ClassinUserDO::getStatus, 1);
         return classinUserMapper.selectOne(queryWrapper);
     }
 }

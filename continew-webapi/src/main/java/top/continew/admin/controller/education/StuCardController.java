@@ -61,8 +61,7 @@ public class StuCardController extends BaseController<StuCardService, StuCardRes
 
     @Operation(summary = "获取会员可用的会员卡列表", description = "根据会员ID获取可用的会员卡列表，支持按教师ID筛选")
     @GetMapping("/available")
-    public List<StuCardResp> getAvailableCards(@Parameter(description = "会员ID", required = true) @RequestParam Long stuId,
-                                               @Parameter(description = "教师ID（可选）") @RequestParam(required = false) Long teacherId) {
-        return stuCardService.getAvailableCards(stuId, teacherId);
+    public List<StuCardResp> getAvailableCards(@Parameter(description = "会员ID", required = true) @RequestParam Long stuId) {
+        return stuCardService.getAvailableCards(stuId);
     }
 }

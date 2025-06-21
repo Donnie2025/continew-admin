@@ -105,7 +105,7 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
     }
 
     @Override
-    public List<StuCardResp> getAvailableCards(Long stuId, Long teacherId) {
+    public List<StuCardResp> getAvailableCards(Long stuId) {
         if (stuId == null) {
             return new ArrayList<>();
         }
