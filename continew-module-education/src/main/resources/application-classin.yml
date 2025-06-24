@@ -5,5 +5,8 @@ classin:
     addSchoolStudent: /partner/api/course.api.php?action=addSchoolStudent
     addTeacher: /partner/api/course.api.php?action=addTeacher
     addCourse: /partner/api/course.api.php?action=addCourse
+    createClass: /lms/activity/createClass
+    updateClass: /lms/activity/updateClass
+    createUnit: /lms/unit/create
     appId: 67402266
     appSecret: 1YqGfCpd

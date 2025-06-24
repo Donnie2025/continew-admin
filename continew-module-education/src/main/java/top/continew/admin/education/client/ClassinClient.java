@@ -17,22 +17,24 @@
 package top.continew.admin.education.client;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Component;
 import top.continew.admin.education.config.ClassinProperties;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
+import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
+import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
+import top.continew.admin.education.model.req.classin.ClassinUpdateClassReq;
 import top.continew.admin.education.model.resp.classin.ClassinBaseResp;
-import top.continew.admin.education.model.resp.classin.ClassinErrorInfo;
+import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
+import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
+import top.continew.admin.education.model.resp.classin.ClassinUpdateClassResp;
+import top.continew.admin.education.utils.ClassinUtils;
 import top.continew.starter.core.exception.BusinessException;
-import top.continew.starter.json.jackson.util.JSONUtils;
 
 /**
  * ClassIn API 客户端
@@ -76,53 +78,17 @@ public class ClassinClient {
         if (StrUtil.isBlank(properties.getAddCourse())) {
             throw new IllegalStateException("ClassIn新增课程接口路径不能为空，请检查配置文件中的classin.api.addCourse配置项");
         }
+        if (StrUtil.isBlank(properties.getCreateClass())) {
+            throw new IllegalStateException("ClassIn创建课堂活动接口路径不能为空，请检查配置文件中的classin.api.createClass配置项");
+        }
+        if (StrUtil.isBlank(properties.getUpdateClass())) {
+            throw new IllegalStateException("ClassIn编辑课堂活动接口路径不能为空，请检查配置文件中的classin.api.updateClass配置项");
+        }
+        if (StrUtil.isBlank(properties.getCreateUnit())) {
+            throw new IllegalStateException("ClassIn创建单元接口路径不能为空，请检查配置文件中的classin.api.createUnit配置项");
+        }
 
         log.info("ClassIn客户端初始化完成");
-    }
-
-    /**
-     * 构建公共请求参数
-     */
-    private JSONObject buildCommonParams() {
-        long timeStamp = System.currentTimeMillis() / 1000;
-        String safeKey = DigestUtils.md5Hex(properties.getAppSecret() + timeStamp);
-
-        JSONObject params = new JSONObject();
-        params.set("SID", properties.getAppId());
-        params.set("safeKey", safeKey);
-        params.set("timeStamp", timeStamp);
-        return params;
-    }
-
-    /**
-     * 校验注册参数
-     */
-    private void validateRegisterParams(ClassinUserReq req) {
-        // 手机号和邮箱二选一，且需要按照格式要求处理
-        if (StrUtil.isNotBlank(req.getTelephone())) {
-            // 处理手机号格式
-            String telephone = req.getTelephone();
-            // 如果是中国大陆手机号，直接使用
-            if (telephone.startsWith("1") && telephone.length() == 11) {
-                // 符合要求
-            } else {
-                // 其他国家手机号，需要添加国家代码前缀
-                // 这里需要根据实际需求处理其他国家的手机号格式
-                throw new BusinessException("暂不支持非中国大陆手机号注册");
-            }
-        } else if (StrUtil.isNotBlank(req.getEmail())) {
-            // 符合要求
-        } else {
-            throw new BusinessException("手机号和邮箱必须填写一个");
-        }
-
-        // 设置密码（必填）
-        if (StrUtil.isBlank(req.getPassword())) {
-            throw new BusinessException("密码不能为空");
-        }
-        if (req.getPassword().length() < 6 || req.getPassword().length() > 20) {
-            throw new BusinessException("密码长度必须在6-20位之间");
-        }
     }
 
     /**
@@ -130,10 +96,10 @@ public class ClassinClient {
      */
     public String registerClassin(ClassinUserReq req) {
         // 校验注册参数
-        validateRegisterParams(req);
+        ClassinUtils.validateRegisterParams(req);
 
         // 构建请求参数
-        JSONObject params = buildCommonParams();
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
         // 手机号和邮箱二选一，且需要按照格式要求处理
         if (StrUtil.isNotBlank(req.getTelephone())) {
             params.set("telephone", req.getTelephone());
@@ -147,7 +113,7 @@ public class ClassinClient {
         }
 
         String apiUrl = properties.getUrl() + properties.getRegister();
-        ClassinBaseResp<String> resp = executePost(apiUrl, params, String.class);
+        ClassinBaseResp<String> resp = ClassinUtils.executePost(apiUrl, params, String.class);
         
         // 特殊处理：用户已注册也视为成功
         if (resp.getErrorInfo().getErrno() == 135 || resp.getErrorInfo().getErrno() == 461) {
@@ -166,7 +132,7 @@ public class ClassinClient {
      */
     public Long addCourse(ClassinCourseAddReq req) {
         // 1. 构建请求参数
-        JSONObject params = buildCommonParams();
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
         params.set("courseName", req.getCourseName());
         if (StrUtil.isNotBlank(req.getMainTeacherUid())) {
             params.set("mainTeacherUid", req.getMainTeacherUid());
@@ -180,7 +146,7 @@ public class ClassinClient {
 
         // 2. 调用接口
         String apiUrl = properties.getUrl() + properties.getAddCourse();
-        ClassinBaseResp<Long> resp = executePost(apiUrl, params, Long.class);
+        ClassinBaseResp<Long> resp = ClassinUtils.executePost(apiUrl, params, Long.class);
 
         // 特殊处理：课程已存在也视为成功
         if (resp.getErrorInfo().getErrno() == 398) {
@@ -194,126 +160,234 @@ public class ClassinClient {
     }
 
     /**
-     * 执行 POST 请求并处理通用响应
+     * 调用 ClassIn 创建课堂活动接口
      */
-    private <T> ClassinBaseResp<T> executePost(String apiUrl, JSONObject params, Class<T> dataType) {
-        try {
-            log.debug("调用 ClassIn 接口: url={}, params={}", apiUrl, params);
-            HttpResponse response = HttpRequest.post(apiUrl)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .form(params)
-                .timeout(10000)
-                .execute();
-
-            String responseBody = response.body();
-            log.debug("ClassIn 接口响应: {}", responseBody);
-
-            if (StrUtil.isBlank(responseBody)) {
-                throw new BusinessException("接口响应为空");
-            }
-            
-            // 由于泛型嵌套，需要手动解析
-            JSONObject result = JSONUtil.parseObj(responseBody);
-            ClassinBaseResp<T> baseResp = new ClassinBaseResp<>();
-            baseResp.setErrorInfo(result.get("error_info", ClassinErrorInfo.class));
-            baseResp.setData(result.get("data", dataType));
-
-            if (baseResp.getErrorInfo() == null) {
-                throw new BusinessException("接口响应格式错误，无法解析error_info");
-            }
-            return baseResp;
-        } catch (Exception e) {
-            log.error("调用ClassIn接口异常: {}", e.getMessage(), e);
-            if (e instanceof BusinessException) {
-                throw (BusinessException) e;
-            }
-            throw new BusinessException("调用ClassIn接口失败：" + e.getMessage());
+    public ClassinCreateClassResp createClass(ClassinCreateClassReq req) {
+        // 1. 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        
+        // 添加必填参数
+        params.set("courseId", req.getCourseId());
+        params.set("unitId", req.getUnitId());
+        params.set("name", req.getName());
+        params.set("teacherUid", req.getTeacherUid());
+        params.set("startTime", req.getStartTime());
+        params.set("endTime", req.getEndTime());
+        params.set("recordType", req.getRecordType());
+        params.set("recordState", req.getRecordState());
+        params.set("liveState", req.getLiveState());
+        params.set("openState", req.getOpenState());
+        
+        // 添加非必填参数
+        if (req.getCameraHide() != null) {
+            params.set("cameraHide", req.getCameraHide());
         }
+        if (StrUtil.isNotBlank(req.getRecordCover())) {
+            params.set("recordCover", req.getRecordCover());
+        }
+        if (StrUtil.isNotBlank(req.getLiveCover())) {
+            params.set("liveCover", req.getLiveCover());
+        }
+        if (StrUtil.isNotBlank(req.getLiveIntro())) {
+            params.set("liveIntro", req.getLiveIntro());
+        }
+        if (StrUtil.isNotBlank(req.getTeacherAssistantUids())) {
+            params.set("teacherAssistantUids", req.getTeacherAssistantUids());
+        }
+        if (req.getSendNotification() != null) {
+            params.set("sendNotification", req.getSendNotification());
+        }
+        if (StrUtil.isNotBlank(req.getTemporaryStudents())) {
+            params.set("temporaryStudents", req.getTemporaryStudents());
+        }
+        if (req.getHandsUpEnable() != null) {
+            params.set("handsUpEnable", req.getHandsUpEnable());
+        }
+
+        // 2. 调用接口
+        String apiUrl = properties.getUrl() + properties.getCreateClass();
+        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "创建课堂活动");
+            
+        // 解析响应数据
+        JSONObject data = result.getJSONObject("data");
+        ClassinCreateClassResp resp = new ClassinCreateClassResp();
+        resp.setActivityId(data.getLong("activityId"));
+        resp.setClassId(data.getLong("classId"));
+        resp.setName(data.getStr("name"));
+        resp.setLiveUrl(data.getStr("live_url"));
+        
+        // 解析拉流地址信息
+        if (data.containsKey("live_info")) {
+            JSONObject liveInfo = data.getJSONObject("live_info");
+            ClassinCreateClassResp.LiveInfo info = new ClassinCreateClassResp.LiveInfo();
+            info.setRTMP(liveInfo.getStr("RTMP"));
+            info.setHLS(liveInfo.getStr("HLS"));
+            info.setFLV(liveInfo.getStr("FLV"));
+            resp.setLiveInfo(info);
+        }
+        
+        return resp;
     }
 
     public String addStudent(ClassinUserReq req) {
-        try {
-            // 构建请求参数
-            JSONObject params = buildCommonParams();
-            params.set("password", req.getPassword());
-            params.set("nickname", req.getNickname());
+        // 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        params.set("password", req.getPassword());
+        params.set("nickname", req.getNickname());
 
-            // 调用ClassIn添加学生接口
-            String apiUrl = properties.getUrl() + properties.getAddSchoolStudent();
-            log.debug("调用ClassIn添加学生接口: url={}, params={}", apiUrl, params);
-
-            HttpResponse response = HttpRequest.post(apiUrl)
-                .header("Content-Type", "application/json")
-                .body(params.toString())
-                .timeout(10000)
-                .execute();
-
-            // 解析响应
-            String responseBody = response.body();
-            log.debug("ClassIn添加学生接口响应: {}", responseBody);
-
-            if (StrUtil.isBlank(responseBody)) {
-                throw new BusinessException("添加学生失败：接口响应为空");
-            }
-
-            JSONObject result = JSONUtil.parseObj(responseBody);
-            if (result.getInt("code") != 1) {
-                String errorMsg = result.getStr("error");
-                log.error("ClassIn添加学生接口调用失败: code={}, error={}, params={}", result.getInt("code"), errorMsg, params);
-                throw new BusinessException("添加学生失败：" + errorMsg);
-            }
-
-            return result.getJSONObject("data").getStr("data");
-        } catch (Exception e) {
-            log.error("调用ClassIn添加学生接口异常: {}", e.getMessage());
-            if (e instanceof BusinessException) {
-                throw (BusinessException)e;
-            }
-            throw new BusinessException("添加学生失败：" + e.getMessage());
-        }
+        // 调用ClassIn添加学生接口
+        String apiUrl = properties.getUrl() + properties.getAddSchoolStudent();
+        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加学生");
+        
+        return result.getJSONObject("data").getStr("data");
     }
 
     public String addTeacher(ClassinUserReq req) {
-        try {
-            // 构建请求参数
-            JSONObject params = buildCommonParams();
-            params.set("password", req.getPassword());
-            params.set("nickname", req.getNickname());
-            if (StrUtil.isNotBlank(req.getEmail())) {
-                params.set("email", req.getEmail());
-            }
-
-            // 调用ClassIn添加教师接口
-            String apiUrl = properties.getUrl() + properties.getAddTeacher();
-            log.debug("调用ClassIn添加教师接口: url={}, params={}", apiUrl, params);
-
-            HttpResponse response = HttpRequest.post(apiUrl)
-                .header("Content-Type", "application/json")
-                .body(params.toString())
-                .timeout(10000)
-                .execute();
-
-            // 解析响应
-            String responseBody = response.body();
-            log.debug("ClassIn添加教师接口响应: {}", responseBody);
-
-            if (StrUtil.isBlank(responseBody)) {
-                throw new BusinessException("添加教师失败：接口响应为空");
-            }
-
-            JSONObject result = JSONUtil.parseObj(responseBody);
-            if (result.getInt("code") != 1) {
-                String errorMsg = result.getStr("error");
-                log.error("ClassIn添加教师接口调用失败: code={}, error={}, params={}", result.getInt("code"), errorMsg, params);
-                throw new BusinessException("添加教师失败：" + errorMsg);
-            }
-            return result.getJSONObject("data").getStr("data");
-        } catch (Exception e) {
-            log.error("调用ClassIn添加教师接口异常: {}", e.getMessage());
-            if (e instanceof BusinessException) {
-                throw (BusinessException)e;
-            }
-            throw new BusinessException("添加教师失败：" + e.getMessage());
+        // 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        params.set("password", req.getPassword());
+        params.set("nickname", req.getNickname());
+        if (StrUtil.isNotBlank(req.getEmail())) {
+            params.set("email", req.getEmail());
         }
+
+        // 调用ClassIn添加教师接口
+        String apiUrl = properties.getUrl() + properties.getAddTeacher();
+        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加教师");
+        
+        return result.getJSONObject("data").getStr("data");
+    }
+
+    /**
+     * 调用 ClassIn 编辑课堂活动接口
+     */
+    public ClassinUpdateClassResp updateClass(ClassinUpdateClassReq req) {
+        // 1. 验证必填参数
+        if (req.getCourseId() == null) {
+            throw new BusinessException("课程ID不能为空");
+        }
+        if (req.getActivityId() == null) {
+            throw new BusinessException("课堂活动ID不能为空");
+        }
+
+        // 2. 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        
+        // 添加必填参数
+        params.set("courseId", req.getCourseId());
+        params.set("activityId", req.getActivityId());
+        
+        // 添加非必填参数，只传递需要修改的参数
+        if (req.getUnitId() != null) {
+            params.set("unitId", req.getUnitId());
+        }
+        if (StrUtil.isNotBlank(req.getName())) {
+            params.set("name", req.getName());
+        }
+        if (req.getTeacherUid() != null) {
+            params.set("teacherUid", req.getTeacherUid());
+        }
+        if (req.getStartTime() != null) {
+            params.set("startTime", req.getStartTime());
+        }
+        if (req.getEndTime() != null) {
+            params.set("endTime", req.getEndTime());
+        }
+        if (req.getPublishFlag() != null) {
+            params.set("publishFlag", req.getPublishFlag());
+        }
+        
+        // 录制、直播等相关设置，这些参数必须一起设置
+        boolean hasRecordParams = req.getRecordType() != null || req.getRecordState() != null 
+                || req.getLiveState() != null || req.getOpenState() != null;
+        
+        if (hasRecordParams) {
+            // 校验是否所有参数都已设置
+            if (req.getRecordType() == null || req.getRecordState() == null 
+                    || req.getLiveState() == null || req.getOpenState() == null) {
+                throw new BusinessException("recordType、recordState、liveState、openState必须同时设置");
+            }
+            
+            params.set("recordType", req.getRecordType());
+            params.set("recordState", req.getRecordState());
+            params.set("liveState", req.getLiveState());
+            params.set("openState", req.getOpenState());
+        }
+        
+        if (req.getCameraHide() != null) {
+            params.set("cameraHide", req.getCameraHide());
+        }
+        if (StrUtil.isNotBlank(req.getRecordCover())) {
+            params.set("recordCover", req.getRecordCover());
+        }
+        if (StrUtil.isNotBlank(req.getLiveCover())) {
+            params.set("liveCover", req.getLiveCover());
+        }
+        if (StrUtil.isNotBlank(req.getLiveIntro())) {
+            params.set("liveIntro", req.getLiveIntro());
+        }
+        if (StrUtil.isNotBlank(req.getTeacherAssistantUids())) {
+            params.set("teacherAssistantUids", req.getTeacherAssistantUids());
+        }
+        if (req.getStageNum() != null) {
+            params.set("stageNum", req.getStageNum());
+        }
+        if (req.getSubject() != null) {
+            params.set("subject", req.getSubject());
+        }
+        if (req.getEnableTwoCamera() != null) {
+            params.set("enableTwoCamera", req.getEnableTwoCamera());
+        }
+
+        // 3. 调用接口
+        String apiUrl = properties.getUrl() + properties.getUpdateClass();
+        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "编辑课堂活动");
+            
+        // 4. 解析响应数据
+        JSONObject data = result.getJSONObject("data");
+        ClassinUpdateClassResp resp = new ClassinUpdateClassResp();
+        resp.setActivityId(data.getLong("activityId"));
+        resp.setName(data.getStr("name"));
+        
+        return resp;
+    }
+
+    /**
+     * 调用 ClassIn 创建单元接口
+     */
+    public ClassinCreateUnitResp createUnit(ClassinCreateUnitReq req) {
+        // 1. 校验必填参数
+        if (req.getCourseId() == null) {
+            throw new BusinessException("课程ID不能为空");
+        }
+        if (StrUtil.isBlank(req.getName())) {
+            throw new BusinessException("单元名称不能为空");
+        }
+        if (req.getPublishFlag() == null) {
+            throw new BusinessException("发布标识不能为空");
+        }
+        
+        // 2. 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        params.set("courseId", req.getCourseId());
+        params.set("name", req.getName());
+        params.set("publishFlag", req.getPublishFlag());
+        
+        // 非必填参数
+        if (StrUtil.isNotBlank(req.getContent())) {
+            params.set("content", req.getContent());
+        }
+        
+        // 3. 调用接口
+        String apiUrl = properties.getUrl() + properties.getCreateUnit();
+        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "创建单元");
+        
+        // 4. 解析响应数据
+        JSONObject data = result.getJSONObject("data");
+        ClassinCreateUnitResp resp = new ClassinCreateUnitResp();
+        resp.setName(data.getStr("name"));
+        resp.setUnitId(data.getLong("unitId"));
+        
+        return resp;
     }
 }

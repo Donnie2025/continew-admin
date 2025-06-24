@@ -57,6 +57,21 @@ public class ClassinProperties {
     private String addCourse;
 
     /**
+     * 创建课堂活动接口
+     */
+    private String createClass;
+
+    /**
+     * 编辑课堂活动接口
+     */
+    private String updateClass;
+
+    /**
+     * 创建单元接口
+     */
+    private String createUnit;
+
+    /**
      * 应用ID
      */
     private String appId;
