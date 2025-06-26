@@ -89,6 +89,13 @@ public class ClassinCreateClassReq {
     private Integer cameraHide;
 
     /**
+     * 上台人数
+     * 非必填
+     * 可上台人数，默认为0（不限制）
+     */
+    private Integer seatNum;
+
+    /**
      * 录课封面
      * 非必填
      * 图片url或者是图片的base64内容，长度不能超过512000

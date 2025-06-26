@@ -124,6 +124,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .liveState(req.getLiveState() != null ? req.getLiveState() : 0)
             .openState(req.getOpenState() != null ? req.getOpenState() : 0)
             .cameraHide(0) // 0-显示坐席区
+            .seatNum(req.getSeatNum() != null ? req.getSeatNum() : 0) // 设置上台人数，默认不限制
             .build();
             
         try {

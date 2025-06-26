@@ -222,6 +222,9 @@ public class ClassinClient {
         if (req.getHandsUpEnable() != null) {
             bodyParams.set("handsUpEnable", req.getHandsUpEnable());
         }
+        if (req.getSeatNum() != null) {
+            bodyParams.set("seatNum", req.getSeatNum());
+        }
 
         // 2. 构建Header参数（API v2方式）
         Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
