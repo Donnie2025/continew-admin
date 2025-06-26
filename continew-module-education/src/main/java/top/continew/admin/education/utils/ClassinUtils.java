@@ -13,6 +13,13 @@ import top.continew.admin.education.model.resp.classin.ClassinBaseResp;
 import top.continew.admin.education.model.resp.classin.ClassinErrorInfo;
 import top.continew.starter.core.exception.BusinessException;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 /**
  * ClassIn 工具类
  *
@@ -37,6 +44,93 @@ public class ClassinUtils {
         params.set("safeKey", safeKey);
         params.set("timeStamp", timeStamp);
         return params;
+    }
+    
+    /**
+     * 构建符合ClassIn API v2要求的Header参数
+     * 
+     * @param properties ClassIn配置
+     * @param bodyParams 请求体参数
+     * @return Header参数Map
+     */
+    public static Map<String, String> buildHeaderParams(ClassinProperties properties, JSONObject bodyParams) {
+        // 1. 获取当前时间戳（秒级）
+        long timeStamp = System.currentTimeMillis() / 1000;
+        
+        // 2. 准备参与签名的参数
+        Map<String, Object> signParams = new HashMap<>();
+        
+        // 2.1 添加sid和timeStamp
+        signParams.put("sid", properties.getAppId());
+        signParams.put("timeStamp", String.valueOf(timeStamp));
+        
+        // 2.2 添加body中的参数（排除不参与签名的参数）
+        if (bodyParams != null) {
+            for (Entry<String, Object> entry : bodyParams.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                
+                // 排除数组和字典类参数
+                if (value instanceof List || value instanceof Map || value instanceof JSONObject) {
+                    continue;
+                }
+                
+                // 排除value长度超过1024的参数
+                if (value != null && value.toString().length() > 1024) {
+                    continue;
+                }
+                
+                signParams.put(key, value);
+            }
+        }
+        
+        // 3. 计算签名
+        String sign = calculateSignV2(signParams, properties.getAppSecret());
+        
+        // 4. 构建Header
+        Map<String, String> headers = new HashMap<>();
+        headers.put("X-EEO-SIGN", sign);
+        headers.put("X-EEO-UID", properties.getAppId());
+        headers.put("X-EEO-TS", String.valueOf(timeStamp));
+        headers.put("Content-Type", "application/json");
+        
+        return headers;
+    }
+    
+    /**
+     * 计算ClassIn API v2签名
+     * 
+     * @param params 参与签名的参数
+     * @param secretKey 密钥
+     * @return 签名值
+     */
+    private static String calculateSignV2(Map<String, Object> params, String secretKey) {
+        // 1. 按参数名ASCII码从小到大排序
+        List<String> keys = new ArrayList<>(params.keySet());
+        Collections.sort(keys);
+        
+        // 2. 拼接待签名字符串
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i < keys.size(); i++) {
+            String key = keys.get(i);
+            String value = params.get(key).toString();
+            
+            stringBuilder.append(key).append("=").append(value);
+            
+            // 不是最后一个参数，添加&
+            if (i < keys.size() - 1) {
+                stringBuilder.append("&");
+            }
+        }
+        
+        // 3. 拼接密钥
+        stringBuilder.append("&key=").append(secretKey);
+        
+        // 4. 计算MD5
+        String signStr = stringBuilder.toString();
+        log.debug("待签名字符串: {}", signStr);
+        
+        return DigestUtils.md5Hex(signStr);
     }
 
     /**
@@ -147,6 +241,78 @@ public class ClassinUtils {
                 int errorCode = result.getInt("code");
                 log.error("ClassIn {} 接口调用失败: code={}, error={}", description, errorCode, errorMsg);
                 throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, errorCode, errorMsg));
+            }
+
+            return result;
+        } catch (Exception e) {
+            log.error("调用ClassIn {} 接口异常: {}", description, e.getMessage(), e);
+            if (e instanceof BusinessException) {
+                throw (BusinessException) e;
+            }
+            throw new BusinessException(description + "失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 执行带Header鉴权的POST请求（API v2）
+     *
+     * @param apiUrl 接口URL
+     * @param headers 请求头
+     * @param bodyParams 请求体参数
+     * @param description 接口描述（用于日志和异常信息）
+     * @return 响应JSONObject
+     */
+    public static JSONObject executePostRequestV2(String apiUrl, Map<String, String> headers, JSONObject bodyParams, String description) {
+        return executePostRequestV2(apiUrl, headers, bodyParams, description, null);
+    }
+    
+    /**
+     * 执行带Header鉴权的POST请求（API v2），可以指定可接受的错误码
+     *
+     * @param apiUrl 接口URL
+     * @param headers 请求头
+     * @param bodyParams 请求体参数
+     * @param description 接口描述（用于日志和异常信息）
+     * @param acceptableErrorCodes 可接受的错误码列表，这些错误码不会导致抛出异常
+     * @return 响应JSONObject
+     */
+    public static JSONObject executePostRequestV2(String apiUrl, Map<String, String> headers, JSONObject bodyParams, String description, List<Integer> acceptableErrorCodes) {
+        try {
+            log.debug("调用 ClassIn {} 接口(V2): url={}, headers={}, params={}", description, apiUrl, headers, bodyParams);
+            
+            HttpRequest request = HttpRequest.post(apiUrl)
+                .timeout(10000);
+            
+            // 添加Headers
+            for (Entry<String, String> entry : headers.entrySet()) {
+                request.header(entry.getKey(), entry.getValue());
+            }
+            
+            // 发送请求
+            HttpResponse response = request.body(bodyParams.toString()).execute();
+
+            String responseBody = response.body();
+            log.debug("ClassIn {} 接口响应: {}", description, responseBody);
+
+            if (StrUtil.isBlank(responseBody)) {
+                throw new BusinessException(description + "失败：接口响应为空");
+            }
+
+            JSONObject result = JSONUtil.parseObj(responseBody);
+            int code = result.getInt("code");
+            
+            // 检查是否是可接受的错误码
+            boolean isAcceptableError = acceptableErrorCodes != null && acceptableErrorCodes.contains(code);
+            
+            if (code != 1 && !isAcceptableError) {
+                String errorMsg = result.getStr("msg");
+                log.error("ClassIn {} 接口调用失败: code={}, error={}", description, code, errorMsg);
+                throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, code, errorMsg));
+            }
+            
+            // 如果是可接受的错误码，记录一下日志
+            if (isAcceptableError) {
+                log.info("ClassIn {} 接口返回可接受的错误码: code={}, msg={}", description, code, result.getStr("msg"));
             }
 
             return result;

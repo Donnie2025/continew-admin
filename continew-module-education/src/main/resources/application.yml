@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    active: dev
+    include: classin
+
+# 日志配置
+logging:
+  level:
+    top.continew.admin.education: debug 

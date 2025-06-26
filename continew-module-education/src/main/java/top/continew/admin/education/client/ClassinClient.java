@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import top.continew.admin.education.config.ClassinProperties;
+import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
@@ -35,6 +36,10 @@ import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
 import top.continew.admin.education.model.resp.classin.ClassinUpdateClassResp;
 import top.continew.admin.education.utils.ClassinUtils;
 import top.continew.starter.core.exception.BusinessException;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * ClassIn API 客户端
@@ -107,7 +112,21 @@ public class ClassinClient {
             params.set("email", req.getEmail());
         }
         params.set("password", req.getPassword());
-        params.set("addToSchoolMember", 0);
+        
+        // 根据用户类型决定是否加为机构成员
+        int addToSchoolMember = 0; // 默认不加为机构成员
+        String userType = req.getUserType();
+        
+        if (ClassinConstants.USER_TYPE_STUDENT.equals(userType)) {
+            // 学生类型，加为机构学生
+            addToSchoolMember = 1;
+        } else if (ClassinConstants.USER_TYPE_TEACHER.equals(userType)) {
+            // 教师类型，加为机构老师
+            addToSchoolMember = 2;
+        }
+        
+        params.set("addToSchoolMember", addToSchoolMember);
+        
         if (StrUtil.isNotBlank(req.getNickname())) {
             params.set("nickname", StrUtil.maxLength(req.getNickname(), 24));
         }
@@ -163,52 +182,55 @@ public class ClassinClient {
      * 调用 ClassIn 创建课堂活动接口
      */
     public ClassinCreateClassResp createClass(ClassinCreateClassReq req) {
-        // 1. 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        // 1. 构建请求体参数
+        JSONObject bodyParams = new JSONObject();
         
         // 添加必填参数
-        params.set("courseId", req.getCourseId());
-        params.set("unitId", req.getUnitId());
-        params.set("name", req.getName());
-        params.set("teacherUid", req.getTeacherUid());
-        params.set("startTime", req.getStartTime());
-        params.set("endTime", req.getEndTime());
-        params.set("recordType", req.getRecordType());
-        params.set("recordState", req.getRecordState());
-        params.set("liveState", req.getLiveState());
-        params.set("openState", req.getOpenState());
+        bodyParams.set("courseId", req.getCourseId());
+        bodyParams.set("unitId", req.getUnitId());
+        bodyParams.set("name", req.getName());
+        bodyParams.set("teacherUid", req.getTeacherUid());
+        bodyParams.set("startTime", req.getStartTime());
+        bodyParams.set("endTime", req.getEndTime());
+        bodyParams.set("recordType", req.getRecordType());
+        bodyParams.set("recordState", req.getRecordState());
+        bodyParams.set("liveState", req.getLiveState());
+        bodyParams.set("openState", req.getOpenState());
         
         // 添加非必填参数
         if (req.getCameraHide() != null) {
-            params.set("cameraHide", req.getCameraHide());
+            bodyParams.set("cameraHide", req.getCameraHide());
         }
         if (StrUtil.isNotBlank(req.getRecordCover())) {
-            params.set("recordCover", req.getRecordCover());
+            bodyParams.set("recordCover", req.getRecordCover());
         }
         if (StrUtil.isNotBlank(req.getLiveCover())) {
-            params.set("liveCover", req.getLiveCover());
+            bodyParams.set("liveCover", req.getLiveCover());
         }
         if (StrUtil.isNotBlank(req.getLiveIntro())) {
-            params.set("liveIntro", req.getLiveIntro());
+            bodyParams.set("liveIntro", req.getLiveIntro());
         }
         if (StrUtil.isNotBlank(req.getTeacherAssistantUids())) {
-            params.set("teacherAssistantUids", req.getTeacherAssistantUids());
+            bodyParams.set("teacherAssistantUids", req.getTeacherAssistantUids());
         }
         if (req.getSendNotification() != null) {
-            params.set("sendNotification", req.getSendNotification());
+            bodyParams.set("sendNotification", req.getSendNotification());
         }
         if (StrUtil.isNotBlank(req.getTemporaryStudents())) {
-            params.set("temporaryStudents", req.getTemporaryStudents());
+            bodyParams.set("temporaryStudents", req.getTemporaryStudents());
         }
         if (req.getHandsUpEnable() != null) {
-            params.set("handsUpEnable", req.getHandsUpEnable());
+            bodyParams.set("handsUpEnable", req.getHandsUpEnable());
         }
 
-        // 2. 调用接口
+        // 2. 构建Header参数（API v2方式）
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
+        
+        // 3. 调用接口
         String apiUrl = properties.getUrl() + properties.getCreateClass();
-        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "创建课堂活动");
+        JSONObject result = ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "创建课堂活动");
             
-        // 解析响应数据
+        // 4. 解析响应数据
         JSONObject data = result.getJSONObject("data");
         ClassinCreateClassResp resp = new ClassinCreateClassResp();
         resp.setActivityId(data.getLong("activityId"));
@@ -367,22 +389,26 @@ public class ClassinClient {
             throw new BusinessException("发布标识不能为空");
         }
         
-        // 2. 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
-        params.set("courseId", req.getCourseId());
-        params.set("name", req.getName());
-        params.set("publishFlag", req.getPublishFlag());
+        // 2. 构建请求体参数
+        JSONObject bodyParams = new JSONObject();
+        bodyParams.set("courseId", req.getCourseId());
+        bodyParams.set("name", req.getName());
+        bodyParams.set("publishFlag", req.getPublishFlag());
         
         // 非必填参数
         if (StrUtil.isNotBlank(req.getContent())) {
-            params.set("content", req.getContent());
+            bodyParams.set("content", req.getContent());
         }
         
-        // 3. 调用接口
-        String apiUrl = properties.getUrl() + properties.getCreateUnit();
-        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "创建单元");
+        // 3. 构建Header参数（API v2方式）
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
         
-        // 4. 解析响应数据
+        // 4. 调用接口，设置可接受的错误码29208（单元已存在）
+        String apiUrl = properties.getUrl() + properties.getCreateUnit();
+        List<Integer> acceptableErrorCodes = Collections.singletonList(29208); // 单元已存在
+        JSONObject result = ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "创建单元", acceptableErrorCodes);
+        
+        // 5. 解析响应数据
         JSONObject data = result.getJSONObject("data");
         ClassinCreateUnitResp resp = new ClassinCreateUnitResp();
         resp.setName(data.getStr("name"));
