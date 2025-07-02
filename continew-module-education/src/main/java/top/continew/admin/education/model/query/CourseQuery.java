@@ -27,7 +27,7 @@ public class CourseQuery implements Serializable {
      * 教室名称
      */
     @Schema(description = "教室名称")
-    @Query(type = QueryType.EQ)
+    @Query(type = QueryType.LIKE)
     private String name;
 
     /**

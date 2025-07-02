@@ -79,7 +79,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         // 2. 检查并创建ClassIn账号
         registerClassinStudentIfAbsent(id, req);
     }
-    
+
     @Override
     public List<StudentResp> searchStudents(String keyword) {
         // 构建查询条件

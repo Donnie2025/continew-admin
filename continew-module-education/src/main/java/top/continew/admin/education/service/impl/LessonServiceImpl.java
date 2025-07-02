@@ -9,19 +9,26 @@ import org.springframework.transaction.annotation.Transactional;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.mapper.LessonMapper;
+import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.entity.LessonDO;
 import top.continew.admin.education.model.query.LessonQuery;
 import top.continew.admin.education.model.req.LessonReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
+import top.continew.admin.education.model.req.classin.ClassinDeleteActivityReq;
 import top.continew.admin.education.model.resp.LessonDetailResp;
 import top.continew.admin.education.model.resp.LessonResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
+import top.continew.admin.education.model.resp.classin.ClassinDeleteActivityResp;
+import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.LessonService;
+import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.starter.core.exception.BusinessException;
 
 import java.time.ZoneOffset;
+import java.util.List;
+
 import cn.hutool.core.bean.BeanUtil;
 
 /**
@@ -36,6 +43,7 @@ import cn.hutool.core.bean.BeanUtil;
 public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, LessonResp, LessonDetailResp, LessonQuery, LessonReq> implements LessonService {
 
     private final ClassinClient classinClient;
+    private final ClassinUserService classinUserService;
     
     /**
      * 重写创建方法，增加对接ClassIn创建教室功能
@@ -77,17 +85,46 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         
         return entity.getId();
     }
+
+    @Override
+    public void beforeDelete(List<Long> ids) {
+        // 删除ClassIn课堂活动
+        log.info("开始删除课堂，IDs：{}", ids);
+        
+        // 查询课堂信息
+        List<LessonDO> lessonList = super.listByIds(ids);
+        
+        for (LessonDO lesson : lessonList) {
+            // 如果有ClassIn活动ID，则调用ClassIn API删除活动
+            if (lesson.getActivityUid() != null && lesson.getCourseUid() != null) {
+                try {
+                    // 构建删除请求
+                    ClassinDeleteActivityReq deleteReq = ClassinDeleteActivityReq.builder()
+                        .courseId(lesson.getCourseUid())
+                        .activityId(lesson.getActivityUid())
+                        .build();
+                    
+                    // 调用ClassIn API删除活动
+                    ClassinDeleteActivityResp deleteResp = classinClient.deleteActivity(deleteReq);
+                    log.info("ClassIn活动删除成功，活动ID：{}，名称：{}", deleteResp.getActivityId(), deleteResp.getName());
+                } catch (Exception e) {
+                    // 删除失败不影响后续操作，只记录日志
+                    log.error("删除ClassIn活动失败，课堂ID：{}，活动ID：{}，错误信息：{}", 
+                        lesson.getId(), lesson.getActivityUid(), e.getMessage());
+                }
+            }
+        }
+
+        super.beforeDelete(ids);
+    }
     
     /**
      * 创建ClassIn单元
      */
     private Long createClassinUnit(LessonReq req) {
-        // 使用课堂名称作为单元名称
-        String unitName = req.getName();
-        
         ClassinCreateUnitReq unitReq = ClassinCreateUnitReq.builder()
             .courseId(req.getCourseUid())
-            .name(unitName)
+            .name("默认单元")
             .publishFlag(2) // 2-已发布
             .content("系统自动创建的单元")
             .build();
@@ -112,11 +149,32 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         long startTimeSeconds = req.getStartTime().toEpochSecond(ZoneOffset.UTC);
         long endTimeSeconds = req.getEndTime().toEpochSecond(ZoneOffset.UTC);
         
+        // 获取教师的ClassIn用户ID
+        Long teacherClassinUid = null;
+        if (req.getTeacherId() != null) {
+            ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(req.getTeacherId(), ClassinConstants.USER_TYPE_TEACHER);
+            if (classinUser != null && classinUser.getClassinUid() != null) {
+                try {
+                    teacherClassinUid = Long.parseLong(classinUser.getClassinUid());
+                    log.info("获取到教师的ClassIn用户ID：{}", teacherClassinUid);
+                } catch (NumberFormatException e) {
+                    log.warn("教师的ClassIn用户ID格式不正确：{}", classinUser.getClassinUid());
+                }
+            } else {
+                log.warn("未找到教师ID为{}的ClassIn用户信息", req.getTeacherId());
+            }
+        }
+        
+        // 如果未获取到教师的ClassIn用户ID，则使用默认值或抛出异常
+        if (teacherClassinUid == null) {
+            throw new BusinessException("未找到教师的ClassIn用户信息，请确保教师已关联ClassIn账号");
+        }
+        
         ClassinCreateClassReq classReq = ClassinCreateClassReq.builder()
             .courseId(req.getCourseUid())
             .unitId(unitId)
             .name(req.getName())
-            .teacherUid(req.getTeacherUid())
+            .teacherUid(teacherClassinUid)  // 使用从ClassinUser获取的ClassIn用户ID
             .startTime(startTimeSeconds)
             .endTime(endTimeSeconds)
             .recordType(0) // 0-云端录制
@@ -136,4 +194,5 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             throw new BusinessException("创建ClassIn课堂活动失败：" + e.getMessage());
         }
     }
+
 }

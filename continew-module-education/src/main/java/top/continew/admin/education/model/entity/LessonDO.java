@@ -56,7 +56,7 @@ public class LessonDO extends BaseDO {
     /**
      * 主讲教师UID
      */
-    private Long teacherUid;
+    private Long teacherId;
 
     /**
      * 活动开始时间

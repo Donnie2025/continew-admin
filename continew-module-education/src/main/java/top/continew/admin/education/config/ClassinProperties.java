@@ -72,6 +72,11 @@ public class ClassinProperties {
     private String createUnit;
 
     /**
+     * 删除活动接口
+     */
+    private String deleteActivity;
+
+    /**
      * 应用ID
      */
     private String appId;

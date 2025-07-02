@@ -8,5 +8,6 @@ classin:
     createClass: /lms/activity/createClass
     updateClass: /lms/activity/updateClass
     createUnit: /lms/unit/create
+    deleteActivity: /lms/activity/delete
     appId: 67402266
     appSecret: 1YqGfCpd

@@ -12,4 +12,6 @@ import top.continew.admin.education.model.resp.LessonResp;
  * @author don
  * @since 2025/06/24 23:39
  */
-public interface LessonService extends BaseService<LessonResp, LessonDetailResp, LessonQuery, LessonReq> {}
+public interface LessonService extends BaseService<LessonResp, LessonDetailResp, LessonQuery, LessonReq> {
+
+}

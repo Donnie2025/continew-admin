@@ -49,9 +49,9 @@ public class LessonReq implements Serializable {
     /**
      * 主讲教师UID
      */
-    @Schema(description = "主讲教师UID")
-    @NotNull(message = "主讲教师UID不能为空")
-    private Long teacherUid;
+    @Schema(description = "主讲教师ID")
+    @NotNull(message = "主讲教师ID不能为空")
+    private Long teacherId;
 
     /**
      * 活动开始时间

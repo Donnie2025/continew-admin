@@ -29,10 +29,12 @@ import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
+import top.continew.admin.education.model.req.classin.ClassinDeleteActivityReq;
 import top.continew.admin.education.model.req.classin.ClassinUpdateClassReq;
 import top.continew.admin.education.model.resp.classin.ClassinBaseResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
+import top.continew.admin.education.model.resp.classin.ClassinDeleteActivityResp;
 import top.continew.admin.education.model.resp.classin.ClassinUpdateClassResp;
 import top.continew.admin.education.utils.ClassinUtils;
 import top.continew.starter.core.exception.BusinessException;
@@ -91,6 +93,9 @@ public class ClassinClient {
         }
         if (StrUtil.isBlank(properties.getCreateUnit())) {
             throw new IllegalStateException("ClassIn创建单元接口路径不能为空，请检查配置文件中的classin.api.createUnit配置项");
+        }
+        if (StrUtil.isBlank(properties.getDeleteActivity())) {
+            throw new IllegalStateException("ClassIn删除活动接口路径不能为空，请检查配置文件中的classin.api.deleteActivity配置项");
         }
 
         log.info("ClassIn客户端初始化完成");
@@ -255,29 +260,29 @@ public class ClassinClient {
     }
 
     public String addStudent(ClassinUserReq req) {
-        // 构建请求参数
+            // 构建请求参数
         JSONObject params = ClassinUtils.buildCommonParams(properties);
-        params.set("password", req.getPassword());
-        params.set("nickname", req.getNickname());
+            params.set("password", req.getPassword());
+            params.set("nickname", req.getNickname());
 
-        // 调用ClassIn添加学生接口
-        String apiUrl = properties.getUrl() + properties.getAddSchoolStudent();
+            // 调用ClassIn添加学生接口
+            String apiUrl = properties.getUrl() + properties.getAddSchoolStudent();
         JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加学生");
-        
-        return result.getJSONObject("data").getStr("data");
+
+            return result.getJSONObject("data").getStr("data");
     }
 
     public String addTeacher(ClassinUserReq req) {
-        // 构建请求参数
+            // 构建请求参数
         JSONObject params = ClassinUtils.buildCommonParams(properties);
-        params.set("password", req.getPassword());
-        params.set("nickname", req.getNickname());
-        if (StrUtil.isNotBlank(req.getEmail())) {
-            params.set("email", req.getEmail());
-        }
+            params.set("password", req.getPassword());
+            params.set("nickname", req.getNickname());
+            if (StrUtil.isNotBlank(req.getEmail())) {
+                params.set("email", req.getEmail());
+            }
 
-        // 调用ClassIn添加教师接口
-        String apiUrl = properties.getUrl() + properties.getAddTeacher();
+            // 调用ClassIn添加教师接口
+            String apiUrl = properties.getUrl() + properties.getAddTeacher();
         JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加教师");
         
         return result.getJSONObject("data").getStr("data");
@@ -357,6 +362,9 @@ public class ClassinClient {
         if (req.getStageNum() != null) {
             params.set("stageNum", req.getStageNum());
         }
+        if (req.getSeatNum() != null) {
+            params.set("seatNum", req.getSeatNum());
+        }
         if (req.getSubject() != null) {
             params.set("subject", req.getSubject());
         }
@@ -416,6 +424,39 @@ public class ClassinClient {
         ClassinCreateUnitResp resp = new ClassinCreateUnitResp();
         resp.setName(data.getStr("name"));
         resp.setUnitId(data.getLong("unitId"));
+        
+        return resp;
+    }
+
+    /**
+     * 调用 ClassIn 删除活动接口
+     */
+    public ClassinDeleteActivityResp deleteActivity(ClassinDeleteActivityReq req) {
+        // 1. 校验必填参数
+        if (req.getCourseId() == null) {
+            throw new BusinessException("课程ID不能为空");
+        }
+        if (req.getActivityId() == null) {
+            throw new BusinessException("活动ID不能为空");
+        }
+        
+        // 2. 构建请求体参数
+        JSONObject bodyParams = new JSONObject();
+        bodyParams.set("courseId", req.getCourseId());
+        bodyParams.set("activityId", req.getActivityId());
+        
+        // 3. 构建Header参数（API v2方式）
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
+        
+        // 4. 调用接口
+        String apiUrl = properties.getUrl() + properties.getDeleteActivity();
+        JSONObject result = ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "删除活动");
+        
+        // 5. 解析响应数据
+        JSONObject data = result.getJSONObject("data");
+        ClassinDeleteActivityResp resp = new ClassinDeleteActivityResp();
+        resp.setActivityId(data.getLong("activityId"));
+        resp.setName(data.getStr("name"));
         
         return resp;
     }
