@@ -147,16 +147,19 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         log.info("找到{}位符合条件的教师", teachers.size());
 
         int createdCount = 0;
+        int updateCount = 0;
         List<SalaryDO> salariesToInsert = new ArrayList<>();
+        List<SalaryDO> salariesToUpdate = new ArrayList<>();
 
         // 为每个教师检查是否已有本周的薪资记录，如果没有则创建一条
         for (TeacherDO teacher : teachers) {
             // 检查该教师在本周是否已有薪资记录
-            long existingCount = salaryMapper.lambdaQuery()
-                .eq(SalaryDO::getTeacherId, teacher.getId())
-                .ge(SalaryDO::getStartDate, startOfWeek)
-                .le(SalaryDO::getEndDate, endOfWeek)
-                .count();
+            List<SalaryDO> salaryDOList = salaryMapper.lambdaQuery()
+                    .eq(SalaryDO::getTeacherId, teacher.getId())
+                    .ge(SalaryDO::getStartDate, startOfWeek)
+                    .le(SalaryDO::getEndDate, endOfWeek)
+                    .list();
+            long existingCount = salaryDOList.size();
 
             if (existingCount == 0) {
                 // 创建新的薪资记录
@@ -180,7 +183,20 @@ public class SalaryJobServiceImpl implements SalaryJobService {
                 salariesToInsert.add(salary);
                 log.info("为教师[{}]创建本周薪资记录", teacher.getName());
             } else {
-                log.info("教师[{}]已有本周薪资记录，跳过", teacher.getName());
+                SalaryDO salaryDO = salaryDOList.get(0);
+                Integer courseCountInt = salaryDO.getCourseCount();
+                if (courseCountInt==0){
+                    continue;
+                }
+                BigDecimal teacherRate = BigDecimal.valueOf(teacher.getRate());
+                BigDecimal courseCount = BigDecimal.valueOf(courseCountInt);
+                BigDecimal courseAmt = teacherRate.multiply(courseCount);
+                BigDecimal finalAmt = courseAmt.subtract(salaryDO.getDeductionAmount()).subtract(salaryDO.getTipAmount());
+
+                salaryDO.setCourseAmount(courseAmt);
+                salaryDO.setFinalAmount(finalAmt);
+                salariesToUpdate.add(salaryDO);
+                log.info("教师[{}] 更新本周薪资记录成功", teacher.getName());
             }
         }
 
@@ -192,7 +208,16 @@ public class SalaryJobServiceImpl implements SalaryJobService {
             }
         }
 
+        // 批量修改
+        if (!salariesToUpdate.isEmpty()) {
+            for (SalaryDO salary : salariesToUpdate) {
+                salaryMapper.updateById(salary);
+                updateCount++;
+            }
+        }
+
         log.info("成功创建{}条薪资记录", createdCount);
-        return createdCount;
+        log.info("成功修改{}条薪资记录", updateCount);
+        return createdCount+updateCount;
     }
 }
