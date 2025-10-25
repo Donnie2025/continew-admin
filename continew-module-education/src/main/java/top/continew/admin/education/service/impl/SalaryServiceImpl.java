@@ -130,13 +130,59 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
         entity.setFinalAmount(finalAmount);
 
-        // 默认未结算状态
-        entity.setStatus(0);
+        // 设置默认状态：生效且未结算
+        entity.setStatus(1); // 生效
+        entity.setIsSettled(0); // 未结算
 
         // 更新实体以保存最终支付金额
         baseMapper.updateById(entity);
 
         super.afterCreate(req, entity);
+    }
+
+    @Override
+    protected void beforeUpdate(SalaryReq req, Long id) {
+        // 获取教师信息
+        TeacherDO teacher = teacherMapper.selectById(req.getTeacherId());
+        if (teacher != null) {
+            // 设置教师单价
+            if (req.getCourseCount() != null && teacher.getRate() != null) {
+                req.setRate(teacher.getRate());
+                // 重新计算课程总金额
+                BigDecimal courseAmount = BigDecimal.valueOf(teacher.getRate()).multiply(BigDecimal.valueOf(req.getCourseCount()));
+                req.setCourseAmount(courseAmount);
+            }
+            
+            // 设置教师姓名和所属组
+            req.setTeacherName(teacher.getName());
+            if (req.getGroupName() == null) {
+                req.setGroupName(teacher.getGroupName());
+            }
+        }
+
+        // 确保扣款金额和小费金额不为空
+        if (req.getDeductionAmount() == null) {
+            req.setDeductionAmount(BigDecimal.ZERO);
+        }
+        if (req.getTipAmount() == null) {
+            req.setTipAmount(BigDecimal.ZERO);
+        }
+
+        super.beforeUpdate(req, id);
+    }
+
+    @Override
+    protected void afterUpdate(SalaryReq req, SalaryDO entity) {
+        // 重新计算最终支付金额
+        BigDecimal courseAmount = entity.getCourseAmount() != null ? entity.getCourseAmount() : BigDecimal.ZERO;
+        BigDecimal deductionAmount = entity.getDeductionAmount() != null ? entity.getDeductionAmount() : BigDecimal.ZERO;
+        BigDecimal tipAmount = entity.getTipAmount() != null ? entity.getTipAmount() : BigDecimal.ZERO;
+        BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
+        
+        entity.setFinalAmount(finalAmount);
+        baseMapper.updateById(entity);
+
+        super.afterUpdate(req, entity);
     }
 
     @Override
@@ -172,7 +218,6 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
             .list()
             .stream()
             .collect(Collectors.toMap(SalaryDO::getTeacherId, s -> s, (s1, s2) -> s1));
-
         // 逐行处理
         for (String line : lines) {
             if (StrUtil.isBlank(line)) {
@@ -231,6 +276,15 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
                     baseMapper.insert(salary);
                     existingSalaryMap.put(teacher.getId(), salary);
                 } else {
+                    // 检查是否已结算
+                    if (salary.getIsSettled() != null && salary.getIsSettled() == 1) {
+                        failures.add(SalaryBatchImportResp.ImportFailureDetail.builder()
+                            .teacherName(teacherName)
+                            .courseCount(courseCount)
+                            .reason("该教师本周期薪资已结算，无法修改")
+                            .build());
+                        continue;
+                    }
                     // 更新现有薪资记录
                     updateSalaryCourseCount(salary, teacher, courseCount);
                     baseMapper.updateById(salary);
@@ -276,7 +330,8 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         salary.setDeductionAmount(BigDecimal.ZERO);
         salary.setTipAmount(BigDecimal.ZERO);
         salary.setFinalAmount(courseAmount);
-        salary.setStatus(0); // 未结算
+        salary.setStatus(1); // 生效
+        salary.setIsSettled(0); // 未结算
 
         return salary;
     }

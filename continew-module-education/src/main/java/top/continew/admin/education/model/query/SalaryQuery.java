@@ -61,11 +61,18 @@ public class SalaryQuery implements Serializable {
     private LocalDate endDate;
 
     /**
-     * 状态（0：未结算；1：已结算）
+     * 状态（0：失效；1：生效）
      */
-    @Schema(description = "状态（0：未结算；1：已结算）")
+    @Schema(description = "状态（0：失效；1：生效）")
     @Query(type = QueryType.EQ)
     private Integer status;
+
+    /**
+     * 是否结算（0：未结算；1：已结算）
+     */
+    @Schema(description = "是否结算（0：未结算；1：已结算）")
+    @Query(type = QueryType.EQ)
+    private Integer isSettled;
 
     /**
      * 所属组

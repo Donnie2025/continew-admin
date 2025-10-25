@@ -85,9 +85,14 @@ public class SalaryDO extends BaseDO {
     private BigDecimal finalAmount;
 
     /**
-     * 状态（0：未结算；1：已结算）
+     * 状态（0：失效；1：生效）
      */
     private Integer status;
+
+    /**
+     * 是否结算（0：未结算；1：已结算）
+     */
+    private Integer isSettled;
 
     /**
      * 单价

@@ -164,6 +164,11 @@ public class SalaryJobServiceImpl implements SalaryJobService {
                 salariesToInsert.add(newSalary);
                 log.debug("为教师[{}]创建本周薪资记录", teacher.getName());
             } else {
+                if (existingSalary.getIsSettled()==1){
+                    // 已结算的
+                    log.debug("教师[{}] 本周已结算，跳过", teacher.getName());
+                    continue;
+                }
                 // 更新现有薪资记录（仅当有课程时）
                 if (updateExistingSalary(existingSalary, teacher)) {
                     salariesToUpdate.add(existingSalary);
