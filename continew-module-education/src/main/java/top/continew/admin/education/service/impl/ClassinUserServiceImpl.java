@@ -18,7 +18,6 @@ package top.continew.admin.education.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.education.client.ClassinClient;

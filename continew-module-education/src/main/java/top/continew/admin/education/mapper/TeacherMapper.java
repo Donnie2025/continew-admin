@@ -28,6 +28,7 @@ import top.continew.admin.education.model.entity.TeacherDO;
 public interface TeacherMapper extends BaseMapper<TeacherDO> {
     /**
      * 根据手机号查询教师
+     * 
      * @param phone 手机号
      * @return 教师实体
      */

@@ -63,19 +63,19 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
     public Long create(StudentReq req) {
         // 1. 创建学生
         Long studentId = super.create(req);
-        
+
         // 2. 检查并创建ClassIn账号
         registerClassinStudentIfAbsent(studentId, req);
-        
+
         return studentId;
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void update(StudentReq req, Long id) {
         // 1. 更新学生信息
         super.update(req, id);
-        
+
         // 2. 检查并创建ClassIn账号
         registerClassinStudentIfAbsent(id, req);
     }
@@ -98,46 +98,47 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         List<StudentDO> studentList = this.baseMapper.selectList(queryWrapper);
         return studentList.stream().map(this::convert).collect(Collectors.toList());
     }
-    
+
     /**
      * 检查并注册ClassIn学生账号
      *
      * @param studentId 学生ID
-     * @param req 学生请求参数
+     * @param req       学生请求参数
      * @return ClassIn用户信息
      */
     private ClassinUserDO registerClassinStudentIfAbsent(Long studentId, StudentReq req) {
         // 1. 根据学生ID查询ClassIn用户
-        ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
+        ClassinUserDO classinUser = classinUserService
+            .getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
         if (classinUser != null) {
             log.info("学生[{}]已有ClassIn账号，无需创建", studentId);
             return classinUser;
         }
-        
+
         log.info("学生[{}]没有ClassIn账号，开始创建", studentId);
-        
+
         // 2. 构建ClassIn用户请求参数
         ClassinUserReq classinUserReq = new ClassinUserReq();
         classinUserReq.setNickname(req.getName());
-        
+
         // 优先使用手机号，其次使用邮箱
         if (StrUtil.isNotBlank(req.getPhone())) {
             classinUserReq.setTelephone(req.getPhone());
         } else if (StrUtil.isNotBlank(req.getEmail())) {
             classinUserReq.setEmail(req.getEmail());
         }
-        
+
         // 设置密码，优先使用学生设置的密码，其次使用随机生成的密码
         String password = StrUtil.isNotBlank(req.getPassword()) ? req.getPassword() : RandomUtil.randomString(8);
         classinUserReq.setPassword(password);
-        
+
         // 设置用户类型为学生
         classinUserReq.setUserType(ClassinConstants.USER_TYPE_STUDENT);
-        
+
         // 3. 调用ClassIn注册接口
         try {
             String classinUid = classinClient.registerClassin(classinUserReq);
-            
+
             // 4. 创建并保存ClassIn用户关联
             // 使用ClassinUserReq和create方法保存
             ClassinUserReq userReq = new ClassinUserReq();
@@ -149,13 +150,13 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             userReq.setEmail(req.getEmail());
             userReq.setPassword(classinUserReq.getPassword());
             userReq.setStatus(DisEnableStatusEnum.ENABLE.getValue());
-            
+
             // 设置ClassIn机构ID（从配置中获取或使用默认值，或者使用学生的机构ID）
             userReq.setClassinInstitutionId(req.getInstitutionId() != null ? req.getInstitutionId() : 1L);
-            
+
             classinUserService.create(userReq);
             log.info("学生[{}]ClassIn账号创建成功，ClassIn UID: {}", studentId, classinUid);
-            
+
             // 创建ClassinUserDO对象并返回，仅用于方法返回
             ClassinUserDO newClassinUser = new ClassinUserDO();
             newClassinUser.setMemberId(studentId);
@@ -166,7 +167,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             newClassinUser.setEmail(req.getEmail());
             newClassinUser.setPassword(classinUserReq.getPassword());
             newClassinUser.setStatus(DisEnableStatusEnum.ENABLE.getValue());
-            
+
             return newClassinUser;
         } catch (Exception e) {
             log.error("学生[{}]ClassIn账号创建失败: {}", studentId, e.getMessage(), e);

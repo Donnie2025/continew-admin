@@ -199,7 +199,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 log.error("老师信息不存在: teacherId={}", slot.getTeacherId());
                 return;
             }
-            ClassinUserDO teacherClassinUser = classinHelper.getClassinUser(teacherDetailResp.getId(), ClassinConstants.USER_TYPE_TEACHER, teacherDetailResp.getName(), teacherDetailResp.getPhone(), teacherDetailResp.getEmail());
+            ClassinUserDO teacherClassinUser = classinHelper.getClassinUser(teacherDetailResp
+                .getId(), ClassinConstants.USER_TYPE_TEACHER, teacherDetailResp.getName(), teacherDetailResp
+                    .getPhone(), teacherDetailResp.getEmail());
 
             // 获取学生信息
             StudentDetailResp student = studentService.get(entity.getStudentId());
@@ -207,7 +209,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 log.error("学生信息不存在: studentId={}", entity.getStudentId());
                 return;
             }
-            ClassinUserDO stuClassinUserDO = classinHelper.getClassinUser(student.getId(), ClassinConstants.USER_TYPE_STUDENT, student.getName(), student.getPhone(), student.getEmail());
+            ClassinUserDO stuClassinUserDO = classinHelper.getClassinUser(student
+                .getId(), ClassinConstants.USER_TYPE_STUDENT, student.getName(), student.getPhone(), student
+                    .getEmail());
 
             // 构建 ClassIn 预约请求参数
             Map<String, Object> classInParams = new HashMap<>();

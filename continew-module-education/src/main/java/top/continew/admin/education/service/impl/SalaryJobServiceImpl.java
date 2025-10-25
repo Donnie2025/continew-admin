@@ -33,6 +33,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 薪资任务服务实现类
@@ -117,7 +119,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
      * 初始化本周教师薪资数据
      * 为所有符合条件的老师（status为1且group_name不为classin）创建本周的薪资记录
      * 
-     * @return 新创建的薪资记录数量
+     * @return 新创建和更新的薪资记录数量
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -129,16 +131,8 @@ public class SalaryJobServiceImpl implements SalaryJobService {
 
         log.info("初始化{}至{}期间的教师薪资数据", startOfWeek, endOfWeek);
 
-        // 查询所有符合条件的教师（status为1且group_name不为classin）
-        List<TeacherDO> teachers = teacherMapper.lambdaQuery()
-            .eq(TeacherDO::getStatus, 1)
-            .and(wrapper -> wrapper.ne(TeacherDO::getGroupName, "Classin")
-                .or()
-                .isNull(TeacherDO::getGroupName)
-                .or()
-                .eq(TeacherDO::getGroupName, ""))
-            .list();
-
+        // 1. 查询所有符合条件的教师（status为1且group_name不为Classin）
+        List<TeacherDO> teachers = queryEligibleTeachers();
         if (teachers.isEmpty()) {
             log.info("没有找到符合条件的教师");
             return 0;
@@ -146,78 +140,187 @@ public class SalaryJobServiceImpl implements SalaryJobService {
 
         log.info("找到{}位符合条件的教师", teachers.size());
 
-        int createdCount = 0;
-        int updateCount = 0;
+        // 2. 批量查询本周所有教师的薪资记录（一次查询，避免N+1问题）
+        List<Long> teacherIds = teachers.stream().map(TeacherDO::getId).collect(Collectors.toList());
+
+        Map<Long, SalaryDO> existingSalaryMap = salaryMapper.lambdaQuery()
+            .in(SalaryDO::getTeacherId, teacherIds)
+            .ge(SalaryDO::getStartDate, startOfWeek)
+            .le(SalaryDO::getEndDate, endOfWeek)
+            .list()
+            .stream()
+            .collect(Collectors.toMap(SalaryDO::getTeacherId, salary -> salary, (old, newVal) -> old));
+
+        // 3. 分类处理：新建和更新
         List<SalaryDO> salariesToInsert = new ArrayList<>();
         List<SalaryDO> salariesToUpdate = new ArrayList<>();
 
-        // 为每个教师检查是否已有本周的薪资记录，如果没有则创建一条
         for (TeacherDO teacher : teachers) {
-            // 检查该教师在本周是否已有薪资记录
-            List<SalaryDO> salaryDOList = salaryMapper.lambdaQuery()
-                    .eq(SalaryDO::getTeacherId, teacher.getId())
-                    .ge(SalaryDO::getStartDate, startOfWeek)
-                    .le(SalaryDO::getEndDate, endOfWeek)
-                    .list();
-            long existingCount = salaryDOList.size();
+            SalaryDO existingSalary = existingSalaryMap.get(teacher.getId());
 
-            if (existingCount == 0) {
+            if (existingSalary == null) {
                 // 创建新的薪资记录
-                SalaryDO salary = new SalaryDO();
-                salary.setTeacherId(teacher.getId());
-                salary.setTeacherName(teacher.getName());
-                salary.setStartDate(startOfWeek);
-                salary.setEndDate(endOfWeek);
-                salary.setCourseCount(0);
-                salary.setCourseAmount(BigDecimal.ZERO);
-                salary.setDeductionAmount(BigDecimal.ZERO);
-                salary.setTipAmount(BigDecimal.ZERO);
-                salary.setFinalAmount(BigDecimal.ZERO);
-                salary.setStatus(0); // 未结算
-                salary.setRate(teacher.getRate());
-                salary.setGroupName(teacher.getGroupName());
-
-                // 设置系统默认用户ID为创建者(ID=1通常是系统管理员)
-                salary.setCreateUser(1L);
-
-                salariesToInsert.add(salary);
-                log.info("为教师[{}]创建本周薪资记录", teacher.getName());
+                SalaryDO newSalary = createNewSalary(teacher, startOfWeek, endOfWeek);
+                salariesToInsert.add(newSalary);
+                log.debug("为教师[{}]创建本周薪资记录", teacher.getName());
             } else {
-                SalaryDO salaryDO = salaryDOList.get(0);
-                Integer courseCountInt = salaryDO.getCourseCount();
-                if (courseCountInt==0){
-                    continue;
+                // 更新现有薪资记录（仅当有课程时）
+                if (updateExistingSalary(existingSalary, teacher)) {
+                    salariesToUpdate.add(existingSalary);
+                    log.debug("教师[{}]本周薪资记录已更新", teacher.getName());
                 }
-                BigDecimal teacherRate = BigDecimal.valueOf(teacher.getRate());
-                BigDecimal courseCount = BigDecimal.valueOf(courseCountInt);
-                BigDecimal courseAmt = teacherRate.multiply(courseCount);
-                BigDecimal finalAmt = courseAmt.subtract(salaryDO.getDeductionAmount()).subtract(salaryDO.getTipAmount());
-
-                salaryDO.setCourseAmount(courseAmt);
-                salaryDO.setFinalAmount(finalAmt);
-                salariesToUpdate.add(salaryDO);
-                log.info("教师[{}] 更新本周薪资记录成功", teacher.getName());
             }
         }
 
-        // 批量插入新创建的薪资记录
-        if (!salariesToInsert.isEmpty()) {
-            for (SalaryDO salary : salariesToInsert) {
-                salaryMapper.insert(salary);
-                createdCount++;
-            }
+        // 4. 批量执行数据库操作
+        int createdCount = batchInsertSalaries(salariesToInsert);
+        int updatedCount = batchUpdateSalaries(salariesToUpdate);
+
+        log.info("薪资初始化完成：新建{}条，更新{}条", createdCount, updatedCount);
+        return createdCount + updatedCount;
+    }
+
+    /**
+     * 查询符合条件的教师
+     * 条件：status为1且group_name不为"Classin"（包括null和空字符串）
+     * 
+     * @return 符合条件的教师列表
+     */
+    private List<TeacherDO> queryEligibleTeachers() {
+        return teacherMapper.lambdaQuery()
+            .eq(TeacherDO::getStatus, 1).eq(TeacherDO::getIsShow, 1)
+            .and(wrapper -> wrapper.ne(TeacherDO::getGroupName, "Classin")
+                .or()
+                .isNull(TeacherDO::getGroupName)
+                .or()
+                .eq(TeacherDO::getGroupName, ""))
+            .list();
+    }
+
+    /**
+     * 创建新的薪资记录
+     * 
+     * @param teacher     教师信息
+     * @param startOfWeek 本周开始日期
+     * @param endOfWeek   本周结束日期
+     * @return 新建的薪资记录
+     */
+    private SalaryDO createNewSalary(TeacherDO teacher, LocalDate startOfWeek, LocalDate endOfWeek) {
+        SalaryDO salary = new SalaryDO();
+        salary.setTeacherId(teacher.getId());
+        salary.setTeacherName(teacher.getName());
+        salary.setStartDate(startOfWeek);
+        salary.setEndDate(endOfWeek);
+        salary.setCourseCount(0);
+        salary.setCourseAmount(BigDecimal.ZERO);
+        salary.setDeductionAmount(BigDecimal.ZERO);
+        salary.setTipAmount(BigDecimal.ZERO);
+        salary.setFinalAmount(BigDecimal.ZERO);
+        salary.setStatus(0); // 未结算
+        salary.setRate(teacher.getRate());
+        salary.setGroupName(teacher.getGroupName());
+        salary.setCreateUser(1L); // 系统默认用户ID
+        return salary;
+    }
+
+    /**
+     * 更新现有薪资记录
+     * 仅当课程数量大于0时才更新金额
+     * 
+     * @param salary  现有薪资记录
+     * @param teacher 教师信息
+     * @return 是否需要更新
+     */
+    private boolean updateExistingSalary(SalaryDO salary, TeacherDO teacher) {
+        Integer courseCount = salary.getCourseCount();
+
+        // 如果没有课程，不需要更新
+        if (courseCount == null || courseCount == 0) {
+            return false;
         }
 
-        // 批量修改
-        if (!salariesToUpdate.isEmpty()) {
-            for (SalaryDO salary : salariesToUpdate) {
-                salaryMapper.updateById(salary);
-                updateCount++;
-            }
+        // 计算薪资金额
+        BigDecimal courseAmount = calculateCourseAmount(teacher.getRate(), courseCount);
+        BigDecimal finalAmount = calculateFinalAmount(courseAmount, salary.getDeductionAmount(), salary.getTipAmount());
+
+        // 更新金额
+        salary.setCourseAmount(courseAmount);
+        salary.setFinalAmount(finalAmount);
+
+        return true;
+    }
+
+    /**
+     * 计算课程金额
+     * 
+     * @param rate        教师费率
+     * @param courseCount 课程数量
+     * @return 课程金额
+     */
+    private BigDecimal calculateCourseAmount(Integer rate, Integer courseCount) {
+        if (rate == null || courseCount == null) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(rate).multiply(BigDecimal.valueOf(courseCount));
+    }
+
+    /**
+     * 计算最终金额
+     * 
+     * @param courseAmount    课程金额
+     * @param deductionAmount 扣款金额
+     * @param tipAmount       小费金额
+     * @return 最终金额 = 课程金额 - 扣款金额 - 小费金额
+     */
+    private BigDecimal calculateFinalAmount(BigDecimal courseAmount, BigDecimal deductionAmount, BigDecimal tipAmount) {
+        BigDecimal result = courseAmount;
+        if (deductionAmount != null) {
+            result = result.subtract(deductionAmount);
+        }
+        if (tipAmount != null) {
+            result = result.subtract(tipAmount);
+        }
+        return result;
+    }
+
+    /**
+     * 批量插入薪资记录
+     * 
+     * @param salaries 待插入的薪资记录列表
+     * @return 实际插入的数量
+     */
+    private int batchInsertSalaries(List<SalaryDO> salaries) {
+        if (salaries.isEmpty()) {
+            return 0;
         }
 
-        log.info("成功创建{}条薪资记录", createdCount);
-        log.info("成功修改{}条薪资记录", updateCount);
-        return createdCount+updateCount;
+        // 使用循环插入而非saveBatch，以确保每条记录的插入结果可控
+        int count = 0;
+        for (SalaryDO salary : salaries) {
+            if (salaryMapper.insert(salary) > 0) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 批量更新薪资记录
+     * 
+     * @param salaries 待更新的薪资记录列表
+     * @return 实际更新的数量
+     */
+    private int batchUpdateSalaries(List<SalaryDO> salaries) {
+        if (salaries.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0;
+        for (SalaryDO salary : salaries) {
+            if (salaryMapper.updateById(salary) > 0) {
+                count++;
+            }
+        }
+        return count;
     }
 }

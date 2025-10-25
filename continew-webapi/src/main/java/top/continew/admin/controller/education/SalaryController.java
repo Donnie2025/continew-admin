@@ -16,16 +16,25 @@
 
 package top.continew.admin.controller.education;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.SalaryQuery;
+import top.continew.admin.education.model.req.SalaryBatchImportReq;
 import top.continew.admin.education.model.req.SalaryReq;
+import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
 import top.continew.admin.education.model.resp.SalaryResp;
+import top.continew.admin.education.service.SalaryJobService;
 import top.continew.admin.education.service.SalaryService;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
+import top.continew.starter.web.model.R;
 
 /**
  * 薪资管理 API
@@ -35,6 +44,30 @@ import top.continew.starter.extension.crud.enums.Api;
  */
 @Tag(name = "薪资管理 API")
 @RestController
+@Validated
+@RequiredArgsConstructor
 @CrudRequestMapping(value = "/education/salary", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
-public class SalaryController extends BaseController<SalaryService, SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> {}
+public class SalaryController extends BaseController<SalaryService, SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> {
+
+    private final SalaryJobService salaryJobService;
+
+    /**
+     * 生成本周工资流水
+     */
+    @Operation(summary = "生成本周工资流水", description = "为所有符合条件的老师创建本周的薪资记录")
+    @PostMapping("/initialize-weekly")
+    public R<?> initializeWeeklySalaryData() {
+        int count = salaryJobService.initializeWeeklySalaryData();
+        return R.ok(count);
+    }
+
+    /**
+     * 批量导入教师课程数量
+     */
+    @Operation(summary = "批量导入教师课程数量", description = "通过粘贴文本方式批量导入教师的课程数量数据")
+    @PostMapping("/batch-import")
+    public SalaryBatchImportResp batchImport(@Validated @RequestBody SalaryBatchImportReq req) {
+        return baseService.batchImport(req);
+    }
+}

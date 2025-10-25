@@ -18,7 +18,9 @@ package top.continew.admin.education.service;
 
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.SalaryQuery;
+import top.continew.admin.education.model.req.SalaryBatchImportReq;
 import top.continew.admin.education.model.req.SalaryReq;
+import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
 import top.continew.admin.education.model.resp.SalaryResp;
 
@@ -28,4 +30,13 @@ import top.continew.admin.education.model.resp.SalaryResp;
  * @author don
  * @since 2025/05/13 22:43
  */
-public interface SalaryService extends BaseService<SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> {}
+public interface SalaryService extends BaseService<SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> {
+
+    /**
+     * 批量导入教师课程数量
+     *
+     * @param req 批量导入请求参数
+     * @return 导入结果
+     */
+    SalaryBatchImportResp batchImport(SalaryBatchImportReq req);
+}

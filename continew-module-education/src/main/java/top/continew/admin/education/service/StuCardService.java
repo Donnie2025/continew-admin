@@ -44,7 +44,7 @@ public interface StuCardService extends BaseService<StuCardResp, StuCardDetailRe
     /**
      * 获取会员可用的会员卡列表
      *
-     * @param stuId     会员ID
+     * @param stuId 会员ID
      * @return 可用会员卡列表
      */
     List<StuCardResp> getAvailableCards(Long stuId);

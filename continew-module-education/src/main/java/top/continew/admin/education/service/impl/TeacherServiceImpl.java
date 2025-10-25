@@ -63,19 +63,19 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
     public Long create(TeacherReq req) {
         // 1. 创建教师
         Long teacherId = super.create(req);
-        
+
         // 2. 检查并创建ClassIn账号
         registerClassinTeacherIfAbsent(teacherId, req);
-        
+
         return teacherId;
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void update(TeacherReq req, Long id) {
         // 1. 更新教师信息
         super.update(req, id);
-        
+
         // 2. 检查并创建ClassIn账号
         registerClassinTeacherIfAbsent(id, req);
     }
@@ -93,45 +93,46 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
     public TeacherDO getByPhone(String phone) {
         return this.baseMapper.selectByPhone(phone);
     }
-    
+
     /**
      * 检查并注册ClassIn教师账号
      *
      * @param teacherId 教师ID
-     * @param req 教师请求参数
+     * @param req       教师请求参数
      * @return ClassIn用户信息
      */
     private ClassinUserDO registerClassinTeacherIfAbsent(Long teacherId, TeacherReq req) {
         // 1. 根据教师ID查询ClassIn用户
-        ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(teacherId, ClassinConstants.USER_TYPE_TEACHER);
+        ClassinUserDO classinUser = classinUserService
+            .getByMemberIdAndUserType(teacherId, ClassinConstants.USER_TYPE_TEACHER);
         if (classinUser != null) {
             log.info("教师[{}]已有ClassIn账号，无需创建", teacherId);
             return classinUser;
         }
-        
+
         log.info("教师[{}]没有ClassIn账号，开始创建", teacherId);
-        
+
         // 2. 构建ClassIn用户请求参数
         ClassinUserReq classinUserReq = new ClassinUserReq();
         classinUserReq.setNickname(req.getName());
-        
+
         // 优先使用手机号，其次使用邮箱
         if (StrUtil.isNotBlank(req.getPhone())) {
             classinUserReq.setTelephone(req.getPhone());
         } else if (StrUtil.isNotBlank(req.getEmail())) {
             classinUserReq.setEmail(req.getEmail());
         }
-        
+
         // 设置随机密码（实际应用中可能需要更复杂的密码生成策略）
         classinUserReq.setPassword(RandomUtil.randomString(8));
-        
+
         // 设置用户类型为教师
         classinUserReq.setUserType(ClassinConstants.USER_TYPE_TEACHER);
-        
+
         // 3. 调用ClassIn注册接口
         try {
             String classinUid = classinClient.registerClassin(classinUserReq);
-            
+
             // 4. 创建并保存ClassIn用户关联
             ClassinUserDO newClassinUser = new ClassinUserDO();
             newClassinUser.setMemberId(teacherId);
@@ -142,7 +143,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
             newClassinUser.setEmail(req.getEmail());
             newClassinUser.setPassword(classinUserReq.getPassword());
             newClassinUser.setStatus(DisEnableStatusEnum.ENABLE.getValue());
-            
+
             // 使用ClassinUserReq和create方法保存
             ClassinUserReq userReq = new ClassinUserReq();
             userReq.setMemberId(teacherId);
@@ -153,13 +154,13 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
             userReq.setEmail(req.getEmail());
             userReq.setPassword(classinUserReq.getPassword());
             userReq.setStatus(DisEnableStatusEnum.ENABLE.getValue());
-            
+
             // 设置ClassIn机构ID（从配置中获取或使用默认值）
             userReq.setClassinInstitutionId(1L); // 这里应该从配置中获取实际的机构ID
-            
+
             classinUserService.create(userReq);
             log.info("教师[{}]ClassIn账号创建成功，ClassIn UID: {}", teacherId, classinUid);
-            
+
             return newClassinUser;
         } catch (Exception e) {
             log.error("教师[{}]ClassIn账号创建失败: {}", teacherId, e.getMessage(), e);

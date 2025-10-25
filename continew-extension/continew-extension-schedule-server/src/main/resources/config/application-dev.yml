@@ -1,5 +1,14 @@
 server:
   port: 8001
+  # Tomcat 配置
+  tomcat:
+    # 连接超时时间（毫秒）
+    connection-timeout: 60000
+    threads:
+      # 最大工作线程数
+      max: 200
+      # 最小工作线程数
+      min-spare: 10
 
 --- ### 数据源配置
 spring.datasource:
@@ -7,6 +16,18 @@ spring.datasource:
   username: ${DB_USER:continew_admin}
   password: ${DB_PWD:nhy67ujm}
   driver-class-name: com.mysql.cj.jdbc.Driver
+  # Hikari 连接池配置
+  hikari:
+    # 最大连接数量
+    maximum-pool-size: 20
+    # 获取连接超时时间（毫秒）
+    connection-timeout: 30000
+    # 空闲连接最大存活时间（毫秒）
+    idle-timeout: 600000
+    # 连接最大生存时间（毫秒）
+    max-lifetime: 1800000
+    # 查询超时时间（秒）- 重要：避免慢查询导致 502
+    query-timeout: 60
 #  # PostgreSQL 配置
 #  url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:continew_admin_job}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&stringtype=unspecified
 #  username: ${DB_USER:root}

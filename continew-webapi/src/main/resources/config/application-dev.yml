@@ -244,9 +244,24 @@ justauth:
   cache:
     type: REDIS
 
+--- ### Feign 配置（用于调用 SnailJob API）
+spring.cloud.openfeign:
+  client:
+    config:
+      default:
+        # 连接超时时间（毫秒）
+        connect-timeout: 10000
+        # 读取超时时间（毫秒）- 增加到 60 秒以处理大数据量查询
+        read-timeout: 60000
+      # SnailJob API 专用配置
+      JobBatchApi:
+        read-timeout: 60000
+      JobApi:
+        read-timeout: 60000
+
 --- ### Snail Job 配置
 snail-job:
-  enabled: true
+  enabled: false
   # 客户端地址（默认自动获取本机 IP）
   #host: 127.0.0.1
   # 客户端端口（默认：1789）

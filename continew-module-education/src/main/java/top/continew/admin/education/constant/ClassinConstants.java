@@ -24,7 +24,6 @@ package top.continew.admin.education.constant;
  */
 public class ClassinConstants {
 
-
     /**
      * 用户类型：学生
      */

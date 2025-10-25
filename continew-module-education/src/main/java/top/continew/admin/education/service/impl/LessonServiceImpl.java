@@ -1,13 +1,28 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.education.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.client.ClassinClient;
+import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.mapper.LessonMapper;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.entity.LessonDO;
@@ -15,21 +30,17 @@ import top.continew.admin.education.model.query.LessonQuery;
 import top.continew.admin.education.model.req.LessonReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
-import top.continew.admin.education.model.req.classin.ClassinDeleteActivityReq;
 import top.continew.admin.education.model.resp.LessonDetailResp;
 import top.continew.admin.education.model.resp.LessonResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
-import top.continew.admin.education.model.resp.classin.ClassinDeleteActivityResp;
 import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.LessonService;
-import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.starter.core.exception.BusinessException;
+import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.time.ZoneOffset;
 import java.util.List;
-
-import cn.hutool.core.bean.BeanUtil;
 
 /**
  * 课堂业务实现
@@ -44,7 +55,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
 
     private final ClassinClient classinClient;
     private final ClassinUserService classinUserService;
-    
+
     /**
      * 重写创建方法，增加对接ClassIn创建教室功能
      */
@@ -52,37 +63,37 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     @Transactional(rollbackFor = Exception.class)
     public Long create(LessonReq req) {
         log.info("开始创建课堂，请求参数：{}", req);
-        
+
         // 1. 先创建ClassIn单元（如果不存在）
         Long unitId = createClassinUnit(req);
-        
+
         // 2. 调用ClassIn API创建课堂活动
         ClassinCreateClassResp classResp = createClassinClass(req, unitId);
-        
+
         // 3. 保存课堂信息到数据库
         LessonDO entity = BeanUtil.copyProperties(req, LessonDO.class);
-        
+
         // 设置ClassIn返回的信息
         entity.setActivityUid(classResp.getActivityId());
         entity.setClassUid(classResp.getClassId());
         entity.setUnitUid(unitId);
         entity.setName(classResp.getName());
         entity.setLiveUrl(classResp.getLiveUrl());
-        
+
         // 设置拉流地址
         if (classResp.getLiveInfo() != null) {
             entity.setRtmpUrl(classResp.getLiveInfo().getRTMP());
             entity.setHlsUrl(classResp.getLiveInfo().getHLS());
             entity.setFlvUrl(classResp.getLiveInfo().getFLV());
         }
-        
+
         // 设置默认状态
         entity.setStatus(0); // 0-正常
-        
+
         // 保存到数据库
         super.save(entity);
         log.info("课堂创建成功，ID：{}", entity.getId());
-        
+
         return entity.getId();
     }
 
@@ -90,34 +101,34 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     public void beforeDelete(List<Long> ids) {
         // 删除ClassIn课堂活动
         log.info("开始删除课堂，IDs：{}", ids);
-        
+
         // 查询课堂信息
         List<LessonDO> lessonList = super.listByIds(ids);
-        
+
         for (LessonDO lesson : lessonList) {
             // 如果有ClassIn活动ID，则调用ClassIn API删除活动
             if (lesson.getActivityUid() != null && lesson.getCourseUid() != null) {
                 try {
                     // 构建删除请求
-                    ClassinDeleteActivityReq deleteReq = ClassinDeleteActivityReq.builder()
-                        .courseId(lesson.getCourseUid())
-                        .activityId(lesson.getActivityUid())
-                        .build();
-                    
-                    // 调用ClassIn API删除活动
-                    ClassinDeleteActivityResp deleteResp = classinClient.deleteActivity(deleteReq);
-                    log.info("ClassIn活动删除成功，活动ID：{}，名称：{}", deleteResp.getActivityId(), deleteResp.getName());
+                    //                    ClassinDeleteActivityReq deleteReq = ClassinDeleteActivityReq.builder()
+                    //                        .courseId(lesson.getCourseUid())
+                    //                        .activityId(lesson.getActivityUid())
+                    //                        .build();
+                    //
+                    //                    // 调用ClassIn API删除活动
+                    //                    ClassinDeleteActivityResp deleteResp = classinClient.deleteActivity(deleteReq);
+                    //                    log.info("ClassIn活动删除成功，活动ID：{}，名称：{}", deleteResp.getActivityId(), deleteResp.getName());
                 } catch (Exception e) {
                     // 删除失败不影响后续操作，只记录日志
-                    log.error("删除ClassIn活动失败，课堂ID：{}，活动ID：{}，错误信息：{}", 
-                        lesson.getId(), lesson.getActivityUid(), e.getMessage());
+                    log.error("删除ClassIn活动失败，课堂ID：{}，活动ID：{}，错误信息：{}", lesson.getId(), lesson.getActivityUid(), e
+                        .getMessage());
                 }
             }
         }
 
         super.beforeDelete(ids);
     }
-    
+
     /**
      * 创建ClassIn单元
      */
@@ -128,19 +139,19 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .publishFlag(2) // 2-已发布
             .content("系统自动创建的单元")
             .build();
-            
+
         try {
             ClassinCreateUnitResp unitResp = classinClient.createUnit(unitReq);
             log.info("ClassIn单元创建成功，单元ID：{}", unitResp.getUnitId());
             return unitResp.getUnitId();
         } catch (Exception e) {
             log.warn("创建ClassIn单元失败: {}", e.getMessage());
-            
+
             // 如果无法解析单元ID或者是其他错误，则抛出异常
             throw new BusinessException("创建ClassIn单元失败：" + e.getMessage());
         }
     }
-    
+
     /**
      * 创建ClassIn课堂活动
      */
@@ -148,11 +159,12 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         // 转换时间格式（LocalDateTime -> Unix timestamp in seconds）
         long startTimeSeconds = req.getStartTime().toEpochSecond(ZoneOffset.UTC);
         long endTimeSeconds = req.getEndTime().toEpochSecond(ZoneOffset.UTC);
-        
+
         // 获取教师的ClassIn用户ID
         Long teacherClassinUid = null;
         if (req.getTeacherId() != null) {
-            ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(req.getTeacherId(), ClassinConstants.USER_TYPE_TEACHER);
+            ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(req
+                .getTeacherId(), ClassinConstants.USER_TYPE_TEACHER);
             if (classinUser != null && classinUser.getClassinUid() != null) {
                 try {
                     teacherClassinUid = Long.parseLong(classinUser.getClassinUid());
@@ -164,12 +176,12 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
                 log.warn("未找到教师ID为{}的ClassIn用户信息", req.getTeacherId());
             }
         }
-        
+
         // 如果未获取到教师的ClassIn用户ID，则使用默认值或抛出异常
         if (teacherClassinUid == null) {
             throw new BusinessException("未找到教师的ClassIn用户信息，请确保教师已关联ClassIn账号");
         }
-        
+
         ClassinCreateClassReq classReq = ClassinCreateClassReq.builder()
             .courseId(req.getCourseUid())
             .unitId(unitId)
@@ -184,7 +196,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .cameraHide(0) // 0-显示坐席区
             .seatNum(req.getSeatNum() != null ? req.getSeatNum() : 0) // 设置上台人数，默认不限制
             .build();
-            
+
         try {
             ClassinCreateClassResp classResp = classinClient.createClass(classReq);
             log.info("ClassIn课堂活动创建成功，活动ID：{}，课堂ID：{}", classResp.getActivityId(), classResp.getClassId());

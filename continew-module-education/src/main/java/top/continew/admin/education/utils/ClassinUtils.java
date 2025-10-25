@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-present Charles7c Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package top.continew.admin.education.utils;
 
 import cn.hutool.core.util.StrUtil;
@@ -45,7 +61,7 @@ public class ClassinUtils {
         params.set("timeStamp", timeStamp);
         return params;
     }
-    
+
     /**
      * 构建符合ClassIn API v2要求的Header参数
      * 
@@ -56,51 +72,51 @@ public class ClassinUtils {
     public static Map<String, String> buildHeaderParams(ClassinProperties properties, JSONObject bodyParams) {
         // 1. 获取当前时间戳（秒级）
         long timeStamp = System.currentTimeMillis() / 1000;
-        
+
         // 2. 准备参与签名的参数
         Map<String, Object> signParams = new HashMap<>();
-        
+
         // 2.1 添加sid和timeStamp
         signParams.put("sid", properties.getAppId());
         signParams.put("timeStamp", String.valueOf(timeStamp));
-        
+
         // 2.2 添加body中的参数（排除不参与签名的参数）
         if (bodyParams != null) {
             for (Entry<String, Object> entry : bodyParams.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                
+
                 // 排除数组和字典类参数
                 if (value instanceof List || value instanceof Map || value instanceof JSONObject) {
                     continue;
                 }
-                
+
                 // 排除value长度超过1024的参数
                 if (value != null && value.toString().length() > 1024) {
                     continue;
                 }
-                
+
                 signParams.put(key, value);
             }
         }
-        
+
         // 3. 计算签名
         String sign = calculateSignV2(signParams, properties.getAppSecret());
-        
+
         // 4. 构建Header
         Map<String, String> headers = new HashMap<>();
         headers.put("X-EEO-SIGN", sign);
         headers.put("X-EEO-UID", properties.getAppId());
         headers.put("X-EEO-TS", String.valueOf(timeStamp));
         headers.put("Content-Type", "application/json");
-        
+
         return headers;
     }
-    
+
     /**
      * 计算ClassIn API v2签名
      * 
-     * @param params 参与签名的参数
+     * @param params    参与签名的参数
      * @param secretKey 密钥
      * @return 签名值
      */
@@ -108,28 +124,28 @@ public class ClassinUtils {
         // 1. 按参数名ASCII码从小到大排序
         List<String> keys = new ArrayList<>(params.keySet());
         Collections.sort(keys);
-        
+
         // 2. 拼接待签名字符串
         StringBuilder stringBuilder = new StringBuilder();
         for (int i = 0; i < keys.size(); i++) {
             String key = keys.get(i);
             String value = params.get(key).toString();
-            
+
             stringBuilder.append(key).append("=").append(value);
-            
+
             // 不是最后一个参数，添加&
             if (i < keys.size() - 1) {
                 stringBuilder.append("&");
             }
         }
-        
+
         // 3. 拼接密钥
         stringBuilder.append("&key=").append(secretKey);
-        
+
         // 4. 计算MD5
         String signStr = stringBuilder.toString();
         log.debug("待签名字符串: {}", signStr);
-        
+
         return DigestUtils.md5Hex(signStr);
     }
 
@@ -169,10 +185,10 @@ public class ClassinUtils {
     /**
      * 执行 POST 请求并处理通用响应
      *
-     * @param apiUrl 接口URL
-     * @param params 请求参数
+     * @param apiUrl   接口URL
+     * @param params   请求参数
      * @param dataType 返回数据类型
-     * @param <T> 泛型
+     * @param <T>      泛型
      * @return 响应对象
      */
     public static <T> ClassinBaseResp<T> executePost(String apiUrl, JSONObject params, Class<T> dataType) {
@@ -190,7 +206,7 @@ public class ClassinUtils {
             if (StrUtil.isBlank(responseBody)) {
                 throw new BusinessException("接口响应为空");
             }
-            
+
             // 由于泛型嵌套，需要手动解析
             JSONObject result = JSONUtil.parseObj(responseBody);
             ClassinBaseResp<T> baseResp = new ClassinBaseResp<>();
@@ -204,7 +220,7 @@ public class ClassinUtils {
         } catch (Exception e) {
             log.error("调用ClassIn接口异常: {}", e.getMessage(), e);
             if (e instanceof BusinessException) {
-                throw (BusinessException) e;
+                throw (BusinessException)e;
             }
             throw new BusinessException("调用ClassIn接口失败：" + e.getMessage());
         }
@@ -213,15 +229,15 @@ public class ClassinUtils {
     /**
      * 执行通用的 POST 请求
      *
-     * @param apiUrl 接口URL
-     * @param params 请求参数
+     * @param apiUrl      接口URL
+     * @param params      请求参数
      * @param description 接口描述（用于日志和异常信息）
      * @return 响应JSONObject
      */
     public static JSONObject executePostRequest(String apiUrl, JSONObject params, String description) {
         try {
             log.debug("调用 ClassIn {} 接口: url={}, params={}", description, apiUrl, params);
-            
+
             HttpResponse response = HttpRequest.post(apiUrl)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .form(params)
@@ -247,47 +263,53 @@ public class ClassinUtils {
         } catch (Exception e) {
             log.error("调用ClassIn {} 接口异常: {}", description, e.getMessage(), e);
             if (e instanceof BusinessException) {
-                throw (BusinessException) e;
+                throw (BusinessException)e;
             }
             throw new BusinessException(description + "失败：" + e.getMessage());
         }
     }
-    
+
     /**
      * 执行带Header鉴权的POST请求（API v2）
      *
-     * @param apiUrl 接口URL
-     * @param headers 请求头
-     * @param bodyParams 请求体参数
+     * @param apiUrl      接口URL
+     * @param headers     请求头
+     * @param bodyParams  请求体参数
      * @param description 接口描述（用于日志和异常信息）
      * @return 响应JSONObject
      */
-    public static JSONObject executePostRequestV2(String apiUrl, Map<String, String> headers, JSONObject bodyParams, String description) {
+    public static JSONObject executePostRequestV2(String apiUrl,
+                                                  Map<String, String> headers,
+                                                  JSONObject bodyParams,
+                                                  String description) {
         return executePostRequestV2(apiUrl, headers, bodyParams, description, null);
     }
-    
+
     /**
      * 执行带Header鉴权的POST请求（API v2），可以指定可接受的错误码
      *
-     * @param apiUrl 接口URL
-     * @param headers 请求头
-     * @param bodyParams 请求体参数
-     * @param description 接口描述（用于日志和异常信息）
+     * @param apiUrl               接口URL
+     * @param headers              请求头
+     * @param bodyParams           请求体参数
+     * @param description          接口描述（用于日志和异常信息）
      * @param acceptableErrorCodes 可接受的错误码列表，这些错误码不会导致抛出异常
      * @return 响应JSONObject
      */
-    public static JSONObject executePostRequestV2(String apiUrl, Map<String, String> headers, JSONObject bodyParams, String description, List<Integer> acceptableErrorCodes) {
+    public static JSONObject executePostRequestV2(String apiUrl,
+                                                  Map<String, String> headers,
+                                                  JSONObject bodyParams,
+                                                  String description,
+                                                  List<Integer> acceptableErrorCodes) {
         try {
             log.debug("调用 ClassIn {} 接口(V2): url={}, headers={}, params={}", description, apiUrl, headers, bodyParams);
-            
-            HttpRequest request = HttpRequest.post(apiUrl)
-                .timeout(10000);
-            
+
+            HttpRequest request = HttpRequest.post(apiUrl).timeout(10000);
+
             // 添加Headers
             for (Entry<String, String> entry : headers.entrySet()) {
                 request.header(entry.getKey(), entry.getValue());
             }
-            
+
             // 发送请求
             HttpResponse response = request.body(bodyParams.toString()).execute();
 
@@ -300,16 +322,16 @@ public class ClassinUtils {
 
             JSONObject result = JSONUtil.parseObj(responseBody);
             int code = result.getInt("code");
-            
+
             // 检查是否是可接受的错误码
             boolean isAcceptableError = acceptableErrorCodes != null && acceptableErrorCodes.contains(code);
-            
+
             if (code != 1 && !isAcceptableError) {
                 String errorMsg = result.getStr("msg");
                 log.error("ClassIn {} 接口调用失败: code={}, error={}", description, code, errorMsg);
                 throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, code, errorMsg));
             }
-            
+
             // 如果是可接受的错误码，记录一下日志
             if (isAcceptableError) {
                 log.info("ClassIn {} 接口返回可接受的错误码: code={}, msg={}", description, code, result.getStr("msg"));
@@ -319,9 +341,9 @@ public class ClassinUtils {
         } catch (Exception e) {
             log.error("调用ClassIn {} 接口异常: {}", description, e.getMessage(), e);
             if (e instanceof BusinessException) {
-                throw (BusinessException) e;
+                throw (BusinessException)e;
             }
             throw new BusinessException(description + "失败：" + e.getMessage());
         }
     }
-} 
+}
