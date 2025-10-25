@@ -33,6 +33,7 @@ import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
 import top.continew.admin.education.model.resp.SalaryResp;
 import top.continew.admin.education.service.SalaryService;
+import top.continew.admin.education.util.SalaryCalculationUtil;
 import top.continew.starter.core.exception.BusinessException;
 
 import java.math.BigDecimal;
@@ -85,12 +86,8 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
             req.setDeductionAmount(deductionAmount);
         }
 
-        // 设置小费金额，如果为空则默认为0
-        BigDecimal tipAmount = req.getTipAmount();
-        if (tipAmount == null) {
-            tipAmount = BigDecimal.ZERO;
-            req.setTipAmount(tipAmount);
-        }
+        // 小费将在 afterCreate 中根据课程总金额自动计算
+        // 这里不再设置默认值
 
         // 设置计算的值到请求对象中
         req.setCourseAmount(courseAmount);
@@ -124,7 +121,9 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
             ? entity.getDeductionAmount()
             : BigDecimal.ZERO;
 
-        BigDecimal tipAmount = entity.getTipAmount() != null ? entity.getTipAmount() : BigDecimal.ZERO;
+        // 自动计算小费金额
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        entity.setTipAmount(tipAmount);
 
         // 重新计算最终支付金额
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
@@ -160,13 +159,12 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
             }
         }
 
-        // 确保扣款金额和小费金额不为空
+        // 确保扣款金额不为空
         if (req.getDeductionAmount() == null) {
             req.setDeductionAmount(BigDecimal.ZERO);
         }
-        if (req.getTipAmount() == null) {
-            req.setTipAmount(BigDecimal.ZERO);
-        }
+        
+        // 小费将在 afterUpdate 中根据课程总金额自动重新计算
 
         super.beforeUpdate(req, id);
     }
@@ -176,7 +174,11 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         // 重新计算最终支付金额
         BigDecimal courseAmount = entity.getCourseAmount() != null ? entity.getCourseAmount() : BigDecimal.ZERO;
         BigDecimal deductionAmount = entity.getDeductionAmount() != null ? entity.getDeductionAmount() : BigDecimal.ZERO;
-        BigDecimal tipAmount = entity.getTipAmount() != null ? entity.getTipAmount() : BigDecimal.ZERO;
+        
+        // 自动计算小费金额
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        entity.setTipAmount(tipAmount);
+        
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
         
         entity.setFinalAmount(finalAmount);
@@ -328,8 +330,15 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         BigDecimal courseAmount = BigDecimal.valueOf(teacher.getRate()).multiply(BigDecimal.valueOf(courseCount));
         salary.setCourseAmount(courseAmount);
         salary.setDeductionAmount(BigDecimal.ZERO);
-        salary.setTipAmount(BigDecimal.ZERO);
-        salary.setFinalAmount(courseAmount);
+        
+        // 自动计算小费金额
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        salary.setTipAmount(tipAmount);
+        
+        // 计算最终金额
+        BigDecimal finalAmount = courseAmount.add(tipAmount);
+        salary.setFinalAmount(finalAmount);
+        
         salary.setStatus(1); // 生效
         salary.setIsSettled(0); // 未结算
 
@@ -347,7 +356,11 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         salary.setCourseAmount(courseAmount);
 
         BigDecimal deductionAmount = salary.getDeductionAmount() != null ? salary.getDeductionAmount() : BigDecimal.ZERO;
-        BigDecimal tipAmount = salary.getTipAmount() != null ? salary.getTipAmount() : BigDecimal.ZERO;
+        
+        // 自动重新计算小费金额
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        salary.setTipAmount(tipAmount);
+        
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
         salary.setFinalAmount(finalAmount);
     }

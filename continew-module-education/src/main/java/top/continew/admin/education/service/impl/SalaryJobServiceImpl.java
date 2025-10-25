@@ -25,6 +25,7 @@ import top.continew.admin.education.mapper.TeacherMapper;
 import top.continew.admin.education.model.entity.SalaryDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.service.SalaryJobService;
+import top.continew.admin.education.util.SalaryCalculationUtil;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -64,9 +65,10 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         LocalDate daysAgo = LocalDate.now().minusDays(days);
         String dateThreshold = daysAgo.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        // 查询符合条件的未结算薪资记录
+        // 查询符合条件的未结算薪资记录（status=1生效，isSettled=0未结算）
         List<SalaryDO> pendingSalaries = salaryMapper.lambdaQuery()
-            .eq(SalaryDO::getStatus, 0)
+            .eq(SalaryDO::getStatus, 1)  // 状态为生效
+            .eq(SalaryDO::getIsSettled, 0)  // 未结算
             .le(SalaryDO::getStartDate, dateThreshold)
             .list();
 
@@ -78,7 +80,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
             for (SalaryDO salary : pendingSalaries) {
                 boolean updated = salaryMapper.lambdaUpdate()
                     .eq(SalaryDO::getId, salary.getId())
-                    .set(SalaryDO::getStatus, 1)
+                    .set(SalaryDO::getIsSettled, 1)  // 设置为已结算
                     .update();
 
                 if (updated) {
@@ -217,11 +219,21 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         salary.setStartDate(startOfWeek);
         salary.setEndDate(endOfWeek);
         salary.setCourseCount(0);
-        salary.setCourseAmount(BigDecimal.ZERO);
+        
+        // 初始课程金额为0
+        BigDecimal courseAmount = BigDecimal.ZERO;
+        salary.setCourseAmount(courseAmount);
         salary.setDeductionAmount(BigDecimal.ZERO);
-        salary.setTipAmount(BigDecimal.ZERO);
-        salary.setFinalAmount(BigDecimal.ZERO);
-        salary.setStatus(0); // 未结算
+        
+        // 自动计算小费金额（课程金额为0时，小费也为0）
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        salary.setTipAmount(tipAmount);
+        
+        // 最终金额 = 课程金额 - 扣款金额 + 小费金额
+        salary.setFinalAmount(courseAmount.add(tipAmount));
+        
+        salary.setStatus(1); // 生效
+        salary.setIsSettled(0); // 未结算
         salary.setRate(teacher.getRate());
         salary.setGroupName(teacher.getGroupName());
         salary.setCreateUser(1L); // 系统默认用户ID
@@ -246,7 +258,12 @@ public class SalaryJobServiceImpl implements SalaryJobService {
 
         // 计算薪资金额
         BigDecimal courseAmount = calculateCourseAmount(teacher.getRate(), courseCount);
-        BigDecimal finalAmount = calculateFinalAmount(courseAmount, salary.getDeductionAmount(), salary.getTipAmount());
+        
+        // 自动重新计算小费金额
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        salary.setTipAmount(tipAmount);
+        
+        BigDecimal finalAmount = calculateFinalAmount(courseAmount, salary.getDeductionAmount(), tipAmount);
 
         // 更新金额
         salary.setCourseAmount(courseAmount);
@@ -275,7 +292,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
      * @param courseAmount    课程金额
      * @param deductionAmount 扣款金额
      * @param tipAmount       小费金额
-     * @return 最终金额 = 课程金额 - 扣款金额 - 小费金额
+     * @return 最终金额 = 课程金额 - 扣款金额 + 小费金额
      */
     private BigDecimal calculateFinalAmount(BigDecimal courseAmount, BigDecimal deductionAmount, BigDecimal tipAmount) {
         BigDecimal result = courseAmount;
@@ -283,7 +300,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
             result = result.subtract(deductionAmount);
         }
         if (tipAmount != null) {
-            result = result.subtract(tipAmount);
+            result = result.add(tipAmount);  // 小费是加到最终金额中
         }
         return result;
     }
