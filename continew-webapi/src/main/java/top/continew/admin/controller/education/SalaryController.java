@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.SalaryQuery;
 import top.continew.admin.education.model.req.SalaryBatchImportReq;
+import top.continew.admin.education.model.req.SalaryInitializeReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
@@ -53,12 +54,12 @@ public class SalaryController extends BaseController<SalaryService, SalaryResp, 
     private final SalaryJobService salaryJobService;
 
     /**
-     * 生成本周工资流水
+     * 生成工资流水
      */
-    @Operation(summary = "生成本周工资流水", description = "为所有符合条件的老师创建本周的薪资记录")
+    @Operation(summary = "生成工资流水", description = "为所有符合条件的老师创建指定日期范围的薪资记录")
     @PostMapping("/initialize-weekly")
-    public R<?> initializeWeeklySalaryData() {
-        int count = salaryJobService.initializeWeeklySalaryData();
+    public R<?> initializeWeeklySalaryData(@RequestBody(required = false) SalaryInitializeReq req) {
+        int count = salaryJobService.initializeWeeklySalaryData(req);
         return R.ok(count);
     }
 

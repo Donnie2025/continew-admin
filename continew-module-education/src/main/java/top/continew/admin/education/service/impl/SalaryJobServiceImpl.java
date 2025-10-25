@@ -24,6 +24,7 @@ import top.continew.admin.education.mapper.SalaryMapper;
 import top.continew.admin.education.mapper.TeacherMapper;
 import top.continew.admin.education.model.entity.SalaryDO;
 import top.continew.admin.education.model.entity.TeacherDO;
+import top.continew.admin.education.model.req.SalaryInitializeReq;
 import top.continew.admin.education.service.SalaryJobService;
 import top.continew.admin.education.util.SalaryCalculationUtil;
 
@@ -118,18 +119,28 @@ public class SalaryJobServiceImpl implements SalaryJobService {
     }
 
     /**
-     * 初始化本周教师薪资数据
-     * 为所有符合条件的老师（status为1且group_name不为classin）创建本周的薪资记录
+     * 初始化教师薪资数据
+     * 为所有符合条件的老师（status为1且group_name不为classin）创建指定日期范围的薪资记录
      * 
+     * @param req 薪资初始化请求（包含起始日期和结束日期，可选）
      * @return 新创建和更新的薪资记录数量
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public int initializeWeeklySalaryData() {
-        // 获取本周的起始日期和结束日期（周一到周日）
-        LocalDate today = LocalDate.now();
-        LocalDate startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate endOfWeek = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+    public int initializeWeeklySalaryData(SalaryInitializeReq req) {
+        // 获取日期范围，如果未提供则使用本周
+        LocalDate startOfWeek;
+        LocalDate endOfWeek;
+        
+        if (req != null && req.getStartDate() != null && req.getEndDate() != null) {
+            startOfWeek = req.getStartDate();
+            endOfWeek = req.getEndDate();
+        } else {
+            // 默认为本周（周一到周日）
+            LocalDate today = LocalDate.now();
+            startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            endOfWeek = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        }
 
         log.info("初始化{}至{}期间的教师薪资数据", startOfWeek, endOfWeek);
 
@@ -226,7 +237,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         salary.setDeductionAmount(BigDecimal.ZERO);
         
         // 自动计算小费金额（课程金额为0时，小费也为0）
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher.getGroupName());
         salary.setTipAmount(tipAmount);
         
         // 最终金额 = 课程金额 - 扣款金额 + 小费金额
@@ -260,7 +271,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         BigDecimal courseAmount = calculateCourseAmount(teacher.getRate(), courseCount);
         
         // 自动重新计算小费金额
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher.getGroupName());
         salary.setTipAmount(tipAmount);
         
         BigDecimal finalAmount = calculateFinalAmount(courseAmount, salary.getDeductionAmount(), tipAmount);

@@ -81,9 +81,9 @@ public class SalaryProcessingJob {
             SnailJobLog.REMOTE.info("定时任务 [初始化每周薪资数据] 开始执行");
 
             // 调用education模块的业务逻辑处理
-            int count = salaryJobService.initializeWeeklySalaryData();
-
-            SnailJobLog.REMOTE.info("定时任务 [初始化每周薪资数据] 执行完成，成功创建{}条薪资记录", count);
+//            int count = salaryJobService.initializeWeeklySalaryData();
+//
+//            SnailJobLog.REMOTE.info("定时任务 [初始化每周薪资数据] 执行完成，成功创建{}条薪资记录", count);
         } catch (Exception e) {
             SnailJobLog.REMOTE.error("初始化每周薪资数据任务执行失败: {}", e.getMessage(), e);
             throw e;

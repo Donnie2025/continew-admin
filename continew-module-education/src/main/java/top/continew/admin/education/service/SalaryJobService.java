@@ -16,6 +16,8 @@
 
 package top.continew.admin.education.service;
 
+import top.continew.admin.education.model.req.SalaryInitializeReq;
+
 /**
  * 薪资任务服务接口
  *
@@ -40,10 +42,11 @@ public interface SalaryJobService {
     void generateMonthlyReport();
 
     /**
-     * 初始化本周教师薪资数据
-     * 为所有符合条件的老师（status为1且group_name不为classin）创建本周的薪资记录
+     * 初始化教师薪资数据
+     * 为所有符合条件的老师（status为1且group_name不为classin）创建指定日期范围的薪资记录
      * 
-     * @return 新创建的薪资记录数量
+     * @param req 薪资初始化请求（包含起始日期和结束日期，可选）
+     * @return 新创建和更新的薪资记录数量
      */
-    int initializeWeeklySalaryData();
+    int initializeWeeklySalaryData(SalaryInitializeReq req);
 }

@@ -122,7 +122,7 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
             : BigDecimal.ZERO;
 
         // 自动计算小费金额
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, entity.getTeacherName(), entity.getGroupName());
         entity.setTipAmount(tipAmount);
 
         // 重新计算最终支付金额
@@ -176,7 +176,7 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         BigDecimal deductionAmount = entity.getDeductionAmount() != null ? entity.getDeductionAmount() : BigDecimal.ZERO;
         
         // 自动计算小费金额
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, entity.getTeacherName(), entity.getGroupName());
         entity.setTipAmount(tipAmount);
         
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
@@ -332,7 +332,7 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         salary.setDeductionAmount(BigDecimal.ZERO);
         
         // 自动计算小费金额
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher.getGroupName());
         salary.setTipAmount(tipAmount);
         
         // 计算最终金额
@@ -358,7 +358,7 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         BigDecimal deductionAmount = salary.getDeductionAmount() != null ? salary.getDeductionAmount() : BigDecimal.ZERO;
         
         // 自动重新计算小费金额
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount);
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher.getGroupName());
         salary.setTipAmount(tipAmount);
         
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
