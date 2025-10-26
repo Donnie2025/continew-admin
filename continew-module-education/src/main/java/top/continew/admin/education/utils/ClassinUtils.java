@@ -52,11 +52,12 @@ public class ClassinUtils {
      * @return 包含公共参数的JSONObject
      */
     public static JSONObject buildCommonParams(ClassinProperties properties) {
+        ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
         long timeStamp = System.currentTimeMillis() / 1000;
-        String safeKey = DigestUtils.md5Hex(properties.getAppSecret() + timeStamp);
+        String safeKey = DigestUtils.md5Hex(activeApp.getAppSecret() + timeStamp);
 
         JSONObject params = new JSONObject();
-        params.set("SID", properties.getAppId());
+        params.set("SID", activeApp.getAppId());
         params.set("safeKey", safeKey);
         params.set("timeStamp", timeStamp);
         return params;
@@ -70,6 +71,8 @@ public class ClassinUtils {
      * @return Header参数Map
      */
     public static Map<String, String> buildHeaderParams(ClassinProperties properties, JSONObject bodyParams) {
+        ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
+        
         // 1. 获取当前时间戳（秒级）
         long timeStamp = System.currentTimeMillis() / 1000;
 
@@ -77,7 +80,7 @@ public class ClassinUtils {
         Map<String, Object> signParams = new HashMap<>();
 
         // 2.1 添加sid和timeStamp
-        signParams.put("sid", properties.getAppId());
+        signParams.put("sid", activeApp.getAppId());
         signParams.put("timeStamp", String.valueOf(timeStamp));
 
         // 2.2 添加body中的参数（排除不参与签名的参数）
@@ -101,12 +104,12 @@ public class ClassinUtils {
         }
 
         // 3. 计算签名
-        String sign = calculateSignV2(signParams, properties.getAppSecret());
+        String sign = calculateSignV2(signParams, activeApp.getAppSecret());
 
         // 4. 构建Header
         Map<String, String> headers = new HashMap<>();
         headers.put("X-EEO-SIGN", sign);
-        headers.put("X-EEO-UID", properties.getAppId());
+        headers.put("X-EEO-UID", activeApp.getAppId());
         headers.put("X-EEO-TS", String.valueOf(timeStamp));
         headers.put("Content-Type", "application/json");
 

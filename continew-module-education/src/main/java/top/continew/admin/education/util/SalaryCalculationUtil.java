@@ -34,19 +34,19 @@ public class SalaryCalculationUtil {
      * 根据课程总金额、教师姓名和所属组计算小费
      * 规则：
      * - 特殊规则：
-     *   * Group name 为 "Rona" 的所有老师：小费为 ₱0
-     *   * 教师名为 "Issa" 的老师：小费为 ₱0
+     * * Group name 为 "Rona" 的所有老师：小费为 ₱0
+     * * 教师名为 "Issa" 的老师：小费为 ₱0
      * - 通用规则：
-     *   * Course Amount < 200: Tip = ₱0 (无小费)
-     *   * 200 <= Course Amount < 500: Tip = ₱5
-     *   * 500 <= Course Amount < 1000: Tip = ₱10
-     *   * 1000 <= Course Amount < 6000: Tip = ₱20
-     *   * 6000 <= Course Amount < 8000: Tip = ₱30
-     *   * Course Amount >= 8000: Tip = ₱50
+     * * Course Amount < 200: Tip = ₱0 (无小费)
+     * * 200 <= Course Amount < 500: Tip = ₱5
+     * * 500 <= Course Amount < 1000: Tip = ₱10
+     * * 1000 <= Course Amount < 6000: Tip = ₱20
+     * * 6000 <= Course Amount < 8000: Tip = ₱30
+     * * Course Amount >= 8000: Tip = ₱50
      *
      * @param courseAmount 课程总金额
-     * @param teacherName 教师姓名
-     * @param groupName 所属组
+     * @param teacherName  教师姓名
+     * @param groupName    所属组
      * @return 小费金额
      */
     public static BigDecimal calculateTipAmount(BigDecimal courseAmount, String teacherName, String groupName) {
@@ -54,12 +54,12 @@ public class SalaryCalculationUtil {
         if ("Rona".equalsIgnoreCase(groupName)) {
             return BigDecimal.ZERO;
         }
-        
+
         // 特殊规则2：Issa老师小费为0
         if ("Issa".equalsIgnoreCase(teacherName)) {
             return BigDecimal.ZERO;
         }
-        
+
         // 通用规则
         if (courseAmount == null) {
             return BigDecimal.ZERO;
@@ -80,4 +80,3 @@ public class SalaryCalculationUtil {
         }
     }
 }
-

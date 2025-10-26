@@ -131,7 +131,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         // 获取日期范围，如果未提供则使用本周
         LocalDate startOfWeek;
         LocalDate endOfWeek;
-        
+
         if (req != null && req.getStartDate() != null && req.getEndDate() != null) {
             startOfWeek = req.getStartDate();
             endOfWeek = req.getEndDate();
@@ -177,7 +177,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
                 salariesToInsert.add(newSalary);
                 log.debug("为教师[{}]创建本周薪资记录", teacher.getName());
             } else {
-                if (existingSalary.getIsSettled()==1){
+                if (existingSalary.getIsSettled() == 1) {
                     // 已结算的
                     log.debug("教师[{}] 本周已结算，跳过", teacher.getName());
                     continue;
@@ -206,7 +206,8 @@ public class SalaryJobServiceImpl implements SalaryJobService {
      */
     private List<TeacherDO> queryEligibleTeachers() {
         return teacherMapper.lambdaQuery()
-            .eq(TeacherDO::getStatus, 1).eq(TeacherDO::getIsShow, 1)
+            .eq(TeacherDO::getStatus, 1)
+            .eq(TeacherDO::getIsShow, 1)
             .and(wrapper -> wrapper.ne(TeacherDO::getGroupName, "Classin")
                 .or()
                 .isNull(TeacherDO::getGroupName)
@@ -230,19 +231,20 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         salary.setStartDate(startOfWeek);
         salary.setEndDate(endOfWeek);
         salary.setCourseCount(0);
-        
+
         // 初始课程金额为0
         BigDecimal courseAmount = BigDecimal.ZERO;
         salary.setCourseAmount(courseAmount);
         salary.setDeductionAmount(BigDecimal.ZERO);
-        
+
         // 自动计算小费金额（课程金额为0时，小费也为0）
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher.getGroupName());
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher
+            .getGroupName());
         salary.setTipAmount(tipAmount);
-        
+
         // 最终金额 = 课程金额 - 扣款金额 + 小费金额
         salary.setFinalAmount(courseAmount.add(tipAmount));
-        
+
         salary.setStatus(1); // 生效
         salary.setIsSettled(0); // 未结算
         salary.setRate(teacher.getRate());
@@ -269,11 +271,12 @@ public class SalaryJobServiceImpl implements SalaryJobService {
 
         // 计算薪资金额
         BigDecimal courseAmount = calculateCourseAmount(teacher.getRate(), courseCount);
-        
+
         // 自动重新计算小费金额
-        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher.getGroupName());
+        BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(courseAmount, teacher.getName(), teacher
+            .getGroupName());
         salary.setTipAmount(tipAmount);
-        
+
         BigDecimal finalAmount = calculateFinalAmount(courseAmount, salary.getDeductionAmount(), tipAmount);
 
         // 更新金额

@@ -56,42 +56,46 @@ public class ClassinClient {
     @PostConstruct
     public void init() {
         log.info("开始初始化ClassIn客户端配置...");
-        log.info("当前配置信息: url={}, register={}, addSchoolStudent={}, addTeacher={}, appId={}", properties
-            .getUrl(), properties.getRegister(), properties.getAddSchoolStudent(), properties
-                .getAddTeacher(), properties.getAppId());
+        
+        ClassinProperties.ApiConfig api = properties.getApi();
+        ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
+        
+        log.info("当前激活应用: {}", properties.getActive());
+        log.info("当前配置信息: url={}, register={}, addSchoolStudent={}, addTeacher={}, appId={}", 
+            api.getUrl(), api.getRegister(), api.getAddSchoolStudent(), api.getAddTeacher(), activeApp.getAppId());
 
         // 校验必要的配置参数
-        if (StrUtil.isBlank(properties.getUrl())) {
+        if (StrUtil.isBlank(api.getUrl())) {
             throw new IllegalStateException("ClassIn API URL不能为空，请检查配置文件中的classin.api.url配置项");
         }
-        if (StrUtil.isBlank(properties.getAppId())) {
-            throw new IllegalStateException("ClassIn AppID不能为空，请检查配置文件中的classin.api.appId配置项");
+        if (StrUtil.isBlank(activeApp.getAppId())) {
+            throw new IllegalStateException("ClassIn AppID不能为空，请检查配置文件中的classin应用配置项");
         }
-        if (StrUtil.isBlank(properties.getAppSecret())) {
-            throw new IllegalStateException("ClassIn AppSecret不能为空，请检查配置文件中的classin.api.appSecret配置项");
+        if (StrUtil.isBlank(activeApp.getAppSecret())) {
+            throw new IllegalStateException("ClassIn AppSecret不能为空，请检查配置文件中的classin应用配置项");
         }
-        if (StrUtil.isBlank(properties.getRegister())) {
+        if (StrUtil.isBlank(api.getRegister())) {
             throw new IllegalStateException("ClassIn注册接口路径不能为空，请检查配置文件中的classin.api.register配置项");
         }
-        if (StrUtil.isBlank(properties.getAddSchoolStudent())) {
+        if (StrUtil.isBlank(api.getAddSchoolStudent())) {
             throw new IllegalStateException("ClassIn添加学生接口路径不能为空，请检查配置文件中的classin.api.addSchoolStudent配置项");
         }
-        if (StrUtil.isBlank(properties.getAddTeacher())) {
+        if (StrUtil.isBlank(api.getAddTeacher())) {
             throw new IllegalStateException("ClassIn添加教师接口路径不能为空，请检查配置文件中的classin.api.addTeacher配置项");
         }
-        if (StrUtil.isBlank(properties.getAddCourse())) {
+        if (StrUtil.isBlank(api.getAddCourse())) {
             throw new IllegalStateException("ClassIn新增课程接口路径不能为空，请检查配置文件中的classin.api.addCourse配置项");
         }
-        if (StrUtil.isBlank(properties.getCreateClass())) {
+        if (StrUtil.isBlank(api.getCreateClass())) {
             throw new IllegalStateException("ClassIn创建课堂活动接口路径不能为空，请检查配置文件中的classin.api.createClass配置项");
         }
-        if (StrUtil.isBlank(properties.getUpdateClass())) {
+        if (StrUtil.isBlank(api.getUpdateClass())) {
             throw new IllegalStateException("ClassIn编辑课堂活动接口路径不能为空，请检查配置文件中的classin.api.updateClass配置项");
         }
-        if (StrUtil.isBlank(properties.getCreateUnit())) {
+        if (StrUtil.isBlank(api.getCreateUnit())) {
             throw new IllegalStateException("ClassIn创建单元接口路径不能为空，请检查配置文件中的classin.api.createUnit配置项");
         }
-        if (StrUtil.isBlank(properties.getDeleteActivity())) {
+        if (StrUtil.isBlank(api.getDeleteActivity())) {
             throw new IllegalStateException("ClassIn删除活动接口路径不能为空，请检查配置文件中的classin.api.deleteActivity配置项");
         }
 
@@ -133,7 +137,7 @@ public class ClassinClient {
             params.set("nickname", StrUtil.maxLength(req.getNickname(), 24));
         }
 
-        String apiUrl = properties.getUrl() + properties.getRegister();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getRegister();
         ClassinBaseResp<String> resp = ClassinUtils.executePost(apiUrl, params, String.class);
 
         // 特殊处理：用户已注册也视为成功
@@ -168,7 +172,7 @@ public class ClassinClient {
         }
 
         // 2. 调用接口
-        String apiUrl = properties.getUrl() + properties.getAddCourse();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getAddCourse();
         ClassinBaseResp<Long> resp = ClassinUtils.executePost(apiUrl, params, Long.class);
 
         // 特殊处理：课程已存在也视为成功
@@ -236,7 +240,7 @@ public class ClassinClient {
         Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
 
         // 3. 调用接口
-        String apiUrl = properties.getUrl() + properties.getCreateClass();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getCreateClass();
         JSONObject result = ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "创建课堂活动");
 
         // 4. 解析响应数据
@@ -267,7 +271,7 @@ public class ClassinClient {
         params.set("nickname", req.getNickname());
 
         // 调用ClassIn添加学生接口
-        String apiUrl = properties.getUrl() + properties.getAddSchoolStudent();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getAddSchoolStudent();
         JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加学生");
 
         return result.getJSONObject("data").getStr("data");
@@ -283,7 +287,7 @@ public class ClassinClient {
         }
 
         // 调用ClassIn添加教师接口
-        String apiUrl = properties.getUrl() + properties.getAddTeacher();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getAddTeacher();
         JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加教师");
 
         return result.getJSONObject("data").getStr("data");
@@ -374,7 +378,7 @@ public class ClassinClient {
         }
 
         // 3. 调用接口
-        String apiUrl = properties.getUrl() + properties.getUpdateClass();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getUpdateClass();
         JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "编辑课堂活动");
 
         // 4. 解析响应数据
@@ -416,7 +420,7 @@ public class ClassinClient {
         Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
 
         // 4. 调用接口，设置可接受的错误码29208（单元已存在）
-        String apiUrl = properties.getUrl() + properties.getCreateUnit();
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getCreateUnit();
         List<Integer> acceptableErrorCodes = Collections.singletonList(29208); // 单元已存在
         JSONObject result = ClassinUtils
             .executePostRequestV2(apiUrl, headers, bodyParams, "创建单元", acceptableErrorCodes);

@@ -22,12 +22,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.StudentQuery;
+import top.continew.admin.education.model.req.StudentBatchImportReq;
 import top.continew.admin.education.model.req.StudentReq;
+import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.service.StudentService;
@@ -57,5 +60,17 @@ public class StudentController extends BaseController<StudentService, StudentRes
     @Operation(summary = "搜索学生", description = "根据关键字搜索启用状态的学生")
     public R<List<StudentResp>> search(@Parameter(description = "关键字（姓名或手机号）") @RequestParam String keyword) {
         return R.success(baseService.searchStudents(keyword));
+    }
+
+    /**
+     * 批量导入学生
+     *
+     * @param req 批量导入请求参数
+     * @return 导入结果
+     */
+    @PostMapping("/batch-import")
+    @Operation(summary = "批量导入学生", description = "批量导入学生信息（格式：学生姓名[Tab]手机号码）")
+    public StudentBatchImportResp batchImport(@Valid @RequestBody StudentBatchImportReq req) {
+        return baseService.batchImport(req);
     }
 }

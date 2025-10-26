@@ -29,8 +29,10 @@ import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.query.StudentQuery;
+import top.continew.admin.education.model.req.StudentBatchImportReq;
 import top.continew.admin.education.model.req.StudentReq;
 import top.continew.admin.education.model.req.ClassinUserReq;
+import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.service.StudentService;
@@ -39,6 +41,8 @@ import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import cn.hutool.core.util.StrUtil;
@@ -65,7 +69,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         Long studentId = super.create(req);
 
         // 2. 检查并创建ClassIn账号
-        registerClassinStudentIfAbsent(studentId, req);
+        //        registerClassinStudentIfAbsent(studentId, req);
 
         return studentId;
     }
@@ -77,7 +81,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         super.update(req, id);
 
         // 2. 检查并创建ClassIn账号
-        registerClassinStudentIfAbsent(id, req);
+        //        registerClassinStudentIfAbsent(id, req);
     }
 
     @Override
@@ -97,6 +101,93 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         // 执行查询并转换为响应对象
         List<StudentDO> studentList = this.baseMapper.selectList(queryWrapper);
         return studentList.stream().map(this::convert).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public StudentBatchImportResp batchImport(StudentBatchImportReq req) {
+        log.info("开始批量导入学生数据");
+
+        // 解析导入数据
+        String[] lines = req.getImportData().split("\n");
+        List<StudentBatchImportResp.ImportFailureDetail> failures = new ArrayList<>();
+        int successCount = 0;
+
+        // 逐行处理
+        for (String line : lines) {
+            if (StrUtil.isBlank(line)) {
+                continue;
+            }
+
+            try {
+                // 解析每行数据（格式：学生姓名\t手机号码）
+                String[] parts = line.trim().split("\t");
+                if (parts.length < 2) {
+                    failures.add(StudentBatchImportResp.ImportFailureDetail.builder()
+                        .studentName(line.trim())
+                        .reason("数据格式错误，应为：学生姓名[Tab]手机号码")
+                        .build());
+                    continue;
+                }
+
+                String studentName = parts[0].trim();
+                String phone = parts[1].trim();
+
+                // 验证手机号格式（简单验证）
+                if (!phone.matches("^1[3-9]\\d{9}$")) {
+                    failures.add(StudentBatchImportResp.ImportFailureDetail.builder()
+                        .studentName(studentName)
+                        .phone(phone)
+                        .reason("手机号码格式不正确")
+                        .build());
+                    continue;
+                }
+
+                // 检查学生是否已存在（通过手机号）
+                StudentDO existingStudent = baseMapper.selectOne(Wrappers.lambdaQuery(StudentDO.class)
+                    .eq(StudentDO::getPhone, phone));
+
+                if (existingStudent != null) {
+                    // 学生已存在，更新姓名
+                    existingStudent.setName(studentName);
+                    baseMapper.updateById(existingStudent);
+                    log.debug("更新学生[{}]，手机号：{}", studentName, phone);
+                } else {
+                    // 创建新学生
+                    StudentDO newStudent = new StudentDO();
+                    newStudent.setName(studentName);
+                    newStudent.setPhone(phone);
+                    newStudent.setGender("male"); // 默认性别
+                    newStudent.setRegisterTime(LocalDateTime.now());
+                    newStudent.setPassword(RandomUtil.randomString(8)); // 生成随机密码
+                    newStudent.setStatus(1); // 启用状态
+
+                    // 设置默认机构ID（可根据实际情况调整）
+                    newStudent.setInstitutionId(1L);
+
+                    baseMapper.insert(newStudent);
+                    log.debug("成功导入学生[{}]，手机号：{}", studentName, phone);
+                }
+
+                successCount++;
+
+            } catch (Exception e) {
+                log.error("导入数据出错：{}", line, e);
+                String studentName = line.substring(0, Math.min(line.length(), 50));
+                failures.add(StudentBatchImportResp.ImportFailureDetail.builder()
+                    .studentName(studentName)
+                    .reason("处理异常：" + e.getMessage())
+                    .build());
+            }
+        }
+
+        log.info("批量导入完成，成功：{}，失败：{}", successCount, failures.size());
+
+        return StudentBatchImportResp.builder()
+            .successCount(successCount)
+            .failureCount(failures.size())
+            .failures(failures)
+            .build();
     }
 
     /**

@@ -28,61 +28,105 @@ import org.springframework.context.annotation.Configuration;
  */
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "classin.api")
+@ConfigurationProperties(prefix = "classin")
 public class ClassinProperties {
 
     /**
-     * API基础URL
+     * API配置
      */
-    private String url;
+    private ApiConfig api;
 
     /**
-     * 注册接口路径
+     * 当前激活的应用（app138 或 app158）
      */
-    private String register;
+    private String active;
 
     /**
-     * 添加学生接口路径
+     * app158配置
      */
-    private String addSchoolStudent;
+    private AppConfig app158;
 
     /**
-     * 添加教师接口路径
+     * app138配置
      */
-    private String addTeacher;
+    private AppConfig app138;
 
     /**
-     * 新增课程接口
+     * 获取当前激活的应用配置
+     *
+     * @return 当前激活的应用配置
      */
-    private String addCourse;
+    public AppConfig getActiveAppConfig() {
+        if ("app158".equals(active)) {
+            return app158;
+        }
+        return app138; // 默认返回app138
+    }
 
     /**
-     * 创建课堂活动接口
+     * API配置类
      */
-    private String createClass;
+    @Data
+    public static class ApiConfig {
+        /**
+         * API基础URL
+         */
+        private String url;
+
+        /**
+         * 注册接口路径
+         */
+        private String register;
+
+        /**
+         * 添加学生接口路径
+         */
+        private String addSchoolStudent;
+
+        /**
+         * 添加教师接口路径
+         */
+        private String addTeacher;
+
+        /**
+         * 新增课程接口
+         */
+        private String addCourse;
+
+        /**
+         * 创建课堂活动接口
+         */
+        private String createClass;
+
+        /**
+         * 编辑课堂活动接口
+         */
+        private String updateClass;
+
+        /**
+         * 创建单元接口
+         */
+        private String createUnit;
+
+        /**
+         * 删除活动接口
+         */
+        private String deleteActivity;
+    }
 
     /**
-     * 编辑课堂活动接口
+     * 应用配置类
      */
-    private String updateClass;
+    @Data
+    public static class AppConfig {
+        /**
+         * 应用ID
+         */
+        private String appId;
 
-    /**
-     * 创建单元接口
-     */
-    private String createUnit;
-
-    /**
-     * 删除活动接口
-     */
-    private String deleteActivity;
-
-    /**
-     * 应用ID
-     */
-    private String appId;
-
-    /**
-     * 应用密钥
-     */
-    private String appSecret;
+        /**
+         * 应用密钥
+         */
+        private String appSecret;
+    }
 }

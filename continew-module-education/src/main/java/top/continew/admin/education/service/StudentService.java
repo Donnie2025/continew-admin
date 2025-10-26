@@ -18,7 +18,9 @@ package top.continew.admin.education.service;
 
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.StudentQuery;
+import top.continew.admin.education.model.req.StudentBatchImportReq;
 import top.continew.admin.education.model.req.StudentReq;
+import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 
@@ -39,4 +41,12 @@ public interface StudentService extends BaseService<StudentResp, StudentDetailRe
      * @return 学生列表
      */
     List<StudentResp> searchStudents(String keyword);
+
+    /**
+     * 批量导入学生
+     *
+     * @param req 批量导入请求参数
+     * @return 批量导入结果
+     */
+    StudentBatchImportResp batchImport(StudentBatchImportReq req);
 }
