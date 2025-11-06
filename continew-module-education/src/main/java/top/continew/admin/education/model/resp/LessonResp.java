@@ -80,6 +80,18 @@ public class LessonResp extends BaseResp {
     private Long teacherUid;
 
     /**
+     * 主讲教师ID
+     */
+    @Schema(description = "主讲教师ID")
+    private Long teacherId;
+
+    /**
+     * 主讲教师名字
+     */
+    @Schema(description = "主讲教师名字")
+    private String teacherName;
+
+    /**
      * 活动开始时间
      */
     @Schema(description = "活动开始时间")
@@ -90,6 +102,12 @@ public class LessonResp extends BaseResp {
      */
     @Schema(description = "活动结束时间")
     private LocalDateTime endTime;
+
+    /**
+     * 课堂时长（分钟）
+     */
+    @Schema(description = "课堂时长（分钟）")
+    private Long duration;
 
     /**
      * 上台人数

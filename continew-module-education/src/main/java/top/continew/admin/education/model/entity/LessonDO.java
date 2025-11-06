@@ -69,9 +69,19 @@ public class LessonDO extends BaseDO {
     private String name;
 
     /**
-     * 主讲教师UID
+     * 主讲教师ID
      */
     private Long teacherId;
+
+    /**
+     * 主讲教师UID
+     */
+    private Long teacherUid;
+
+    /**
+     * 主讲教师名字
+     */
+    private String teacherName;
 
     /**
      * 活动开始时间
@@ -79,9 +89,9 @@ public class LessonDO extends BaseDO {
     private LocalDateTime startTime;
 
     /**
-     * 活动结束时间
+     * 课堂时长（分钟）
      */
-    private LocalDateTime endTime;
+    private Long duration;
 
     /**
      * 上台人数

@@ -17,6 +17,8 @@
 package top.continew.admin.education.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -205,6 +208,27 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             log.error("创建ClassIn课堂活动失败", e);
             throw new BusinessException("创建ClassIn课堂活动失败：" + e.getMessage());
         }
+    }
+
+    @Override
+    public List<LessonResp> listByCourseId(Long courseId) {
+        // 查询指定班级的所有课节
+        LambdaQueryWrapper<LessonDO> wrapper = Wrappers.lambdaQuery(LessonDO.class)
+            .eq(LessonDO::getCourseId, courseId)
+            .orderByAsc(LessonDO::getStartTime); // 按开始时间正序排列
+        List<LessonDO> list = baseMapper.selectList(wrapper);
+
+        if (list.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 转换为响应对象
+        List<LessonResp> respList = new ArrayList<>();
+        for (LessonDO lesson : list) {
+            LessonResp resp = BeanUtil.copyProperties(lesson, LessonResp.class);
+            respList.add(resp);
+        }
+        return respList;
     }
 
 }

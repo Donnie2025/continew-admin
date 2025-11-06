@@ -35,7 +35,7 @@ public class SalaryCalculationUtil {
      * 规则：
      * - 特殊规则：
      * * Group name 为 "Rona" 的所有老师：小费为 ₱0
-     * * 教师名为 "Issa", "French", "Anna", "Mae" 的老师：小费为 ₱0
+     * * 教师名为 "Issa", "French", "Anna", "Mae", "Alex", "Lady", "Mary", "Ainie", "Daisy", "Mira" 的老师：小费为 ₱0
      * - 通用规则：
      * * Course Amount < 200: Tip = ₱0 (无小费)
      * * 200 <= Course Amount < 500: Tip = ₱5
@@ -55,11 +55,12 @@ public class SalaryCalculationUtil {
             return BigDecimal.ZERO;
         }
 
-        // 特殊规则2：Issa, French, Anna, Mae 老师小费为0
-        if ("Issa".equalsIgnoreCase(teacherName) 
-            || "French".equalsIgnoreCase(teacherName) 
-            || "Anna".equalsIgnoreCase(teacherName)
-            || "Mae".equalsIgnoreCase(teacherName)) {
+        // 特殊规则2：特定老师小费为0
+        if ("Issa".equalsIgnoreCase(teacherName) || "French".equalsIgnoreCase(teacherName) || "Anna"
+            .equalsIgnoreCase(teacherName) || "Mae".equalsIgnoreCase(teacherName) || "Alex"
+                .equalsIgnoreCase(teacherName) || "Lady".equalsIgnoreCase(teacherName) || "Mary"
+                    .equalsIgnoreCase(teacherName) || "Ainie".equalsIgnoreCase(teacherName) || "Daisy"
+                        .equalsIgnoreCase(teacherName) || "Mira".equalsIgnoreCase(teacherName)) {
             return BigDecimal.ZERO;
         }
 

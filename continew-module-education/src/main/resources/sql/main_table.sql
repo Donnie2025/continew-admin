@@ -121,6 +121,7 @@ CREATE TABLE `edu_card` (
 
 CREATE TABLE `edu_institution` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
+   `code` varchar(20) NOT NULL COMMENT '机构编码',
    `name` varchar(100) NOT NULL COMMENT '机构名称',
    `sid` varchar(100) NOT NULL COMMENT '机构SID',
    `secret` varchar(100) NOT NULL COMMENT '机构SECRET',
@@ -160,9 +161,11 @@ CREATE TABLE `edu_lesson` (
   `class_uid` bigint COMMENT 'ClassIn 课堂ID',
   `unit_uid` bigint COMMENT '单元ID',
   `name` varchar(50) NOT NULL COMMENT '课堂活动名称',
+  `teacher_id` bigint NOT NULL COMMENT '主讲教师ID',
   `teacher_uid` bigint NOT NULL COMMENT '主讲教师UID',
+  `teacher_name` varchar(100) NOT NULL COMMENT '主讲教师名称',
   `start_time` datetime NOT NULL COMMENT '活动开始时间',
-  `end_time` datetime NOT NULL COMMENT '活动结束时间',
+  `duration` bigint NOT NULL COMMENT '课时分钟数',
   `seat_num` int DEFAULT 2 COMMENT '上台人数，包括主讲教师，范围是[1,13]',
   `record_state` tinyint DEFAULT 0 COMMENT '录制状态：0-不录制，1-录制',
   `live_state` tinyint COMMENT '直播状态：0-不开启网页直播，1-开启网页直播',

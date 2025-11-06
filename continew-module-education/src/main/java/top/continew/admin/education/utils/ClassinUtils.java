@@ -72,7 +72,7 @@ public class ClassinUtils {
      */
     public static Map<String, String> buildHeaderParams(ClassinProperties properties, JSONObject bodyParams) {
         ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
-        
+
         // 1. 获取当前时间戳（秒级）
         long timeStamp = System.currentTimeMillis() / 1000;
 

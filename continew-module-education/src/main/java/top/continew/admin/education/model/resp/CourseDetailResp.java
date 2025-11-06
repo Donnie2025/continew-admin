@@ -25,7 +25,6 @@ import com.alibaba.excel.annotation.ExcelProperty;
 
 import top.continew.admin.common.model.resp.BaseDetailResp;
 import java.io.Serial;
-import java.time.*;
 
 /**
  * 班级详情信息
@@ -96,4 +95,16 @@ public class CourseDetailResp extends BaseDetailResp {
     @Schema(description = "所属机构ID")
     @ExcelProperty(value = "所属机构ID")
     private Long institutionId;
+
+    /**
+     * 班级老师列表
+     */
+    @Schema(description = "班级老师列表")
+    private java.util.List<CourseTeacherResp> teachers;
+
+    /**
+     * 班级学生列表
+     */
+    @Schema(description = "班级学生列表")
+    private java.util.List<CourseStudentResp> students;
 }

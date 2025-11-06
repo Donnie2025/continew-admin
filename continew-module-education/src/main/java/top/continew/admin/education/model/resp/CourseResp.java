@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.admin.common.model.resp.BaseResp;
 import java.io.Serial;
-import java.time.*;
 
 /**
  * 班级信息
@@ -50,6 +49,12 @@ public class CourseResp extends BaseResp {
     private Long mainTeacherId;
 
     /**
+     * 班主任姓名
+     */
+    @Schema(description = "班主任姓名")
+    private String mainTeacherName;
+
+    /**
      * Classin班主任ID
      */
     @Schema(description = "Classin班主任ID")
@@ -72,4 +77,16 @@ public class CourseResp extends BaseResp {
      */
     @Schema(description = "所属机构ID")
     private Long institutionId;
+
+    /**
+     * 班级老师列表
+     */
+    @Schema(description = "班级老师列表")
+    private java.util.List<CourseTeacherResp> teachers;
+
+    /**
+     * 班级学生列表
+     */
+    @Schema(description = "班级学生列表")
+    private java.util.List<CourseStudentResp> students;
 }

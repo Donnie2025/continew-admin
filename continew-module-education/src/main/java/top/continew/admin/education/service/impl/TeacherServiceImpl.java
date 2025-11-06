@@ -65,7 +65,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         Long teacherId = super.create(req);
 
         // 2. 检查并创建ClassIn账号
-//        registerClassinTeacherIfAbsent(teacherId, req);
+        //        registerClassinTeacherIfAbsent(teacherId, req);
 
         return teacherId;
     }
@@ -77,7 +77,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         super.update(req, id);
 
         // 2. 检查并创建ClassIn账号
-//        registerClassinTeacherIfAbsent(id, req);
+        //        registerClassinTeacherIfAbsent(id, req);
     }
 
     @Override

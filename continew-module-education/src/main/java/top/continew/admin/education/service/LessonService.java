@@ -22,6 +22,8 @@ import top.continew.admin.education.model.req.LessonReq;
 import top.continew.admin.education.model.resp.LessonDetailResp;
 import top.continew.admin.education.model.resp.LessonResp;
 
+import java.util.List;
+
 /**
  * 课堂业务接口
  *
@@ -30,4 +32,11 @@ import top.continew.admin.education.model.resp.LessonResp;
  */
 public interface LessonService extends BaseService<LessonResp, LessonDetailResp, LessonQuery, LessonReq> {
 
+    /**
+     * 获取班级的课节列表
+     *
+     * @param courseId 班级ID
+     * @return 课节列表
+     */
+    List<LessonResp> listByCourseId(Long courseId);
 }

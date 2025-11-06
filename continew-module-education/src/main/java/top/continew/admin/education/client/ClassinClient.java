@@ -56,13 +56,13 @@ public class ClassinClient {
     @PostConstruct
     public void init() {
         log.info("开始初始化ClassIn客户端配置...");
-        
+
         ClassinProperties.ApiConfig api = properties.getApi();
         ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
-        
+
         log.info("当前激活应用: {}", properties.getActive());
-        log.info("当前配置信息: url={}, register={}, addSchoolStudent={}, addTeacher={}, appId={}", 
-            api.getUrl(), api.getRegister(), api.getAddSchoolStudent(), api.getAddTeacher(), activeApp.getAppId());
+        log.info("当前配置信息: url={}, register={}, addSchoolStudent={}, addTeacher={}, appId={}", api.getUrl(), api
+            .getRegister(), api.getAddSchoolStudent(), api.getAddTeacher(), activeApp.getAppId());
 
         // 校验必要的配置参数
         if (StrUtil.isBlank(api.getUrl())) {
