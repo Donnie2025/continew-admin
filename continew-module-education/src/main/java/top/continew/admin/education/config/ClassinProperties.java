@@ -92,5 +92,25 @@ public class ClassinProperties {
          * 删除活动接口
          */
         private String deleteActivity;
+
+        /**
+         * 添加课程教师接口（API v2）
+         */
+        private String addCourseTeacher;
+
+        /**
+         * 移除课程教师接口
+         */
+        private String removeCourseTeacher;
+
+        /**
+         * 添加课程学生接口（单个）
+         */
+        private String addCourseStudent;
+
+        /**
+         * 添加课程学生接口（批量）
+         */
+        private String addCourseStudentMultiple;
     }
 }

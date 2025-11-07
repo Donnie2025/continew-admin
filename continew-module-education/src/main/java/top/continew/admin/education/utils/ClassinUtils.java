@@ -253,11 +253,30 @@ public class ClassinUtils {
             }
 
             JSONObject result = JSONUtil.parseObj(responseBody);
-            if (result.getInt("code") != 1) {
+
+            // 检查是否有 error_info 字段（某些旧接口使用这种格式）
+            if (result.containsKey("error_info")) {
+                JSONObject errorInfo = result.getJSONObject("error_info");
+                Integer errno = errorInfo.getInt("errno");
+                String error = errorInfo.getStr("error");
+                if (errno != null && errno != 1) {
+                    log.error("ClassIn {} 接口调用失败(error_info格式): errno={}, error={}", description, errno, error);
+                    throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, errno, error));
+                }
+                log.debug("ClassIn {} 接口调用成功: errno={}, error={}", description, errno, error);
+                return result;
+            }
+
+            // 检查标准code字段
+            Integer code = result.getInt("code");
+            if (code == null) {
+                log.error("ClassIn {} 接口返回格式异常：响应中缺少code字段，响应体: {}", description, responseBody);
+                throw new BusinessException(description + "失败：接口返回格式异常（缺少code字段）");
+            }
+            if (code != 1) {
                 String errorMsg = result.getStr("msg");
-                int errorCode = result.getInt("code");
-                log.error("ClassIn {} 接口调用失败: code={}, error={}", description, errorCode, errorMsg);
-                throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, errorCode, errorMsg));
+                log.error("ClassIn {} 接口调用失败: code={}, error={}", description, code, errorMsg);
+                throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, code, errorMsg));
             }
 
             return result;
@@ -322,7 +341,22 @@ public class ClassinUtils {
             }
 
             JSONObject result = JSONUtil.parseObj(responseBody);
-            int code = result.getInt("code");
+
+            // 检查是否有 error_info 字段（API v2错误格式）
+            if (result.containsKey("error_info")) {
+                JSONObject errorInfo = result.getJSONObject("error_info");
+                Integer errno = errorInfo.getInt("errno");
+                String error = errorInfo.getStr("error");
+                log.error("ClassIn {} 接口调用失败(API v2格式): errno={}, error={}", description, errno, error);
+                throw new BusinessException(String.format("%s失败（错误码：%d）：%s", description, errno, error));
+            }
+
+            // 检查标准code字段
+            Integer code = result.getInt("code");
+            if (code == null) {
+                log.error("ClassIn {} 接口返回格式异常：响应中缺少code字段，响应体: {}", description, responseBody);
+                throw new BusinessException(description + "失败：接口返回格式异常（缺少code字段）");
+            }
 
             // 检查是否是可接受的错误码
             boolean isAcceptableError = acceptableErrorCodes != null && acceptableErrorCodes.contains(code);

@@ -19,13 +19,9 @@ package top.continew.admin.education.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.education.client.ClassinClient;
-import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.mapper.ClassinUserMapper;
-import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.model.entity.ClassinUserDO;
-import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.query.ClassinUserQuery;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.resp.ClassinUserDetailResp;
@@ -46,12 +42,11 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
 
     private final ClassinClient classinClient;
 
-    private final StudentMapper studentMapper;
-
     @Override
     public Long create(ClassinUserReq req) {
         // 通过 registerStudentIfAbsent 方法来处理学生注册，此方法主要用于非学生角色的直接创建
-        String classinUid = classinClient.registerClassin(req);
+        CheckUtils.throwIfNull(req.getClassinInstitutionId(), "机构ID不能为空");
+        String classinUid = classinClient.registerClassin(req, req.getClassinInstitutionId());
         req.setClassinUid(classinUid);
         return super.create(req);
     }
@@ -64,33 +59,10 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
     }
 
     @Override
-    public ClassinUserDO registerStudentIfAbsent(Long studentId) {
-        // 1. 根据 studentId 查询 ClassinUserDO
-        ClassinUserDO classinUser = getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
-        if (classinUser != null) {
-            return classinUser;
-        }
-
-        // 2. 如果不存在，则自动注册
-        StudentDO student = studentMapper.selectById(studentId);
-        CheckUtils.throwIfNull(student, "ID为 {} 的学生不存在", studentId);
-
-        // 2.2 调用 Classin 注册接口
-        ClassinUserReq req = new ClassinUserReq();
-        req.setNickname(student.getName());
-        req.setTelephone(student.getPhone());
-        req.setPassword("123456"); // 默认密码
-        req.setUserType(ClassinConstants.USER_TYPE_STUDENT);
-        String classinUid = classinClient.registerClassin(req);
-
-        // 2.3 创建并保存 ClassinUserDO
-        ClassinUserDO newClassinUser = new ClassinUserDO();
-        newClassinUser.setMemberId(studentId);
-        newClassinUser.setUserType(ClassinConstants.USER_TYPE_STUDENT);
-        newClassinUser.setClassinUid(classinUid);
-        newClassinUser.setStatus(DisEnableStatusEnum.ENABLE.getValue());
-        this.baseMapper.insert(newClassinUser);
-
-        return newClassinUser;
+    public ClassinUserDO getByMemberIdAndUserTypeAndInstitution(Long memberId, String userType, Long institutionId) {
+        return this.baseMapper.selectOne(new LambdaQueryWrapper<ClassinUserDO>()
+            .eq(ClassinUserDO::getMemberId, memberId)
+            .eq(ClassinUserDO::getUserType, userType)
+            .eq(ClassinUserDO::getClassinInstitutionId, institutionId));
     }
 }

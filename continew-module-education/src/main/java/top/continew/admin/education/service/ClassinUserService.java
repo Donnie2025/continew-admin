@@ -38,10 +38,12 @@ public interface ClassinUserService extends BaseService<ClassinUserResp, Classin
     ClassinUserDO getByMemberIdAndUserType(Long memberId, String userType);
 
     /**
-     * 如果学生不存在，则在 Classin 中注册并保存关联关系
+     * 根据成员ID、用户类型和机构ID查询 Classin 用户
      *
-     * @param studentId 学生ID
+     * @param memberId      成员ID
+     * @param userType      用户类型
+     * @param institutionId 机构ID
      * @return Classin 用户信息
      */
-    ClassinUserDO registerStudentIfAbsent(Long studentId);
+    ClassinUserDO getByMemberIdAndUserTypeAndInstitution(Long memberId, String userType, Long institutionId);
 }

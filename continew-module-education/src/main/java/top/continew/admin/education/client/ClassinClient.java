@@ -37,6 +37,7 @@ import top.continew.admin.education.model.resp.InstitutionResp;
 import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.utils.ClassinUtils;
 import top.continew.starter.core.exception.BusinessException;
+import top.continew.starter.core.validation.CheckUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -122,16 +123,30 @@ public class ClassinClient {
 
     /**
      * 调用ClassIn注册接口
+     *
+     * @param req           注册请求
+     * @param institutionId 机构ID
+     * @return ClassIn用户UID
      */
-    public String registerClassin(ClassinUserReq req) {
+    public String registerClassin(ClassinUserReq req, Long institutionId) {
         // 校验注册参数
         ClassinUtils.validateRegisterParams(req);
 
-        // 获取激活机构配置
-        String[] appConfig = getActiveAppConfig();
+        // 根据机构ID获取配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        CheckUtils.throwIfNull(institution, "机构不存在，机构ID: {}", institutionId);
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+        if (StrUtil.isBlank(appId) || StrUtil.isBlank(appSecret)) {
+            throw new BusinessException(StrUtil.format("机构[{}]的 SID（AppId）或 SECRET（AppSecret）为空，请检查数据库配置", institution
+                .getName()));
+        }
+
+        log.debug("使用机构[{}]的配置进行注册: SID={}", institution.getName(), appId);
 
         // 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
+        JSONObject params = ClassinUtils.buildCommonParams(appId, appSecret);
         // 手机号和邮箱二选一，且需要按照格式要求处理
         if (StrUtil.isNotBlank(req.getTelephone())) {
             params.set("telephone", req.getTelephone());
@@ -362,6 +377,148 @@ public class ClassinClient {
         JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "添加教师");
 
         return result.getJSONObject("data").getStr("data");
+    }
+
+    /**
+     * 添加课程教师（API v2）
+     *
+     * @param courseId      课程ID
+     * @param teacherUids   教师UID列表
+     * @param institutionId 机构ID
+     */
+    public void addCourseTeacher(Long courseId, List<String> teacherUids, Long institutionId) {
+        // 根据机构ID获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        if (institution == null) {
+            throw new BusinessException("机构不存在，ID: " + institutionId);
+        }
+
+        if (StrUtil.isBlank(institution.getSid()) || StrUtil.isBlank(institution.getSecret())) {
+            throw new BusinessException("机构[" + institution.getName() + "]的 SID 或 SECRET 配置不全");
+        }
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+
+        // 构建请求体参数
+        JSONObject bodyParams = new JSONObject();
+        bodyParams.set("courseId", courseId);
+        bodyParams.set("teacherUids", teacherUids);
+
+        // 构建Header参数（API v2签名方式）
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(appId, appSecret, bodyParams);
+
+        // 调用ClassIn添加课程教师接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getAddCourseTeacher();
+        ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "添加课程教师");
+    }
+
+    /**
+     * 移除课程教师
+     *
+     * @param courseId      课程ID
+     * @param teacherUid    教师UID
+     * @param institutionId 机构ID
+     */
+    public void removeCourseTeacher(Long courseId, String teacherUid, Long institutionId) {
+        // 根据机构ID获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        if (institution == null) {
+            throw new BusinessException("机构不存在，ID: " + institutionId);
+        }
+
+        if (StrUtil.isBlank(institution.getSid()) || StrUtil.isBlank(institution.getSecret())) {
+            throw new BusinessException("机构[" + institution.getName() + "]的 SID 或 SECRET 配置不全");
+        }
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+
+        // 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(appId, appSecret);
+        params.set("courseId", courseId);
+        params.set("teacherUid", teacherUid);
+
+        // 调用ClassIn移除课程教师接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getRemoveCourseTeacher();
+        ClassinUtils.executePostRequest(apiUrl, params, "移除课程教师");
+    }
+
+    /**
+     * 添加课程学生（单个）
+     *
+     * @param courseId      课程ID
+     * @param studentUid    学生UID
+     * @param institutionId 机构ID
+     * @param identity      身份（1为学生，2为旁听）
+     */
+    public void addCourseStudent(Long courseId, String studentUid, Long institutionId, Integer identity) {
+        // 根据机构ID获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        if (institution == null) {
+            throw new BusinessException("机构不存在，ID: " + institutionId);
+        }
+
+        if (StrUtil.isBlank(institution.getSid()) || StrUtil.isBlank(institution.getSecret())) {
+            throw new BusinessException("机构[" + institution.getName() + "]的 SID 或 SECRET 配置不全");
+        }
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+
+        // 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(appId, appSecret);
+        params.set("courseId", courseId);
+        params.set("studentUid", studentUid);
+        params.set("identity", identity != null ? identity : 1); // 默认为学生
+
+        // 调用ClassIn添加课程学生接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getAddCourseStudent();
+        ClassinUtils.executePostRequest(apiUrl, params, "添加课程学生");
+    }
+
+    /**
+     * 批量添加课程学生
+     *
+     * @param courseId      课程ID
+     * @param studentUids   学生UID列表
+     * @param institutionId 机构ID
+     * @param identity      身份（1为学生，2为旁听）
+     */
+    public void addCourseStudentMultiple(Long courseId,
+                                         List<String> studentUids,
+                                         Long institutionId,
+                                         Integer identity) {
+        // 根据机构ID获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        if (institution == null) {
+            throw new BusinessException("机构不存在，ID: " + institutionId);
+        }
+
+        if (StrUtil.isBlank(institution.getSid()) || StrUtil.isBlank(institution.getSecret())) {
+            throw new BusinessException("机构[" + institution.getName() + "]的 SID 或 SECRET 配置不全");
+        }
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+
+        // 构建studentJson数组：[{"uid":"xxx"},{"uid":"yyy"}]
+        cn.hutool.json.JSONArray studentJsonArray = new cn.hutool.json.JSONArray();
+        for (String studentUid : studentUids) {
+            JSONObject studentObj = new JSONObject();
+            studentObj.set("uid", studentUid);
+            studentJsonArray.add(studentObj);
+        }
+
+        // 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(appId, appSecret);
+        params.set("courseId", courseId);
+        params.set("studentJson", studentJsonArray.toString()); // JSON数组字符串
+        params.set("identity", identity != null ? identity : 1); // 默认为学生
+
+        // 调用ClassIn批量添加课程学生接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getAddCourseStudentMultiple();
+        ClassinUtils.executePostRequest(apiUrl, params, "批量添加课程学生");
     }
 
     /**

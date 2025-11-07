@@ -79,6 +79,12 @@ public class CourseResp extends BaseResp {
     private Long institutionId;
 
     /**
+     * 所属机构名称
+     */
+    @Schema(description = "所属机构名称")
+    private String institutionName;
+
+    /**
      * 班级老师列表
      */
     @Schema(description = "班级老师列表")
