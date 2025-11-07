@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import org.hibernate.validator.constraints.Length;
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.*;
 
 /**
  * 班级创建或修改参数
@@ -49,10 +48,10 @@ public class CourseReq implements Serializable {
     private String name;
 
     /**
-     * 班主任手机号
+     * 班主任ID
      */
-    @Schema(description = "班主任手机号")
-    private String mainTeacherPhone;
+    @Schema(description = "班主任ID")
+    private Long mainTeacherId;
 
     /**
      * 教室设置ID

@@ -1,8 +1,26 @@
 classin:
+  # API配置
   api:
     url: https://api.eeo.cn
     register: /partner/api/course.api.php?action=register
     addSchoolStudent: /partner/api/course.api.php?action=addSchoolStudent
     addTeacher: /partner/api/course.api.php?action=addTeacher
-    appId: 67402266
-    appSecret: 1YqGfCpd
+    addCourse: /partner/api/course.api.php?action=addCourse
+    editCourse: /partner/api/course.api.php?action=editCourse
+    createClass: /lms/activity/createClass
+    updateClass: /lms/activity/updateClass
+    createUnit: /lms/unit/create
+    deleteActivity: /lms/activity/delete
+  
+  # ========================================
+  # 注意：AppId 和 AppSecret 已迁移至数据库 edu_institution 表
+  # 请在数据库中设置 is_active=1 来指定激活的机构
+  # 以下配置已废弃，仅作为备份参考
+  # ========================================
+  # active: app138
+  # app138:
+  #   appId: 52994294
+  #   appSecret: tjMHEZBa
+  # app158:
+  #   appId: 67402266
+  #   appSecret: 1YqGfCpd

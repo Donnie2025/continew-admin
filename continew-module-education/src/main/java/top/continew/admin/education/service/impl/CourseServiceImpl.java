@@ -17,14 +17,17 @@
 package top.continew.admin.education.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import top.continew.admin.common.enums.DisEnableStatusEnum;
 import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.entity.TeacherDO;
+import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
 import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.CourseTeacherService;
@@ -69,21 +72,12 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
 
         // 1. 处理班主任信息
         String mainTeacherUid = null;
-        if (StrUtil.isNotBlank(req.getMainTeacherPhone())) {
-            // 1.1 查询本地教师
-            TeacherDO teacher = teacherService.getByPhone(req.getMainTeacherPhone());
-            CheckUtils.throwIfNull(teacher, "手机号为 {} 的教师不存在", req.getMainTeacherPhone());
-            entity.setMainTeacherId(teacher.getId());
-
-            // 1.2 查询教师的 ClassIn 用户信息
-            ClassinUserDO classinTeacher = classinUserService.getByMemberIdAndUserType(teacher
-                .getId(), ClassinConstants.USER_TYPE_TEACHER);
+        if (req.getMainTeacherId() != null) {
+            // 1.1 查询或自动注册教师的 ClassIn 账号
+            ClassinUserDO classinTeacher = registerTeacherIfAbsent(req.getMainTeacherId());
             if (classinTeacher != null) {
                 mainTeacherUid = classinTeacher.getClassinUid();
                 entity.setMainTeacherUid(mainTeacherUid);
-            } else {
-                // 可根据业务需求决定是否要在此处为教师自动注册 Classin 账号
-                log.warn("ID为 {} 的教师（{}）尚未关联 ClassIn 账号", teacher.getId(), teacher.getName());
             }
         }
 
@@ -103,6 +97,56 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         // 4. 保存到本地数据库
         baseMapper.insert(entity);
         return entity.getId();
+    }
+
+    @Override
+    public void update(CourseReq req, Long id) {
+        // 1. 查询原有课程信息
+        CourseDO oldCourse = baseMapper.selectById(id);
+        CheckUtils.throwIfNull(oldCourse, "课程不存在");
+
+        // 2. 更新课程信息
+        CourseDO entity = BeanUtil.copyProperties(req, CourseDO.class);
+        entity.setId(id);
+
+        // 3. 处理班主任信息变更
+        String mainTeacherUid = oldCourse.getMainTeacherUid();
+        if (req.getMainTeacherId() != null) {
+            // 3.1 查询或自动注册教师的 ClassIn 账号
+            ClassinUserDO classinTeacher = registerTeacherIfAbsent(req.getMainTeacherId());
+            if (classinTeacher != null) {
+                mainTeacherUid = classinTeacher.getClassinUid();
+                entity.setMainTeacherUid(mainTeacherUid);
+            }
+        } else {
+            // 如果没有传班主任ID，保持原值
+            entity.setMainTeacherId(oldCourse.getMainTeacherId());
+            entity.setMainTeacherUid(oldCourse.getMainTeacherUid());
+        }
+
+        // 4. 保留原有的ClassIn课程ID和唯一标识
+        entity.setCourseUid(oldCourse.getCourseUid());
+        entity.setCourseUnique(oldCourse.getCourseUnique());
+
+        // 5. 调用 ClassIn 接口更新课程
+        if (oldCourse.getCourseUid() != null) {
+            try {
+                ClassinCourseAddReq classinReq = new ClassinCourseAddReq();
+                classinReq.setCourseName(req.getName());
+                classinReq.setMainTeacherUid(mainTeacherUid);
+                classinReq.setClassroomSettingId(req.getCourseSettingId());
+                classinClient.editCourse(classinReq, oldCourse.getCourseUid());
+                log.info("同步课程信息到ClassIn成功，课程ID：{}", id);
+            } catch (Exception e) {
+                log.error("同步课程信息到ClassIn失败，课程ID：{}，错误信息：{}", id, e.getMessage(), e);
+                // 继续更新本地数据库，不因ClassIn同步失败而中断
+            }
+        } else {
+            log.warn("课程未关联ClassIn，跳过同步，课程ID：{}", id);
+        }
+
+        // 6. 更新本地数据库
+        baseMapper.updateById(entity);
     }
 
     @Override
@@ -145,5 +189,85 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         }
 
         return page;
+    }
+
+    /**
+     * 检查并注册教师的ClassIn账号（如果不存在）
+     *
+     * @param teacherId 教师ID
+     * @return ClassIn用户信息，如果注册失败返回null
+     */
+    private ClassinUserDO registerTeacherIfAbsent(Long teacherId) {
+        // 1. 查询教师的 ClassIn 用户信息
+        ClassinUserDO classinTeacher = classinUserService
+            .getByMemberIdAndUserType(teacherId, ClassinConstants.USER_TYPE_TEACHER);
+
+        if (classinTeacher != null) {
+            log.info("教师[{}]已有ClassIn账号，无需创建", teacherId);
+            return classinTeacher;
+        }
+
+        log.info("教师[{}]没有ClassIn账号，开始自动创建", teacherId);
+
+        try {
+            // 2. 查询教师信息
+            TeacherDO teacher = teacherMapper.selectById(teacherId);
+            CheckUtils.throwIfNull(teacher, "教师不存在，ID: {}", teacherId);
+
+            // 3. 构建ClassIn用户请求参数
+            ClassinUserReq classinUserReq = new ClassinUserReq();
+            classinUserReq.setNickname(teacher.getName());
+
+            // 优先使用手机号，其次使用邮箱
+            if (StrUtil.isNotBlank(teacher.getPhone())) {
+                classinUserReq.setTelephone(teacher.getPhone());
+            } else if (StrUtil.isNotBlank(teacher.getEmail())) {
+                classinUserReq.setEmail(teacher.getEmail());
+            } else {
+                log.warn("教师[{}]缺少手机号和邮箱，无法注册ClassIn账号", teacherId);
+                return null;
+            }
+
+            // 设置随机密码
+            classinUserReq.setPassword(RandomUtil.randomString(8));
+
+            // 设置用户类型为教师
+            classinUserReq.setUserType(ClassinConstants.USER_TYPE_TEACHER);
+
+            // 4. 调用ClassIn注册接口
+            String classinUid = classinClient.registerClassin(classinUserReq);
+
+            // 5. 保存ClassIn用户关联
+            ClassinUserReq userReq = new ClassinUserReq();
+            userReq.setMemberId(teacherId);
+            userReq.setUserType(ClassinConstants.USER_TYPE_TEACHER);
+            userReq.setClassinUid(classinUid);
+            userReq.setNickname(teacher.getName());
+            userReq.setTelephone(teacher.getPhone());
+            userReq.setEmail(teacher.getEmail());
+            userReq.setPassword(classinUserReq.getPassword());
+            userReq.setStatus(DisEnableStatusEnum.ENABLE.getValue());
+            userReq.setClassinInstitutionId(1L); // 默认机构ID
+
+            classinUserService.create(userReq);
+            log.info("教师[{}]ClassIn账号自动创建成功，ClassIn UID: {}", teacherId, classinUid);
+
+            // 6. 返回创建的ClassIn用户信息
+            ClassinUserDO newClassinUser = new ClassinUserDO();
+            newClassinUser.setMemberId(teacherId);
+            newClassinUser.setUserType(ClassinConstants.USER_TYPE_TEACHER);
+            newClassinUser.setClassinUid(classinUid);
+            newClassinUser.setNickname(teacher.getName());
+            newClassinUser.setTelephone(teacher.getPhone());
+            newClassinUser.setEmail(teacher.getEmail());
+            newClassinUser.setPassword(classinUserReq.getPassword());
+            newClassinUser.setStatus(DisEnableStatusEnum.ENABLE.getValue());
+
+            return newClassinUser;
+        } catch (Exception e) {
+            log.error("教师[{}]ClassIn账号自动创建失败: {}", teacherId, e.getMessage(), e);
+            // 不抛出异常，允许课程创建继续进行
+            return null;
+        }
     }
 }

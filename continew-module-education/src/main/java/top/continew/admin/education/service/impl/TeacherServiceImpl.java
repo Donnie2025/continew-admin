@@ -94,6 +94,21 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         return this.baseMapper.selectByPhone(phone);
     }
 
+    @Override
+    public List<TeacherResp> searchTeachers(String keyword) {
+        if (StrUtil.isBlank(keyword)) {
+            return List.of();
+        }
+
+        LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>()
+            .eq(TeacherDO::getStatus, DisEnableStatusEnum.ENABLE.getValue())
+            .and(wrapper -> wrapper.like(TeacherDO::getName, keyword).or().like(TeacherDO::getPhone, keyword))
+            .orderByAsc(TeacherDO::getSort)
+            .last("LIMIT 20"); // 限制返回数量
+
+        return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
+    }
+
     /**
      * 检查并注册ClassIn教师账号
      *

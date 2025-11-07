@@ -23,7 +23,6 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import top.continew.admin.education.config.ClassinProperties;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.model.resp.classin.ClassinBaseResp;
 import top.continew.admin.education.model.resp.classin.ClassinErrorInfo;
@@ -48,16 +47,16 @@ public class ClassinUtils {
     /**
      * 构建公共请求参数
      *
-     * @param properties ClassIn配置
+     * @param appId     应用ID
+     * @param appSecret 应用密钥
      * @return 包含公共参数的JSONObject
      */
-    public static JSONObject buildCommonParams(ClassinProperties properties) {
-        ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
+    public static JSONObject buildCommonParams(String appId, String appSecret) {
         long timeStamp = System.currentTimeMillis() / 1000;
-        String safeKey = DigestUtils.md5Hex(activeApp.getAppSecret() + timeStamp);
+        String safeKey = DigestUtils.md5Hex(appSecret + timeStamp);
 
         JSONObject params = new JSONObject();
-        params.set("SID", activeApp.getAppId());
+        params.set("SID", appId);
         params.set("safeKey", safeKey);
         params.set("timeStamp", timeStamp);
         return params;
@@ -66,13 +65,12 @@ public class ClassinUtils {
     /**
      * 构建符合ClassIn API v2要求的Header参数
      * 
-     * @param properties ClassIn配置
+     * @param appId      应用ID
+     * @param appSecret  应用密钥
      * @param bodyParams 请求体参数
      * @return Header参数Map
      */
-    public static Map<String, String> buildHeaderParams(ClassinProperties properties, JSONObject bodyParams) {
-        ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
-
+    public static Map<String, String> buildHeaderParams(String appId, String appSecret, JSONObject bodyParams) {
         // 1. 获取当前时间戳（秒级）
         long timeStamp = System.currentTimeMillis() / 1000;
 
@@ -80,7 +78,7 @@ public class ClassinUtils {
         Map<String, Object> signParams = new HashMap<>();
 
         // 2.1 添加sid和timeStamp
-        signParams.put("sid", activeApp.getAppId());
+        signParams.put("sid", appId);
         signParams.put("timeStamp", String.valueOf(timeStamp));
 
         // 2.2 添加body中的参数（排除不参与签名的参数）
@@ -104,12 +102,12 @@ public class ClassinUtils {
         }
 
         // 3. 计算签名
-        String sign = calculateSignV2(signParams, activeApp.getAppSecret());
+        String sign = calculateSignV2(signParams, appSecret);
 
         // 4. 构建Header
         Map<String, String> headers = new HashMap<>();
         headers.put("X-EEO-SIGN", sign);
-        headers.put("X-EEO-UID", activeApp.getAppId());
+        headers.put("X-EEO-UID", appId);
         headers.put("X-EEO-TS", String.valueOf(timeStamp));
         headers.put("Content-Type", "application/json");
 

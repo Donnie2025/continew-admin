@@ -33,35 +33,10 @@ public class ClassinProperties {
 
     /**
      * API配置
+     * 注意：AppId 和 AppSecret 配置已迁移至数据库 edu_institution 表
+     * 实际运行时从数据库读取，通过 InstitutionService.getActiveInstitution() 获取
      */
     private ApiConfig api;
-
-    /**
-     * 当前激活的应用（app138 或 app158）
-     */
-    private String active;
-
-    /**
-     * app158配置
-     */
-    private AppConfig app158;
-
-    /**
-     * app138配置
-     */
-    private AppConfig app138;
-
-    /**
-     * 获取当前激活的应用配置
-     *
-     * @return 当前激活的应用配置
-     */
-    public AppConfig getActiveAppConfig() {
-        if ("app158".equals(active)) {
-            return app158;
-        }
-        return app138; // 默认返回app138
-    }
 
     /**
      * API配置类
@@ -94,6 +69,11 @@ public class ClassinProperties {
         private String addCourse;
 
         /**
+         * 编辑课程接口
+         */
+        private String editCourse;
+
+        /**
          * 创建课堂活动接口
          */
         private String createClass;
@@ -112,21 +92,5 @@ public class ClassinProperties {
          * 删除活动接口
          */
         private String deleteActivity;
-    }
-
-    /**
-     * 应用配置类
-     */
-    @Data
-    public static class AppConfig {
-        /**
-         * 应用ID
-         */
-        private String appId;
-
-        /**
-         * 应用密钥
-         */
-        private String appSecret;
     }
 }

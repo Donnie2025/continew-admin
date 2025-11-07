@@ -33,6 +33,8 @@ import top.continew.admin.education.model.resp.classin.ClassinBaseResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
 import top.continew.admin.education.model.resp.classin.ClassinUpdateClassResp;
+import top.continew.admin.education.model.resp.InstitutionResp;
+import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.utils.ClassinUtils;
 import top.continew.starter.core.exception.BusinessException;
 
@@ -52,27 +54,21 @@ import java.util.Map;
 public class ClassinClient {
 
     private final ClassinProperties properties;
+    private final InstitutionService institutionService;
 
     @PostConstruct
     public void init() {
         log.info("开始初始化ClassIn客户端配置...");
 
         ClassinProperties.ApiConfig api = properties.getApi();
-        ClassinProperties.AppConfig activeApp = properties.getActiveAppConfig();
 
-        log.info("当前激活应用: {}", properties.getActive());
-        log.info("当前配置信息: url={}, register={}, addSchoolStudent={}, addTeacher={}, appId={}", api.getUrl(), api
-            .getRegister(), api.getAddSchoolStudent(), api.getAddTeacher(), activeApp.getAppId());
+        log.info("ClassIn配置已启用，将从数据库 edu_institution 表读取激活机构的 AppId 和 AppSecret");
+        log.info("当前配置信息: url={}, register={}, addSchoolStudent={}, addTeacher={}", api.getUrl(), api.getRegister(), api
+            .getAddSchoolStudent(), api.getAddTeacher());
 
         // 校验必要的配置参数
         if (StrUtil.isBlank(api.getUrl())) {
             throw new IllegalStateException("ClassIn API URL不能为空，请检查配置文件中的classin.api.url配置项");
-        }
-        if (StrUtil.isBlank(activeApp.getAppId())) {
-            throw new IllegalStateException("ClassIn AppID不能为空，请检查配置文件中的classin应用配置项");
-        }
-        if (StrUtil.isBlank(activeApp.getAppSecret())) {
-            throw new IllegalStateException("ClassIn AppSecret不能为空，请检查配置文件中的classin应用配置项");
         }
         if (StrUtil.isBlank(api.getRegister())) {
             throw new IllegalStateException("ClassIn注册接口路径不能为空，请检查配置文件中的classin.api.register配置项");
@@ -85,6 +81,9 @@ public class ClassinClient {
         }
         if (StrUtil.isBlank(api.getAddCourse())) {
             throw new IllegalStateException("ClassIn新增课程接口路径不能为空，请检查配置文件中的classin.api.addCourse配置项");
+        }
+        if (StrUtil.isBlank(api.getEditCourse())) {
+            throw new IllegalStateException("ClassIn编辑课程接口路径不能为空，请检查配置文件中的classin.api.editCourse配置项");
         }
         if (StrUtil.isBlank(api.getCreateClass())) {
             throw new IllegalStateException("ClassIn创建课堂活动接口路径不能为空，请检查配置文件中的classin.api.createClass配置项");
@@ -103,14 +102,36 @@ public class ClassinClient {
     }
 
     /**
+     * 获取激活机构的配置（从数据库读取）
+     *
+     * @return 包含appId和appSecret的数组，[0]为appId，[1]为appSecret
+     */
+    private String[] getActiveAppConfig() {
+        InstitutionResp activeInstitution = institutionService.getActiveInstitution();
+        if (activeInstitution == null) {
+            throw new BusinessException("未找到激活的机构配置，请在数据库 edu_institution 表中设置 is_active=1 的机构");
+        }
+
+        if (StrUtil.isBlank(activeInstitution.getSid()) || StrUtil.isBlank(activeInstitution.getSecret())) {
+            throw new BusinessException("激活机构的 SID（AppId）或 SECRET（AppSecret）为空，请检查数据库配置");
+        }
+
+        log.debug("使用数据库中的激活机构配置: {} (SID: {})", activeInstitution.getName(), activeInstitution.getSid());
+        return new String[] {activeInstitution.getSid(), activeInstitution.getSecret()};
+    }
+
+    /**
      * 调用ClassIn注册接口
      */
     public String registerClassin(ClassinUserReq req) {
         // 校验注册参数
         ClassinUtils.validateRegisterParams(req);
 
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
         // 手机号和邮箱二选一，且需要按照格式要求处理
         if (StrUtil.isNotBlank(req.getTelephone())) {
             params.set("telephone", req.getTelephone());
@@ -158,8 +179,11 @@ public class ClassinClient {
      * 调用 ClassIn 新增课程接口
      */
     public Long addCourse(ClassinCourseAddReq req) {
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 1. 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
         params.set("courseName", req.getCourseName());
         if (StrUtil.isNotBlank(req.getMainTeacherUid())) {
             params.set("mainTeacherUid", req.getMainTeacherUid());
@@ -186,6 +210,44 @@ public class ClassinClient {
                 .getError()));
         }
         return resp.getData();
+    }
+
+    /**
+     * 调用 ClassIn 编辑课程接口
+     */
+    public void editCourse(ClassinCourseAddReq req, Long courseId) {
+        // 1. 验证必填参数
+        if (courseId == null) {
+            throw new BusinessException("课程ID不能为空");
+        }
+
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
+        // 2. 构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
+        params.set("courseId", courseId);
+
+        // 添加需要修改的参数
+        if (StrUtil.isNotBlank(req.getCourseName())) {
+            params.set("courseName", req.getCourseName());
+        }
+        if (StrUtil.isNotBlank(req.getMainTeacherUid())) {
+            params.set("mainTeacherUid", req.getMainTeacherUid());
+        }
+        if (req.getClassroomSettingId() != null) {
+            params.set("classroomSettingId", req.getClassroomSettingId());
+        }
+
+        // 3. 调用接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getEditCourse();
+        ClassinBaseResp<Object> resp = ClassinUtils.executePost(apiUrl, params, Object.class);
+
+        if (resp.getErrorInfo().getErrno() != 1) {
+            throw new BusinessException(String.format("编辑课程失败（错误码：%d）：%s", resp.getErrorInfo().getErrno(), resp
+                .getErrorInfo()
+                .getError()));
+        }
     }
 
     /**
@@ -236,8 +298,11 @@ public class ClassinClient {
             bodyParams.set("seatNum", req.getSeatNum());
         }
 
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 2. 构建Header参数（API v2方式）
-        Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(appConfig[0], appConfig[1], bodyParams);
 
         // 3. 调用接口
         String apiUrl = properties.getApi().getUrl() + properties.getApi().getCreateClass();
@@ -265,8 +330,11 @@ public class ClassinClient {
     }
 
     public String addStudent(ClassinUserReq req) {
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
         params.set("password", req.getPassword());
         params.set("nickname", req.getNickname());
 
@@ -278,8 +346,11 @@ public class ClassinClient {
     }
 
     public String addTeacher(ClassinUserReq req) {
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
         params.set("password", req.getPassword());
         params.set("nickname", req.getNickname());
         if (StrUtil.isNotBlank(req.getEmail())) {
@@ -305,8 +376,11 @@ public class ClassinClient {
             throw new BusinessException("课堂活动ID不能为空");
         }
 
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 2. 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(properties);
+        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
 
         // 添加必填参数
         params.set("courseId", req.getCourseId());
@@ -416,8 +490,11 @@ public class ClassinClient {
             bodyParams.set("content", req.getContent());
         }
 
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
+
         // 3. 构建Header参数（API v2方式）
-        Map<String, String> headers = ClassinUtils.buildHeaderParams(properties, bodyParams);
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(appConfig[0], appConfig[1], bodyParams);
 
         // 4. 调用接口，设置可接受的错误码29208（单元已存在）
         String apiUrl = properties.getApi().getUrl() + properties.getApi().getCreateUnit();

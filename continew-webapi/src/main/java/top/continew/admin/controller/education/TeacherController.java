@@ -50,4 +50,10 @@ public class TeacherController extends BaseController<TeacherService, TeacherRes
     public List<TeacherResp> listActiveTeachers(@RequestParam(required = false) String name) {
         return this.baseService.listActiveTeachers(name);
     }
+
+    @GetMapping("/search")
+    @Operation(summary = "搜索教师", description = "根据关键字（姓名或手机号）搜索启用状态的教师")
+    public List<TeacherResp> search(@RequestParam String keyword) {
+        return this.baseService.searchTeachers(keyword);
+    }
 }

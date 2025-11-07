@@ -48,4 +48,12 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @return 教师实体
      */
     TeacherDO getByPhone(String phone);
+
+    /**
+     * 搜索教师（根据姓名或手机号模糊查询）
+     *
+     * @param keyword 关键字（姓名或手机号）
+     * @return 教师列表
+     */
+    List<TeacherResp> searchTeachers(String keyword);
 }
