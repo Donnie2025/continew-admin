@@ -622,6 +622,42 @@ public class ClassinClient {
     }
 
     /**
+     * 删除 ClassIn 活动（课节）
+     *
+     * @param courseId     课程ID
+     * @param activityId   活动ID
+     * @param institutionId 机构ID
+     */
+    public void deleteActivity(Long courseId, Long activityId, Long institutionId) {
+        log.info("开始删除ClassIn活动，课程ID: {}, 活动ID: {}, 机构ID: {}", courseId, activityId, institutionId);
+
+        // 1. 获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        CheckUtils.throwIfNull(institution, StrUtil.format("机构不存在，机构ID: {}", institutionId));
+        
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+        
+        if (StrUtil.isBlank(appId) || StrUtil.isBlank(appSecret)) {
+            throw new BusinessException(StrUtil.format("机构[{}]的ClassIn配置不完整", institution.getName()));
+        }
+
+        // 2. 构建请求体参数
+        JSONObject bodyParams = new JSONObject();
+        bodyParams.set("courseId", courseId);
+        bodyParams.set("activityId", activityId);
+
+        // 3. 构建Header参数
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(appId, appSecret, bodyParams);
+
+        // 4. 调用接口（使用 API v2 格式）
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getDeleteActivity();
+        ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "删除活动");
+
+        log.info("成功删除ClassIn活动，课程ID: {}, 活动ID: {}", courseId, activityId);
+    }
+
+    /**
      * 调用 ClassIn 创建单元接口
      */
     public ClassinCreateUnitResp createUnit(ClassinCreateUnitReq req) {

@@ -176,7 +176,7 @@ CREATE TABLE `edu_lesson` (
   `rtmp_url` varchar(255) COMMENT 'RTMP协议的拉流地址',
   `hls_url` varchar(255) COMMENT 'HLS协议的拉流地址',
   `flv_url` varchar(255) COMMENT 'FLV协议的拉流地址',
-  `status` tinyint DEFAULT 0 COMMENT '状态：0-未开始，1-进行中，2-已结束',
+  `status` tinyint DEFAULT 0 COMMENT '状态（1：启用；2：禁用；3：结课）',
   `create_user` varchar(64) DEFAULT '' COMMENT '创建者',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_user` varchar(64) DEFAULT '' COMMENT '更新者',

@@ -77,11 +77,12 @@ public class LessonReq implements Serializable {
     private LocalDateTime startTime;
 
     /**
-     * 活动结束时间
+     * 课堂时长（分钟）
      */
-    @Schema(description = "活动结束时间")
-    @NotNull(message = "活动结束时间不能为空")
-    private LocalDateTime endTime;
+    @Schema(description = "课堂时长（分钟）")
+    @NotNull(message = "课堂时长不能为空")
+    @Min(value = 10, message = "课堂时长至少为10分钟")
+    private Long duration;
 
     /**
      * 上台人数
