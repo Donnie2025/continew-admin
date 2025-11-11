@@ -93,6 +93,7 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
         req.setCourseAmount(courseAmount);
         req.setGroupName(groupName);
         req.setTeacherName(teacherName);
+        req.setRecvName(teacher.getRecvName()); // 复制教师的收款人姓名
 
         super.beforeCreate(req);
     }
@@ -112,6 +113,8 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
                 entity.setGroupName(teacher.getGroupName());
             }
             entity.setTeacherName(teacher.getName());
+            // 复制教师的收款人姓名
+            entity.setRecvName(teacher.getRecvName());
         }
 
         // 获取当前实体的金额值，确保没有null值
@@ -159,6 +162,8 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
             if (req.getGroupName() == null) {
                 req.setGroupName(teacher.getGroupName());
             }
+            // 复制教师的收款人姓名
+            req.setRecvName(teacher.getRecvName());
         }
 
         // 确保扣款金额不为空
@@ -173,6 +178,14 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
 
     @Override
     protected void afterUpdate(SalaryReq req, SalaryDO entity) {
+        // 如果教师信息发生变化，更新收款人姓名
+        if (req.getTeacherId() != null) {
+            TeacherDO teacher = teacherMapper.selectById(req.getTeacherId());
+            if (teacher != null && teacher.getRecvName() != null) {
+                entity.setRecvName(teacher.getRecvName());
+            }
+        }
+
         // 重新计算最终支付金额
         BigDecimal courseAmount = entity.getCourseAmount() != null ? entity.getCourseAmount() : BigDecimal.ZERO;
         BigDecimal deductionAmount = entity.getDeductionAmount() != null
@@ -347,6 +360,7 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
 
         salary.setStatus(1); // 生效
         salary.setIsSettled(0); // 未结算
+        salary.setRecvName(teacher.getRecvName()); // 复制教师的收款人姓名
 
         return salary;
     }

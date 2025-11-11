@@ -125,4 +125,11 @@ public class SalaryReq implements Serializable {
     @Schema(description = "备注")
     @Length(max = 255, message = "备注长度不能超过 {max} 个字符")
     private String remark;
+
+    /**
+     * 收款人姓名
+     */
+    @Schema(description = "收款人姓名")
+    @Length(max = 50, message = "收款人姓名长度不能超过 {max} 个字符")
+    private String recvName;
 }

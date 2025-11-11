@@ -153,4 +153,11 @@ public class TeacherDetailResp extends BaseDetailResp {
     @Schema(description = "状态")
     @ExcelProperty(value = "状态")
     private Integer status;
+
+    /**
+     * 收款人姓名
+     */
+    @Schema(description = "收款人姓名")
+    @ExcelProperty(value = "收款人姓名")
+    private String recvName;
 }

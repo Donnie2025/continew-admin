@@ -108,4 +108,9 @@ public class SalaryDO extends BaseDO {
      * 备注
      */
     private String remark;
+
+    /**
+     * 收款人姓名
+     */
+    private String recvName;
 }

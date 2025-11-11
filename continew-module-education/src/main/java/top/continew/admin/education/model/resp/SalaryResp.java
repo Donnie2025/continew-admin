@@ -121,4 +121,10 @@ public class SalaryResp extends BaseResp {
      */
     @Schema(description = "备注")
     private String remark;
+
+    /**
+     * 收款人姓名
+     */
+    @Schema(description = "收款人姓名")
+    private String recvName;
 }

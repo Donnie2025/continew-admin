@@ -119,4 +119,9 @@ public class TeacherDO extends BaseDO {
      * 单价
      */
     private Integer rate;
+
+    /**
+     * 收款人姓名
+     */
+    private String recvName;
 }

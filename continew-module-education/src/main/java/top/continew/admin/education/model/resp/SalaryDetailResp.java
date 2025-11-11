@@ -139,4 +139,11 @@ public class SalaryDetailResp extends BaseDetailResp {
     @Schema(description = "备注")
     @ExcelProperty(value = "备注")
     private String remark;
+
+    /**
+     * 收款人姓名
+     */
+    @Schema(description = "收款人姓名")
+    @ExcelProperty(value = "收款人姓名")
+    private String recvName;
 }

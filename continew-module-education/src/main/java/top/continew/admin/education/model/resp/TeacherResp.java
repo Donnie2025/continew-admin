@@ -145,4 +145,10 @@ public class TeacherResp extends BaseResp {
      */
     @Schema(description = "更新时间")
     private LocalDateTime updateTime;
+
+    /**
+     * 收款人姓名
+     */
+    @Schema(description = "收款人姓名")
+    private String recvName;
 }

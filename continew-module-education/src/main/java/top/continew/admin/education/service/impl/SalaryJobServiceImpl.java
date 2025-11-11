@@ -249,6 +249,7 @@ public class SalaryJobServiceImpl implements SalaryJobService {
         salary.setIsSettled(0); // 未结算
         salary.setRate(teacher.getRate());
         salary.setGroupName(teacher.getGroupName());
+        salary.setRecvName(teacher.getRecvName()); // 复制教师的收款人姓名
         salary.setCreateUser(1L); // 系统默认用户ID
         return salary;
     }

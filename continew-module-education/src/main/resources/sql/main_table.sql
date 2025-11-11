@@ -24,6 +24,7 @@ ALTER TABLE `edu_student` AUTO_INCREMENT = 1;
 CREATE TABLE `edu_teacher` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(50) NOT NULL COMMENT '教师姓名',
+   `recv_name` varchar(50) DEFAULT NULL COMMENT '收款人姓名',
    `score`  int NOT NULL DEFAULT 5  COMMENT '评分',
    `tags` varchar(100) DEFAULT NULL COMMENT '标签',
   `gender` varchar(50) DEFAULT 'female' COMMENT '性别（male, female）',
@@ -261,6 +262,7 @@ CREATE TABLE `edu_salary` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `teacher_id` bigint(20) NOT NULL COMMENT '教师ID',
   `teacher_name` varchar(50) NOT NULL COMMENT '教师姓名',
+  `recv_name` varchar(50) DEFAULT NULL COMMENT '收款人姓名',
   `start_date` date NOT NULL COMMENT '起始日期',
   `end_date` date NOT NULL COMMENT '结束日期',
   `course_count` int NOT NULL DEFAULT 0 COMMENT '课程总数',

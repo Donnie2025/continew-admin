@@ -151,4 +151,11 @@ public class TeacherReq implements Serializable {
      */
     @Schema(description = "状态")
     private Integer status;
+
+    /**
+     * 收款人姓名
+     */
+    @Schema(description = "收款人姓名")
+    @Length(max = 50, message = "收款人姓名长度不能超过 {max} 个字符")
+    private String recvName;
 }
