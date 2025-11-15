@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.core.util.RandomUtil;
 
 /**
  * 学生管理业务实现
@@ -140,7 +139,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
                     newStudent.setPhone(phone);
                     newStudent.setGender("male"); // 默认性别
                     newStudent.setRegisterTime(LocalDateTime.now());
-                    newStudent.setPassword(RandomUtil.randomString(8)); // 生成随机密码
+                    // 注意：密码管理已迁移到 CredentialService，不再在此处设置密码
                     newStudent.setStatus(1); // 启用状态
 
                     // 设置默认机构ID（可根据实际情况调整）

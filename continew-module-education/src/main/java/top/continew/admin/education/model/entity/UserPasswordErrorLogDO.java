@@ -16,37 +16,33 @@
 
 package top.continew.admin.education.model.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import com.baomidou.mybatisplus.annotation.TableName;
-
-import top.continew.admin.common.model.entity.BaseDO;
-
 import java.io.Serial;
-import java.time.*;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
- * 学生管理实体
+ * 用户密码错误记录实体
  *
  * @author don
- * @since 2025/04/20 01:32
+ * @since 2025/11/14
  */
 @Data
-@TableName("edu_student")
-public class StudentDO extends BaseDO {
+@TableName("user_password_error_log")
+public class UserPasswordErrorLogDO implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
-     * 学生姓名
+     * 主键ID
      */
-    private String name;
-
-    /**
-     * 性别（male-男 female-女）
-     */
-    private String gender;
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     /**
      * 手机号码
@@ -54,37 +50,37 @@ public class StudentDO extends BaseDO {
     private String phone;
 
     /**
-     * 邮箱
+     * 用户类型(student-学生, teacher-教师)
      */
-    private String email;
+    private String userType;
 
     /**
-     * 注册时间
+     * 错误次数
      */
-    private LocalDateTime registerTime;
+    private Integer errorCount;
 
     /**
-     * 所属代理的ID
+     * 最后错误时间
      */
-    private Long agentId;
+    private LocalDateTime lastErrorTime;
 
     /**
-     * 头像地址
+     * 冻结到期时间
      */
-    private String avatar;
+    private LocalDateTime freezeUntil;
 
     /**
-     * 备注
+     * 是否冻结(0-否 1-是)
      */
-    private String remark;
+    private Boolean isFrozen;
 
     /**
-     * 状态（1：启用；2：禁用）
+     * 创建时间
      */
-    private Integer status;
+    private LocalDateTime createTime;
 
     /**
-     * 所属机构ID
+     * 更新时间
      */
-    private Long institutionId;
+    private LocalDateTime updateTime;
 }

@@ -7,7 +7,6 @@ CREATE TABLE `edu_student` (
   `register_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   `agent_id` bigint(20) DEFAULT NULL COMMENT '所属代理的ID',
   `avatar` varchar(512) DEFAULT NULL COMMENT '头像地址',
-  `password` varchar(100) NOT NULL COMMENT '密码',
   `remark` varchar(1024) DEFAULT NULL COMMENT '备注',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -312,3 +311,33 @@ CREATE TABLE `edu_course_student` (
   `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COMMENT='班级学生关联表';
+
+-- 学生密码错误记录表
+CREATE TABLE `edu_credential` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID（关联edu_teacher.id或edu_student.id）',
+  `user_type` varchar(20) NOT NULL COMMENT '用户类型（teacher-教师, student-学生）',
+  `phone` varchar(20) NOT NULL COMMENT '手机号码',
+  `password` varchar(255) NOT NULL COMMENT '登录密码（BCrypt加密）',
+  `credential_type` varchar(20) NOT NULL DEFAULT 'phone' COMMENT '凭证类型（phone，email等）',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否启用（0-禁用 1-启用）',
+  `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
+  `password_updated_time` datetime DEFAULT NULL COMMENT '密码最后更新时间',
+  `error_count` int NOT NULL DEFAULT '0' COMMENT '密码错误次数',
+  `last_error_time` datetime DEFAULT NULL COMMENT '最后错误时间',
+  `freeze_until` datetime DEFAULT NULL COMMENT '冻结到期时间',
+  `is_frozen` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否冻结（0-否 1-是）',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_credential` (`user_id`, `user_type`, `credential_type`),
+  UNIQUE KEY `uk_phone_user_type` (`phone`, `user_type`),
+  KEY `idx_phone` (`phone`),
+  KEY `idx_user_type` (`user_type`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_credential_type` (`credential_type`),
+  KEY `idx_is_active` (`is_active`),
+  KEY `idx_freeze_until` (`freeze_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='凭证表';

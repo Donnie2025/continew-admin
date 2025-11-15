@@ -159,7 +159,8 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
                     }
 
                     // 调用ClassIn API删除活动
-                    classinClient.deleteActivity(lesson.getCourseUid(), lesson.getActivityUid(), course.getInstitutionId());
+                    classinClient.deleteActivity(lesson.getCourseUid(), lesson.getActivityUid(), course
+                        .getInstitutionId());
                     log.info("ClassIn活动删除成功，课堂ID：{}，活动ID：{}", lesson.getId(), lesson.getActivityUid());
                 } catch (Exception e) {
                     // 删除失败不影响后续操作，只记录日志
@@ -167,7 +168,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
                         .getMessage());
                 }
             }
-            
+
             // 逻辑删除：更新状态为2（禁用）
             lesson.setStatus(2);
             baseMapper.updateById(lesson);
@@ -182,7 +183,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     private Long createClassinUnit(LessonReq req) {
         ClassinCreateUnitReq unitReq = ClassinCreateUnitReq.builder()
             .courseId(req.getCourseUid())
-            .name("默认单元")
+            .name("无单元主题")
             .publishFlag(2) // 2-已发布
             .content("系统自动创建的单元")
             .build();

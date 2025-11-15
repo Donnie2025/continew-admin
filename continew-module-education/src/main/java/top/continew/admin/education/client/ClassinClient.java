@@ -624,8 +624,8 @@ public class ClassinClient {
     /**
      * 删除 ClassIn 活动（课节）
      *
-     * @param courseId     课程ID
-     * @param activityId   活动ID
+     * @param courseId      课程ID
+     * @param activityId    活动ID
      * @param institutionId 机构ID
      */
     public void deleteActivity(Long courseId, Long activityId, Long institutionId) {
@@ -634,10 +634,10 @@ public class ClassinClient {
         // 1. 获取机构配置
         InstitutionResp institution = institutionService.getById(institutionId);
         CheckUtils.throwIfNull(institution, StrUtil.format("机构不存在，机构ID: {}", institutionId));
-        
+
         String appId = institution.getSid();
         String appSecret = institution.getSecret();
-        
+
         if (StrUtil.isBlank(appId) || StrUtil.isBlank(appSecret)) {
             throw new BusinessException(StrUtil.format("机构[{}]的ClassIn配置不完整", institution.getName()));
         }
