@@ -19,6 +19,7 @@ package top.continew.admin.education.service;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.LessonQuery;
 import top.continew.admin.education.model.req.LessonReq;
+import top.continew.admin.education.model.req.BatchLessonReq;
 import top.continew.admin.education.model.resp.LessonDetailResp;
 import top.continew.admin.education.model.resp.LessonResp;
 
@@ -39,4 +40,11 @@ public interface LessonService extends BaseService<LessonResp, LessonDetailResp,
      * @return 课节列表
      */
     List<LessonResp> listByCourseId(Long courseId);
+
+    /**
+     * 批量创建课节
+     *
+     * @param req 批量课节请求参数
+     */
+    void createBatch(BatchLessonReq req);
 }

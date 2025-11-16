@@ -35,6 +35,7 @@ import top.continew.admin.education.model.entity.LessonDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.query.LessonQuery;
 import top.continew.admin.education.model.req.LessonReq;
+import top.continew.admin.education.model.req.BatchLessonReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
 import top.continew.admin.education.model.resp.LessonDetailResp;
@@ -267,6 +268,50 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         // 添加通用的状态过滤条件：排除已删除的课节（status=2）
         queryWrapper.ne("status", 2);
         return queryWrapper;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createBatch(BatchLessonReq req) {
+        log.info("开始批量创建课节，请求参数：{}", req);
+        
+        // 验证课节时间列表不为空
+        if (req.getLessonTimes() == null || req.getLessonTimes().isEmpty()) {
+            throw new BusinessException("课节时间列表不能为空");
+        }
+        
+        // 批量创建课节
+        for (BatchLessonReq.LessonTimeReq lessonTime : req.getLessonTimes()) {
+            // 构建单个课节请求参数
+            LessonReq lessonReq = new LessonReq();
+            lessonReq.setCourseId(req.getCourseId());
+            lessonReq.setName(req.getNamePrefix() + lessonTime.getNameSuffix());
+            lessonReq.setTeacherId(req.getTeacherId());
+            lessonReq.setStartTime(lessonTime.getStartTime());
+            lessonReq.setDuration(req.getDuration());
+            lessonReq.setSeatNum(req.getSeatNum());
+            lessonReq.setRecordState(req.getRecordState());
+            lessonReq.setLiveState(req.getLiveState());
+            lessonReq.setOpenState(req.getOpenState());
+            
+            // 获取课程信息以设置courseUid
+            CourseDO course = courseMapper.selectById(req.getCourseId());
+            if (course == null) {
+                throw new BusinessException("课程不存在，课程ID：" + req.getCourseId());
+            }
+            lessonReq.setCourseUid(course.getCourseUid());
+            
+            try {
+                // 调用单个创建方法
+                Long lessonId = this.create(lessonReq);
+                log.info("课节创建成功，课节ID：{}，课节名称：{}", lessonId, lessonReq.getName());
+            } catch (Exception e) {
+                log.error("课节创建失败，课节名称：{}，错误信息：{}", lessonReq.getName(), e.getMessage(), e);
+                throw new BusinessException("课节创建失败：" + lessonReq.getName() + "，错误信息：" + e.getMessage());
+            }
+        }
+        
+        log.info("批量创建课节完成，共创建 {} 个课节", req.getLessonTimes().size());
     }
 
 }

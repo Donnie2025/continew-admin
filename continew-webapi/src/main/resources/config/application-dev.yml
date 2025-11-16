@@ -228,6 +228,8 @@ sa-token.extension:
     - /*/api-docs/**
     # 本地存储资源
     - /file/**
+    # 小程序API
+    - /mini/**
 
 --- ### Just Auth 配置
 justauth:
