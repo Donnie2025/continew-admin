@@ -288,3 +288,11 @@ snail-job:
       username: ${SCHEDULE_USERNAME:admin}
       # 密码
       password: ${SCHEDULE_PASSWORD:admin}
+
+--- ### 微信小程序配置
+wechat:
+  miniprogram:
+    # 小程序 AppId
+    app-id: ${WECHAT_MINIPROGRAM_APP_ID:wx4511980cf0d37c58}
+    # 小程序 AppSecret
+    app-secret: ${WECHAT_MINIPROGRAM_APP_SECRET:30b4963ce99ffc0a71bd6b828f40f65c}

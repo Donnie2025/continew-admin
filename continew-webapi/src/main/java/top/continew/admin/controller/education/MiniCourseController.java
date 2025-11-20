@@ -68,8 +68,8 @@ public class MiniCourseController {
      */
     @Operation(summary = "获取班主任的班级列表", description = "班主任查看自己负责的班级，支持按班级名搜索")
     @GetMapping("/list/{teacherIdentifier}")
-    public List<CourseResp> listCoursesByTeacher(@PathVariable String teacherIdentifier, 
-                                                @RequestParam(required = false) String name) {
+    public List<CourseResp> listCoursesByTeacher(@PathVariable String teacherIdentifier,
+                                                 @RequestParam(required = false) String name) {
         return courseService.listByMainTeacher(teacherIdentifier, name);
     }
 

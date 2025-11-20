@@ -184,4 +184,42 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         BeanUtils.copyProperties(entity, resp);
         return resp;
     }
+
+    @Override
+    public StudentDO getByOpenid(String openid) {
+        if (StrUtil.isBlank(openid)) {
+            return null;
+        }
+        LambdaQueryWrapper<StudentDO> wrapper = Wrappers.<StudentDO>lambdaQuery();
+        wrapper.eq(StudentDO::getOpenid, openid);
+        return this.getOne(wrapper);
+    }
+
+    @Override
+    public StudentDO getByPhone(String phone) {
+        if (StrUtil.isBlank(phone)) {
+            return null;
+        }
+        LambdaQueryWrapper<StudentDO> wrapper = Wrappers.<StudentDO>lambdaQuery();
+        wrapper.eq(StudentDO::getPhone, phone);
+        return this.getOne(wrapper);
+    }
+
+    @Override
+    public StudentDO getById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return baseMapper.selectById(id);
+    }
+
+    @Override
+    public boolean saveStudent(StudentDO student) {
+        return this.save(student);
+    }
+
+    @Override
+    public boolean updateStudent(StudentDO student) {
+        return this.updateById(student);
+    }
 }

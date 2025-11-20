@@ -274,12 +274,12 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     @Transactional(rollbackFor = Exception.class)
     public void createBatch(BatchLessonReq req) {
         log.info("开始批量创建课节，请求参数：{}", req);
-        
+
         // 验证课节时间列表不为空
         if (req.getLessonTimes() == null || req.getLessonTimes().isEmpty()) {
             throw new BusinessException("课节时间列表不能为空");
         }
-        
+
         // 批量创建课节
         for (BatchLessonReq.LessonTimeReq lessonTime : req.getLessonTimes()) {
             // 构建单个课节请求参数
@@ -293,14 +293,14 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             lessonReq.setRecordState(req.getRecordState());
             lessonReq.setLiveState(req.getLiveState());
             lessonReq.setOpenState(req.getOpenState());
-            
+
             // 获取课程信息以设置courseUid
             CourseDO course = courseMapper.selectById(req.getCourseId());
             if (course == null) {
                 throw new BusinessException("课程不存在，课程ID：" + req.getCourseId());
             }
             lessonReq.setCourseUid(course.getCourseUid());
-            
+
             try {
                 // 调用单个创建方法
                 Long lessonId = this.create(lessonReq);
@@ -310,7 +310,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
                 throw new BusinessException("课节创建失败：" + lessonReq.getName() + "，错误信息：" + e.getMessage());
             }
         }
-        
+
         log.info("批量创建课节完成，共创建 {} 个课节", req.getLessonTimes().size());
     }
 

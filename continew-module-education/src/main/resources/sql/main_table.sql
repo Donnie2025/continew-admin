@@ -7,6 +7,14 @@ CREATE TABLE `edu_student` (
   `register_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   `agent_id` bigint(20) DEFAULT NULL COMMENT '所属代理的ID',
   `avatar` varchar(512) DEFAULT NULL COMMENT '头像地址',
+  `openid` varchar(64) DEFAULT NULL COMMENT '微信openid',
+  `unionid` varchar(64) DEFAULT NULL COMMENT '微信unionid',
+  `nickname` varchar(50) DEFAULT NULL COMMENT '微信昵称',
+  `country` varchar(50) DEFAULT NULL COMMENT '国家',
+  `province` varchar(50) DEFAULT NULL COMMENT '省份',
+  `city` varchar(50) DEFAULT NULL COMMENT '城市',
+  `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
+  `last_login_ip` varchar(50) DEFAULT NULL COMMENT '最后登录IP',
   `remark` varchar(1024) DEFAULT NULL COMMENT '备注',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -15,6 +23,8 @@ CREATE TABLE `edu_student` (
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
   `institution_id` bigint(20) NOT NULL COMMENT '所属机构ID',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_openid` (`openid`),
+  KEY `idx_unionid` (`unionid`),
   CONSTRAINT `fk_student_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生表';
 

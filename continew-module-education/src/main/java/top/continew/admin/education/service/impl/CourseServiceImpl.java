@@ -232,12 +232,12 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
     @Override
     public List<CourseResp> listByMainTeacher(String teacherIdentifier, String name) {
         log.info("查询班主任班级列表，teacherIdentifier: {}, name: {}", teacherIdentifier, name);
-        
+
         if (StrUtil.isBlank(teacherIdentifier)) {
             log.warn("teacherIdentifier为空，返回空列表");
             return new ArrayList<>();
         }
-        
+
         Long mainTeacherId;
         try {
             // 直接解析为Long类型的用户ID
@@ -247,53 +247,51 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
             log.error("teacherIdentifier格式错误，无法解析为数字ID: {}", teacherIdentifier);
             return new ArrayList<>();
         }
-        
+
         // 构建查询条件
         LambdaQueryWrapper<CourseDO> wrapper = Wrappers.lambdaQuery(CourseDO.class)
             .eq(CourseDO::getMainTeacherId, mainTeacherId)
             .eq(CourseDO::getStatus, 1); // 只查询启用状态的班级
-        
+
         // 如果提供了班级名称，添加模糊查询条件
         if (StrUtil.isNotBlank(name)) {
             wrapper.like(CourseDO::getName, name);
         }
-        
+
         // 按创建时间倒序排列
         wrapper.orderByDesc(CourseDO::getCreateTime);
-        
+
         // 查询数据
         List<CourseDO> courses = baseMapper.selectList(wrapper);
-        
+
         // 转换为响应对象
-        return courses.stream()
-            .map(course -> {
-                CourseResp resp = BeanUtil.copyProperties(course, CourseResp.class);
-                // 填充班主任姓名
-                if (course.getMainTeacherId() != null) {
-                    TeacherDO teacher = teacherMapper.selectById(course.getMainTeacherId());
-                    if (teacher != null) {
-                        resp.setMainTeacherName(teacher.getName());
-                    }
+        return courses.stream().map(course -> {
+            CourseResp resp = BeanUtil.copyProperties(course, CourseResp.class);
+            // 填充班主任姓名
+            if (course.getMainTeacherId() != null) {
+                TeacherDO teacher = teacherMapper.selectById(course.getMainTeacherId());
+                if (teacher != null) {
+                    resp.setMainTeacherName(teacher.getName());
                 }
-                // 填充机构名称
-                if (course.getInstitutionId() != null) {
-                    InstitutionDO institution = institutionMapper.selectById(course.getInstitutionId());
-                    if (institution != null) {
-                        resp.setInstitutionName(institution.getName());
-                    }
+            }
+            // 填充机构名称
+            if (course.getInstitutionId() != null) {
+                InstitutionDO institution = institutionMapper.selectById(course.getInstitutionId());
+                if (institution != null) {
+                    resp.setInstitutionName(institution.getName());
                 }
-                return resp;
-            })
-            .collect(Collectors.toList());
+            }
+            return resp;
+        }).collect(Collectors.toList());
     }
 
     @Override
     public CourseResp getById(Long id) {
         CourseDO course = baseMapper.selectById(id);
         CheckUtils.throwIfNull(course, "班级不存在");
-        
+
         CourseResp resp = BeanUtil.copyProperties(course, CourseResp.class);
-        
+
         // 填充班主任姓名
         if (course.getMainTeacherId() != null) {
             TeacherDO teacher = teacherMapper.selectById(course.getMainTeacherId());
@@ -301,7 +299,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 resp.setMainTeacherName(teacher.getName());
             }
         }
-        
+
         // 填充机构名称
         if (course.getInstitutionId() != null) {
             InstitutionDO institution = institutionMapper.selectById(course.getInstitutionId());
@@ -309,7 +307,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 resp.setInstitutionName(institution.getName());
             }
         }
-        
+
         return resp;
     }
 }

@@ -81,9 +81,7 @@ public class CredentialController {
      */
     @PostMapping("/reset-error-count")
     @Operation(summary = "重置用户密码错误次数", description = "管理员重置用户的密码错误次数和冻结状态")
-    public R<Void> resetErrorCount(
-            @RequestParam String userType,
-            @RequestParam String phone) {
+    public R<Void> resetErrorCount(@RequestParam String userType, @RequestParam String phone) {
         credentialService.resetErrorCount(userType, phone);
         return R.ok();
     }
@@ -97,9 +95,7 @@ public class CredentialController {
      */
     @GetMapping("/status")
     @Operation(summary = "查询用户凭证状态", description = "查询用户的凭证状态，包括错误次数、冻结状态等")
-    public R<CredentialStatusResp> getCredentialStatus(
-            @RequestParam String userType,
-            @RequestParam String phone) {
+    public R<CredentialStatusResp> getCredentialStatus(@RequestParam String userType, @RequestParam String phone) {
         CredentialStatusResp result = credentialService.getCredentialStatus(userType, phone);
         return R.ok(result);
     }

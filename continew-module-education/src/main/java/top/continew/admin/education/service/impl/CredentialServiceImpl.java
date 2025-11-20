@@ -77,12 +77,10 @@ public class CredentialServiceImpl implements CredentialService {
             }
 
             // 查询或创建用户凭证
-            CredentialDO credential = credentialMapper.selectOne(
-                Wrappers.lambdaQuery(CredentialDO.class)
-                    .eq(CredentialDO::getUserId, req.getUserId())
-                    .eq(CredentialDO::getUserType, req.getUserType())
-                    .eq(CredentialDO::getCredentialType, "phone")
-            );
+            CredentialDO credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
+                .eq(CredentialDO::getUserId, req.getUserId())
+                .eq(CredentialDO::getUserType, req.getUserType())
+                .eq(CredentialDO::getCredentialType, "phone"));
 
             if (credential == null) {
                 // 创建新的凭证记录
@@ -98,7 +96,7 @@ public class CredentialServiceImpl implements CredentialService {
                 credential.setPasswordUpdatedTime(now);
                 credential.setCreateTime(now);
                 credential.setUpdateTime(now);
-                
+
                 credentialMapper.insert(credential);
                 log.info("为用户[{}/{}]创建新的凭证记录", req.getUserType(), req.getUserId());
             } else {
@@ -111,7 +109,7 @@ public class CredentialServiceImpl implements CredentialService {
                 credential.setLastErrorTime(null);
                 credential.setIsFrozen(false);
                 credential.setFreezeUntil(null);
-                
+
                 credentialMapper.updateById(credential);
                 log.info("更新用户[{}/{}]的凭证密码", req.getUserType(), req.getUserId());
             }
@@ -126,50 +124,43 @@ public class CredentialServiceImpl implements CredentialService {
     @Override
     public CredentialVerifyPasswordResp verifyPassword(CredentialVerifyPasswordReq req) {
         log.info("开始验证用户密码，类型：{}，手机号：{}", req.getUserType(), req.getPhone());
-        
+
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime oneHourAgo = now.minusHours(1);
-        
+
         // 优先查找教师凭证记录
-        CredentialDO credential = credentialMapper.selectOne(
-            Wrappers.lambdaQuery(CredentialDO.class)
-                .eq(CredentialDO::getPhone, req.getPhone())
-                .eq(CredentialDO::getUserType, "teacher")
-                .eq(CredentialDO::getCredentialType, "phone")
-                .eq(CredentialDO::getIsActive, true)
-        );
-        
+        CredentialDO credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
+            .eq(CredentialDO::getPhone, req.getPhone())
+            .eq(CredentialDO::getUserType, "teacher")
+            .eq(CredentialDO::getCredentialType, "phone")
+            .eq(CredentialDO::getIsActive, true));
+
         String actualUserType = "teacher";
-        
+
         // 如果没找到教师凭证，再查找学生凭证
         if (credential == null) {
             log.debug("未找到教师凭证，尝试查找学生凭证，手机号：{}", req.getPhone());
-            credential = credentialMapper.selectOne(
-                Wrappers.lambdaQuery(CredentialDO.class)
-                    .eq(CredentialDO::getPhone, req.getPhone())
-                    .eq(CredentialDO::getUserType, "student")
-                    .eq(CredentialDO::getCredentialType, "phone")
-                    .eq(CredentialDO::getIsActive, true)
-            );
+            credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
+                .eq(CredentialDO::getPhone, req.getPhone())
+                .eq(CredentialDO::getUserType, "student")
+                .eq(CredentialDO::getCredentialType, "phone")
+                .eq(CredentialDO::getIsActive, true));
             actualUserType = "student";
         }
-        
+
         if (credential == null) {
             log.warn("用户凭证不存在，手机号：{}", req.getPhone());
-            return CredentialVerifyPasswordResp.builder()
-                .success(false)
-                .message("用户不存在或未设置密码")
-                .build();
+            return CredentialVerifyPasswordResp.builder().success(false).message("用户不存在或未设置密码").build();
         }
-        
+
         log.info("找到用户凭证，实际用户类型：{}，手机号：{}", actualUserType, req.getPhone());
-        
+
         // 判断逻辑：最后一次错误时间如果在1个小时以内，且错误次数大于等于5，直接阻断
-        if (credential.getErrorCount() != null && credential.getErrorCount() >= MAX_ERROR_COUNT && 
-            credential.getLastErrorTime() != null && credential.getLastErrorTime().isAfter(oneHourAgo)) {
-            
-            log.warn("用户账户被阻断，类型：{}，手机号：{}，错误次数：{}，最后错误时间：{}", 
-                actualUserType, req.getPhone(), credential.getErrorCount(), credential.getLastErrorTime());
+        if (credential.getErrorCount() != null && credential.getErrorCount() >= MAX_ERROR_COUNT && credential
+            .getLastErrorTime() != null && credential.getLastErrorTime().isAfter(oneHourAgo)) {
+
+            log.warn("用户账户被阻断，类型：{}，手机号：{}，错误次数：{}，最后错误时间：{}", actualUserType, req.getPhone(), credential
+                .getErrorCount(), credential.getLastErrorTime());
             return CredentialVerifyPasswordResp.builder()
                 .success(false)
                 .errorCount(credential.getErrorCount())
@@ -179,25 +170,22 @@ public class CredentialServiceImpl implements CredentialService {
                 .message("密码错误次数过多，请1小时后再试")
                 .build();
         }
-        
+
         // 获取用户信息
         UserInfo userInfo = getUserInfo(actualUserType, credential.getUserId());
         if (userInfo == null) {
             log.warn("用户信息不存在，用户ID：{}", credential.getUserId());
-            return CredentialVerifyPasswordResp.builder()
-                .success(false)
-                .message("用户信息不存在")
-                .build();
+            return CredentialVerifyPasswordResp.builder().success(false).message("用户信息不存在").build();
         }
-        
+
         try {
             // Base64解码密码
             String decodedPassword = Base64.decodeStr(req.getPassword());
-            
+
             // 验证密码
             BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
             boolean passwordMatch = passwordEncoder.matches(decodedPassword, credential.getPassword());
-            
+
             if (passwordMatch) {
                 // 密码正确，清空错误次数为0，更新最后登录时间
                 credential.setErrorCount(0);
@@ -207,9 +195,9 @@ public class CredentialServiceImpl implements CredentialService {
                 credential.setLastLoginTime(now);
                 credential.setUpdateTime(now);
                 credentialMapper.updateById(credential);
-                
+
                 log.info("用户密码验证成功，类型：{}，手机号：{}", actualUserType, req.getPhone());
-                
+
                 return CredentialVerifyPasswordResp.builder()
                     .success(true)
                     .userId(userInfo.getId())
@@ -223,37 +211,37 @@ public class CredentialServiceImpl implements CredentialService {
             } else {
                 // 密码错误的处理逻辑
                 int currentErrorCount;
-                
+
                 // 判断：最后一次错误时间超过1个小时，不重置错误次数，只更新错误时间
-                if (credential.getLastErrorTime() != null && 
-                    credential.getLastErrorTime().isBefore(oneHourAgo)) {
+                if (credential.getLastErrorTime() != null && credential.getLastErrorTime().isBefore(oneHourAgo)) {
                     currentErrorCount = (credential.getErrorCount() != null ? credential.getErrorCount() : 0) + 1; // 不重置，继续累加
-                    log.info("超过1小时，继续累加错误次数，类型：{}，手机号：{}，当前错误次数：{}", actualUserType, req.getPhone(), currentErrorCount);
+                    log.info("超过1小时，继续累加错误次数，类型：{}，手机号：{}，当前错误次数：{}", actualUserType, req
+                        .getPhone(), currentErrorCount);
                 } else {
                     currentErrorCount = (credential.getErrorCount() != null ? credential.getErrorCount() : 0) + 1;
                 }
-                
+
                 // 更新错误记录
                 credential.setErrorCount(currentErrorCount);
                 credential.setLastErrorTime(now);
                 credential.setIsFrozen(currentErrorCount >= MAX_ERROR_COUNT);
                 credential.setFreezeUntil(currentErrorCount >= MAX_ERROR_COUNT ? now.plusHours(1) : null);
                 credential.setUpdateTime(now);
-                
+
                 credentialMapper.updateById(credential);
-                
+
                 int remainingAttempts = MAX_ERROR_COUNT - currentErrorCount;
                 String message;
-                
+
                 if (currentErrorCount >= MAX_ERROR_COUNT) {
                     message = "密码错误次数过多，请1小时后再试";
                     remainingAttempts = 0;
                 } else {
                     message = "密码错误，剩余尝试次数：" + remainingAttempts;
                 }
-                
-                log.warn("用户密码验证失败，类型：{}，手机号：{}，错误次数：{}，剩余尝试次数：{}", 
-                    actualUserType, req.getPhone(), currentErrorCount, remainingAttempts);
+
+                log.warn("用户密码验证失败，类型：{}，手机号：{}，错误次数：{}，剩余尝试次数：{}", actualUserType, req
+                    .getPhone(), currentErrorCount, remainingAttempts);
                 return CredentialVerifyPasswordResp.builder()
                     .success(false)
                     .errorCount(currentErrorCount)
@@ -265,10 +253,7 @@ public class CredentialServiceImpl implements CredentialService {
             }
         } catch (Exception e) {
             log.error("用户密码验证异常，类型：{}，手机号：{}", actualUserType, req.getPhone(), e);
-            return CredentialVerifyPasswordResp.builder()
-                .success(false)
-                .message("验证失败：" + e.getMessage())
-                .build();
+            return CredentialVerifyPasswordResp.builder().success(false).message("验证失败：" + e.getMessage()).build();
         }
     }
 
@@ -276,21 +261,19 @@ public class CredentialServiceImpl implements CredentialService {
     @Transactional(rollbackFor = Exception.class)
     public void resetErrorCount(String userType, String phone) {
         log.info("开始重置用户密码错误次数，类型：{}，手机号：{}", userType, phone);
-        
-        CredentialDO credential = credentialMapper.selectOne(
-            Wrappers.lambdaQuery(CredentialDO.class)
-                .eq(CredentialDO::getPhone, phone)
-                .eq(CredentialDO::getUserType, userType)
-                .eq(CredentialDO::getCredentialType, "phone")
-        );
-        
+
+        CredentialDO credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
+            .eq(CredentialDO::getPhone, phone)
+            .eq(CredentialDO::getUserType, userType)
+            .eq(CredentialDO::getCredentialType, "phone"));
+
         if (credential != null) {
             credential.setErrorCount(0);
             credential.setLastErrorTime(null);
             credential.setIsFrozen(false);
             credential.setFreezeUntil(null);
             credential.setUpdateTime(LocalDateTime.now());
-            
+
             credentialMapper.updateById(credential);
             log.info("用户密码错误次数重置成功，类型：{}，手机号：{}", userType, phone);
         } else {
@@ -302,19 +285,17 @@ public class CredentialServiceImpl implements CredentialService {
     @Override
     public CredentialStatusResp getCredentialStatus(String userType, String phone) {
         log.info("查询用户凭证状态，类型：{}，手机号：{}", userType, phone);
-        
-        CredentialDO credential = credentialMapper.selectOne(
-            Wrappers.lambdaQuery(CredentialDO.class)
-                .eq(CredentialDO::getPhone, phone)
-                .eq(CredentialDO::getUserType, userType)
-                .eq(CredentialDO::getCredentialType, "phone")
-        );
-        
+
+        CredentialDO credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
+            .eq(CredentialDO::getPhone, phone)
+            .eq(CredentialDO::getUserType, userType)
+            .eq(CredentialDO::getCredentialType, "phone"));
+
         if (credential == null) {
             log.warn("用户凭证不存在，类型：{}，手机号：{}", userType, phone);
             throw new RuntimeException("用户凭证不存在");
         }
-        
+
         return CredentialStatusResp.builder()
             .userType(credential.getUserType())
             .phone(credential.getPhone())

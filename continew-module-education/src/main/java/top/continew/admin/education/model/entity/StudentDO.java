@@ -74,6 +74,46 @@ public class StudentDO extends BaseDO {
     private String avatar;
 
     /**
+     * 微信openid
+     */
+    private String openid;
+
+    /**
+     * 微信unionid
+     */
+    private String unionid;
+
+    /**
+     * 微信昵称
+     */
+    private String nickname;
+
+    /**
+     * 国家
+     */
+    private String country;
+
+    /**
+     * 省份
+     */
+    private String province;
+
+    /**
+     * 城市
+     */
+    private String city;
+
+    /**
+     * 最后登录时间
+     */
+    private LocalDateTime lastLoginTime;
+
+    /**
+     * 最后登录IP
+     */
+    private String lastLoginIp;
+
+    /**
      * 备注
      */
     private String remark;
