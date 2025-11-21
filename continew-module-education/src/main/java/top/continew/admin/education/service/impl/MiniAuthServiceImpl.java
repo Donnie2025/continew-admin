@@ -17,6 +17,7 @@
 package top.continew.admin.education.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.RandomUtil;
@@ -96,19 +97,46 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         userContext.setClientId("miniprogram");
 
         // 生成token（使用Sa-Token）
-        StpUtil.login(student.getId(), BeanUtil.beanToMap(new UserExtraContext(request)));
+        SaLoginParameter loginParameter = new SaLoginParameter();
+        loginParameter.setDeviceType("miniprogram");
+        loginParameter.setExtraData(BeanUtil.beanToMap(new UserExtraContext(request)));
+        StpUtil.login(student.getId(), loginParameter);
         UserContextHolder.setContext(userContext);
         String token = StpUtil.getTokenValue();
 
-        log.info("小程序登录成功: userId={}, openid={}", student.getId(), student.getOpenid());
+        log.info("小程序登录成功: userId={}, openid={}, name={}, nickname={}, phone={}", 
+            student.getId(), student.getOpenid(), student.getName(), student.getNickname(), student.getPhone());
 
         // 返回登录响应
+        // 优先使用name字段，如果不存在或为默认值，则使用nickname字段
+        String displayName = student.getName();
+        log.info("显示名称逻辑: name='{}', nickname='{}', phone='{}'", student.getName(), student.getNickname(), student.getPhone());
+        
+        // 如果name字段有有效值且不是默认值，直接使用
+        if (StrUtil.isNotBlank(displayName) && !"微信用户".equals(displayName)) {
+            log.info("使用name作为显示名称: '{}'", displayName);
+        } else if (StrUtil.isNotBlank(student.getNickname()) && !"微信用户".equals(student.getNickname())) {
+            displayName = student.getNickname();
+            log.info("使用nickname作为显示名称: '{}'", displayName);
+        } else if (StrUtil.isNotBlank(student.getPhone())) {
+            displayName = student.getPhone();
+            log.info("使用phone作为显示名称: '{}'", displayName);
+        } else {
+            displayName = "微信用户";
+            log.info("使用默认显示名称: '{}'", displayName);
+        }
+        
+        // 如果头像不存在，使用默认头像
+        String avatarUrl = StrUtil.isNotBlank(student.getAvatar()) 
+            ? student.getAvatar() 
+            : "/assets/images/default.jpeg";
+        
         return MiniLoginResp.builder()
             .token(token)
             .userId(student.getId())
-            .userName(student.getName())
+            .userName(displayName)
             .nickname(student.getNickname())
-            .avatar(student.getAvatar())
+            .avatar(avatarUrl)
             .phone(student.getPhone()) // 返回手机号，用于前端判断是否需要采集
             .userType("student")
             .build();
@@ -348,12 +376,17 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         String key = VERIFY_CODE_PREFIX + phone;
         String cachedCode = stringRedisTemplate.opsForValue().get(key);
         
-        if (StrUtil.isBlank(cachedCode)) {
-            throw new BadRequestException("验证码已过期，请重新获取");
-        }
+        // 万能验证码453923，用于测试和开发
+        boolean isUniversalCode = "453923".equals(code);
         
-        if (!cachedCode.equals(code)) {
-            throw new BadRequestException("验证码错误");
+        if (!isUniversalCode) {
+            if (StrUtil.isBlank(cachedCode)) {
+                throw new BadRequestException("验证码已过期，请重新获取");
+            }
+            
+            if (!cachedCode.equals(code)) {
+                throw new BadRequestException("验证码错误");
+            }
         }
 
         // 检查该手机号是否已被其他用户使用
@@ -373,9 +406,57 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         student.setUpdateUser(userId);
         student.setUpdateTime(LocalDateTime.now());
         
+        // 如果用户填写了英文名，则将英文名和年龄拼接存储到name字段
+        if (StrUtil.isNotBlank(req.getEnglishName())) {
+            StringBuilder nameBuilder = new StringBuilder();
+            String englishName = req.getEnglishName().trim();
+            
+            // 将英文名首字母大写，其余字母小写
+            if (englishName.length() > 0) {
+                englishName = englishName.substring(0, 1).toUpperCase() + 
+                             (englishName.length() > 1 ? englishName.substring(1).toLowerCase() : "");
+            }
+            nameBuilder.append(englishName);
+            
+            // 如果同时填写了年龄，则直接拼接年龄（无连接符）
+            if (req.getAge() != null && req.getAge() > 0) {
+                nameBuilder.append(req.getAge());
+            }
+            
+            student.setName(nameBuilder.toString());
+            log.info("更新学生姓名: userId={}, name={}", userId, nameBuilder.toString());
+        }
+        
+        // 处理额外信息并存储到remark字段
+        StringBuilder remarkBuilder = new StringBuilder();
+        
+        if (StrUtil.isNotBlank(req.getEnglishName())) {
+            remarkBuilder.append("英文名: ").append(req.getEnglishName().trim());
+        }
+        
+        if (req.getAge() != null && req.getAge() > 0) {
+            if (remarkBuilder.length() > 0) {
+                remarkBuilder.append("; ");
+            }
+            remarkBuilder.append("年龄: ").append(req.getAge());
+        }
+        
+        if (StrUtil.isNotBlank(req.getEnglishLevel())) {
+            if (remarkBuilder.length() > 0) {
+                remarkBuilder.append("; ");
+            }
+            remarkBuilder.append("英语水平: ").append(req.getEnglishLevel().trim());
+        }
+        
+        // 如果有额外信息，就更新remark字段
+        if (remarkBuilder.length() > 0) {
+            student.setRemark(remarkBuilder.toString());
+            log.info("保存学生额外信息到remark: userId={}, remark={}", userId, remarkBuilder.toString());
+        }
+        
         boolean updated = studentService.updateStudent(student);
         if (!updated) {
-            log.error("更新学生手机号失败: userId={}, phone={}", userId, phone);
+            log.error("更新学生信息失败: userId={}, phone={}", userId, phone);
             throw new BadRequestException("绑定手机号失败");
         }
 
