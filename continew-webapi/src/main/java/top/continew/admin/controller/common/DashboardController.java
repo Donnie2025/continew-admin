@@ -131,4 +131,24 @@ public class DashboardController {
     public List<DashboardChartCommonResp> getAnalysisBrowser() {
         return dashboardService.getAnalysisBrowser();
     }
+
+    @Operation(summary = "查询每周约课数量趋势", description = "查询每周约课数量趋势")
+    @Parameter(name = "weeks", description = "周数", example = "12", in = ParameterIn.PATH)
+    @GetMapping("/course/weekly-trend/{weeks}")
+    @CachePenetrationProtect
+    @CacheRefresh(refresh = 7200)
+    @Cached(key = "#weeks", name = CacheConstants.DASHBOARD_KEY_PREFIX + "COURSE_WEEKLY_V2:", cacheType = CacheType.BOTH, syncLocal = true)
+    public List<DashboardChartCommonResp> listCourseWeeklyTrend(@PathVariable Integer weeks) {
+        ValidationUtils.throwIf(weeks < 1 || weeks > 52, "周数必须在 1-52 之间");
+        return dashboardService.listCourseWeeklyTrend(weeks);
+    }
+
+    @Operation(summary = "查询本周约课总览", description = "查询本周约课数量及较上周的变化")
+    @GetMapping("/overview/weekly-course")
+    @CachePenetrationProtect
+    @CacheRefresh(refresh = 7200)
+    @Cached(name = CacheConstants.DASHBOARD_KEY_PREFIX + "WEEKLY_COURSE:", cacheType = CacheType.BOTH, syncLocal = true)
+    public DashboardOverviewCommonResp getOverviewWeeklyCourse() {
+        return dashboardService.getOverviewWeeklyCourse();
+    }
 }

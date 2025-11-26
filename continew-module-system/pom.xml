@@ -28,5 +28,11 @@
             <groupId>top.continew</groupId>
             <artifactId>continew-common</artifactId>
         </dependency>
+
+        <!-- 教育模块（用于获取薪资统计数据） -->
+        <dependency>
+            <groupId>top.continew</groupId>
+            <artifactId>continew-module-education</artifactId>
+        </dependency>
     </dependencies>
 </project>

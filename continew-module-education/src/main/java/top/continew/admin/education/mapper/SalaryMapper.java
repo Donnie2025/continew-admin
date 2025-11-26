@@ -16,8 +16,12 @@
 
 package top.continew.admin.education.mapper;
 
+import org.apache.ibatis.annotations.Param;
 import top.continew.starter.data.mp.base.BaseMapper;
 import top.continew.admin.education.model.entity.SalaryDO;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * 薪资 Mapper
@@ -25,4 +29,27 @@ import top.continew.admin.education.model.entity.SalaryDO;
  * @author don
  * @since 2025/05/13 22:43
  */
-public interface SalaryMapper extends BaseMapper<SalaryDO> {}
+public interface SalaryMapper extends BaseMapper<SalaryDO> {
+
+    /**
+     * 查询约课数量趋势（按结束日期统计）
+     *
+     * @param weeks 查询最近几周的数据
+     * @return 约课数量趋势(name: 结束日期, value: 约课数量)
+     */
+    List<Map<String, Object>> selectListCourseWeeklyTrend(@Param("weeks") Integer weeks);
+
+    /**
+     * 查询本周约课数量
+     *
+     * @return 本周约课总数
+     */
+    Long selectThisWeekCourseCount();
+
+    /**
+     * 查询上周约课数量
+     *
+     * @return 上周约课总数
+     */
+    Long selectLastWeekCourseCount();
+}

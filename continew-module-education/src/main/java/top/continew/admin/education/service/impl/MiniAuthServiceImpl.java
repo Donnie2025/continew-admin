@@ -19,10 +19,8 @@ package top.continew.admin.education.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.symmetric.AES;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -80,7 +78,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
     @Override
     public MiniLoginResp loginByWechat(MiniWechatLoginReq req, HttpServletRequest request) {
         log.info("开始微信登录，code: {}, userInfo: {}", req.getCode(), req.getUserInfo() != null ? "有用户信息" : "无用户信息");
-        
+
         // 调用微信API获取用户信息
         WechatUserInfo wechatUserInfo = getWechatUserInfo(req.getCode());
 
@@ -104,33 +102,20 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         UserContextHolder.setContext(userContext);
         String token = StpUtil.getTokenValue();
 
-        log.info("小程序登录成功: userId={}, openid={}, name={}, nickname={}, phone={}", 
-            student.getId(), student.getOpenid(), student.getName(), student.getNickname(), student.getPhone());
+        log.info("小程序登录成功: userId={}, openid={}", student.getId(), student.getOpenid());
 
         // 返回登录响应
         // 优先使用name字段，如果不存在或为默认值，则使用nickname字段
         String displayName = student.getName();
-        log.info("显示名称逻辑: name='{}', nickname='{}', phone='{}'", student.getName(), student.getNickname(), student.getPhone());
-        
-        // 如果name字段有有效值且不是默认值，直接使用
-        if (StrUtil.isNotBlank(displayName) && !"微信用户".equals(displayName)) {
-            log.info("使用name作为显示名称: '{}'", displayName);
-        } else if (StrUtil.isNotBlank(student.getNickname()) && !"微信用户".equals(student.getNickname())) {
-            displayName = student.getNickname();
-            log.info("使用nickname作为显示名称: '{}'", displayName);
-        } else if (StrUtil.isNotBlank(student.getPhone())) {
-            displayName = student.getPhone();
-            log.info("使用phone作为显示名称: '{}'", displayName);
-        } else {
-            displayName = "微信用户";
-            log.info("使用默认显示名称: '{}'", displayName);
+        if (StrUtil.isBlank(displayName) || "微信用户".equals(displayName)) {
+            displayName = StrUtil.isNotBlank(student.getNickname()) ? student.getNickname() : "微信用户";
         }
-        
+
         // 如果头像不存在，使用默认头像
-        String avatarUrl = StrUtil.isNotBlank(student.getAvatar()) 
-            ? student.getAvatar() 
+        String avatarUrl = StrUtil.isNotBlank(student.getAvatar())
+            ? student.getAvatar()
             : "/assets/images/default.jpeg";
-        
+
         return MiniLoginResp.builder()
             .token(token)
             .userId(student.getId())
@@ -348,16 +333,16 @@ public class MiniAuthServiceImpl implements MiniAuthService {
 
         // 生成6位数验证码
         String code = RandomUtil.randomNumbers(6);
-        
+
         // 保存验证码到Redis，有效期5分钟
         String key = VERIFY_CODE_PREFIX + phone;
         stringRedisTemplate.opsForValue().set(key, code, VERIFY_CODE_EXPIRE_TIME, TimeUnit.MINUTES);
-        
+
         log.info("验证码已生成并保存到Redis: phone={}, code={}", phone, code);
-        
+
         // TODO: 这里应该调用短信服务发送验证码
         // smsService.send(phone, code);
-        
+
         // 开发环境下，将验证码打印到日志中（生产环境应删除）
         log.warn("[开发环境] 验证码: {}", code);
     }
@@ -366,24 +351,24 @@ public class MiniAuthServiceImpl implements MiniAuthService {
     public void bindPhone(MiniBindPhoneReq req) {
         String phone = req.getPhone();
         String code = req.getCode();
-        
+
         log.info("绑定手机号: phone={}, code={}", phone, code);
 
         // 获取当前登录用户ID
         Long userId = StpUtil.getLoginIdAsLong();
-        
+
         // 验证验证码
         String key = VERIFY_CODE_PREFIX + phone;
         String cachedCode = stringRedisTemplate.opsForValue().get(key);
-        
+
         // 万能验证码453923，用于测试和开发
         boolean isUniversalCode = "453923".equals(code);
-        
+
         if (!isUniversalCode) {
             if (StrUtil.isBlank(cachedCode)) {
                 throw new BadRequestException("验证码已过期，请重新获取");
             }
-            
+
             if (!cachedCode.equals(code)) {
                 throw new BadRequestException("验证码错误");
             }
@@ -405,55 +390,56 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         student.setPhone(phone);
         student.setUpdateUser(userId);
         student.setUpdateTime(LocalDateTime.now());
-        
+
         // 如果用户填写了英文名，则将英文名和年龄拼接存储到name字段
         if (StrUtil.isNotBlank(req.getEnglishName())) {
             StringBuilder nameBuilder = new StringBuilder();
             String englishName = req.getEnglishName().trim();
-            
+
             // 将英文名首字母大写，其余字母小写
             if (englishName.length() > 0) {
-                englishName = englishName.substring(0, 1).toUpperCase() + 
-                             (englishName.length() > 1 ? englishName.substring(1).toLowerCase() : "");
+                englishName = englishName.substring(0, 1).toUpperCase() + (englishName.length() > 1
+                    ? englishName.substring(1).toLowerCase()
+                    : "");
             }
             nameBuilder.append(englishName);
-            
+
             // 如果同时填写了年龄，则直接拼接年龄（无连接符）
             if (req.getAge() != null && req.getAge() > 0) {
                 nameBuilder.append(req.getAge());
             }
-            
+
             student.setName(nameBuilder.toString());
             log.info("更新学生姓名: userId={}, name={}", userId, nameBuilder.toString());
         }
-        
+
         // 处理额外信息并存储到remark字段
         StringBuilder remarkBuilder = new StringBuilder();
-        
+
         if (StrUtil.isNotBlank(req.getEnglishName())) {
             remarkBuilder.append("英文名: ").append(req.getEnglishName().trim());
         }
-        
+
         if (req.getAge() != null && req.getAge() > 0) {
             if (remarkBuilder.length() > 0) {
                 remarkBuilder.append("; ");
             }
             remarkBuilder.append("年龄: ").append(req.getAge());
         }
-        
+
         if (StrUtil.isNotBlank(req.getEnglishLevel())) {
             if (remarkBuilder.length() > 0) {
                 remarkBuilder.append("; ");
             }
             remarkBuilder.append("英语水平: ").append(req.getEnglishLevel().trim());
         }
-        
+
         // 如果有额外信息，就更新remark字段
         if (remarkBuilder.length() > 0) {
             student.setRemark(remarkBuilder.toString());
             log.info("保存学生额外信息到remark: userId={}, remark={}", userId, remarkBuilder.toString());
         }
-        
+
         boolean updated = studentService.updateStudent(student);
         if (!updated) {
             log.error("更新学生信息失败: userId={}, phone={}", userId, phone);
@@ -462,7 +448,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
 
         // 删除验证码
         stringRedisTemplate.delete(key);
-        
+
         log.info("绑定手机号成功: userId={}, phone={}", userId, phone);
     }
 

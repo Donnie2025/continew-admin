@@ -96,4 +96,19 @@ public interface DashboardService {
      * @return 浏览器分析信息
      */
     List<DashboardChartCommonResp> getAnalysisBrowser();
+
+    /**
+     * 查询约课数量趋势（按结束日期统计）
+     *
+     * @param weeks 查询最近几周的数据
+     * @return 约课数量趋势
+     */
+    List<DashboardChartCommonResp> listCourseWeeklyTrend(Integer weeks);
+
+    /**
+     * 查询本周约课总览
+     *
+     * @return 本周约课数量及较上周的变化
+     */
+    DashboardOverviewCommonResp getOverviewWeeklyCourse();
 }

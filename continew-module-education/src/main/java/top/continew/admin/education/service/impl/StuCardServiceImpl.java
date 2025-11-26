@@ -67,12 +67,20 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         stuCardDO.setStatus(1);
         stuCardDO.setCardStatus(1);
 
-        // 获取会员卡原始balance值 (首次绑卡时为0)
+        // 根据卡类型设置次数或余额
         BigDecimal originalBalance = BigDecimal.ZERO;
-        // 计算新的balance = 原始balance + 充值次数
         BigDecimal newBalance = originalBalance.add(req.getBalance());
-        // 设置最终的balance值
-        stuCardDO.setBalance(newBalance);
+
+        // cardType: TL,TU 为次卡，BL,BU 为储蓄卡
+        if ("TL".equals(req.getCardType()) || "TU".equals(req.getCardType())) {
+            // 次卡：设置剩余次数
+            stuCardDO.setRemainTimes(req.getBalance().intValue());
+            stuCardDO.setRemainBalance(BigDecimal.ZERO);
+        } else {
+            // 储蓄卡：设置剩余余额
+            stuCardDO.setRemainTimes(0);
+            stuCardDO.setRemainBalance(req.getBalance());
+        }
 
         // 保存会员卡绑定记录
         baseMapper.insert(stuCardDO);
@@ -115,7 +123,10 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         queryWrapper.eq(StuCardDO::getStuId, stuId)
             .eq(StuCardDO::getStatus, 1)  // 启用状态
             .eq(StuCardDO::getCardStatus, 1)  // 卡状态启用
-            .gt(StuCardDO::getBalance, 0)  // 余额大于0
+            .and(wrapper -> wrapper.gt(StuCardDO::getRemainTimes, 0)  // 次数大于0
+                .or()
+                .gt(StuCardDO::getRemainBalance, BigDecimal.ZERO)  // 或余额大于0
+            )
             .and(wrapper -> wrapper.isNull(StuCardDO::getExpireDate)  // 无过期日期
                 .or()
                 .ge(StuCardDO::getExpireDate, LocalDate.now())  // 或未过期

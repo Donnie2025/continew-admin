@@ -25,7 +25,6 @@ import com.alibaba.excel.annotation.ExcelProperty;
 
 import top.continew.admin.common.model.resp.BaseDetailResp;
 import java.io.Serial;
-import java.time.*;
 import java.math.BigDecimal;
 
 /**
@@ -43,39 +42,53 @@ public class CardDetailResp extends BaseDetailResp {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 会员卡名称
+     * 会员卡标题
      */
-    @Schema(description = "会员卡名称")
-    @ExcelProperty(value = "会员卡名称")
-    private String name;
+    @Schema(description = "会员卡标题")
+    @ExcelProperty(value = "会员卡标题")
+    private String title;
 
     /**
-     * 会员卡类型
+     * 副标题
      */
-    @Schema(description = "会员卡类型")
+    @Schema(description = "副标题")
+    @ExcelProperty(value = "副标题")
+    private String subTitle;
+
+    /**
+     * 会员卡描述
+     */
+    @Schema(description = "会员卡描述")
+    @ExcelProperty(value = "会员卡描述")
+    private String description;
+
+    /**
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
+     */
+    @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
     @ExcelProperty(value = "会员卡类型")
-    private Integer type;
+    private String type;
 
     /**
-     * 可用次数
+     * 初始次数
      */
-    @Schema(description = "可用次数")
-    @ExcelProperty(value = "可用次数")
-    private Integer availableCount;
+    @Schema(description = "初始次数")
+    @ExcelProperty(value = "初始次数")
+    private Integer initTimes;
 
     /**
-     * 有效天数
+     * 初始有效天数
      */
-    @Schema(description = "有效天数")
-    @ExcelProperty(value = "有效天数")
-    private Integer availableDay;
+    @Schema(description = "初始有效天数")
+    @ExcelProperty(value = "初始有效天数")
+    private Integer initDays;
 
     /**
-     * 可用余额
+     * 初始余额
      */
-    @Schema(description = "可用余额")
-    @ExcelProperty(value = "可用余额")
-    private BigDecimal availableBalance;
+    @Schema(description = "初始余额")
+    @ExcelProperty(value = "初始余额")
+    private BigDecimal initBalance;
 
     /**
      * 代理售卖价格
@@ -85,46 +98,25 @@ public class CardDetailResp extends BaseDetailResp {
     private BigDecimal price;
 
     /**
-     * 是否仅代理可售
+     * 排序字段，值越小排序越靠前
      */
-    @Schema(description = "是否仅代理可售")
-    @ExcelProperty(value = "是否仅代理可售")
-    private Integer isAgentOnly;
+    @Schema(description = "排序字段，值越小排序越靠前")
+    @ExcelProperty(value = "排序")
+    private Integer sort;
 
     /**
-     * 是否支持线上购卡（1：支持；0：不支持）
+     * 所属机构ID
      */
-    @Schema(description = "是否支持线上购卡（1：支持；0：不支持）")
-    @ExcelProperty(value = "是否支持线上购卡（1：支持；0：不支持）")
-    private Integer isOnlineSale;
+    @Schema(description = "所属机构ID")
+    @ExcelProperty(value = "所属机构ID")
+    private Long institutionId;
 
     /**
-     * 是否可续费
+     * 备注
      */
-    @Schema(description = "是否可续费")
-    @ExcelProperty(value = "是否可续费")
-    private Integer isRenewable;
-
-    /**
-     * 续费次数
-     */
-    @Schema(description = "续费次数")
-    @ExcelProperty(value = "续费次数")
-    private Integer renewTimes;
-
-    /**
-     * 续费天数
-     */
-    @Schema(description = "续费天数")
-    @ExcelProperty(value = "续费天数")
-    private Integer renewDays;
-
-    /**
-     * 续费价格
-     */
-    @Schema(description = "续费价格")
-    @ExcelProperty(value = "续费价格")
-    private BigDecimal renewPrice;
+    @Schema(description = "备注")
+    @ExcelProperty(value = "备注")
+    private String remark;
 
     /**
      * 状态

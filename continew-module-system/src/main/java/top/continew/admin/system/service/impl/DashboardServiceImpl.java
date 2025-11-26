@@ -29,6 +29,7 @@ import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import top.continew.admin.education.mapper.SalaryMapper;
 import top.continew.admin.system.mapper.LogMapper;
 import top.continew.admin.system.model.resp.dashboard.DashboardAccessTrendResp;
 import top.continew.admin.system.model.resp.dashboard.DashboardChartCommonResp;
@@ -54,6 +55,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final LogMapper logMapper;
     private final NoticeService noticeService;
+    private final SalaryMapper salaryMapper;
 
     @Override
     public List<DashboardNoticeResp> listNotice() {
@@ -165,8 +167,30 @@ public class DashboardServiceImpl implements DashboardService {
         return this.buildOtherPieChartData(list);
     }
 
+    @Override
+    public List<DashboardChartCommonResp> listCourseWeeklyTrend(Integer weeks) {
+        List<Map<String, Object>> rawData = salaryMapper.selectListCourseWeeklyTrend(weeks);
+        return rawData.stream()
+            .map(item -> new DashboardChartCommonResp((String)item.get("name"), ((Number)item.get("value"))
+                .longValue()))
+            .toList();
+    }
+
+    @Override
+    public DashboardOverviewCommonResp getOverviewWeeklyCourse() {
+        Long thisWeek = salaryMapper.selectThisWeekCourseCount();
+        Long lastWeek = salaryMapper.selectLastWeekCourseCount();
+        BigDecimal growth = calcGrowthFromLastWeek(thisWeek, lastWeek);
+        
+        DashboardOverviewCommonResp resp = new DashboardOverviewCommonResp();
+        resp.setToday(thisWeek);  // 本周当作"今日"
+        resp.setGrowth(growth);
+        resp.setYesterday(lastWeek);  // 上周当作"昨日"
+        return resp;
+    }
+
     /**
-     * 计算增长百分比
+     * 计算增长百分比（较昨日）
      *
      * @param today     今日数量
      * @param yesterday 昨日数量
@@ -176,6 +200,19 @@ public class DashboardServiceImpl implements DashboardService {
         return (0 == yesterday)
             ? BigDecimal.valueOf(100)
             : NumberUtil.round(NumberUtil.mul(NumberUtil.div(NumberUtil.sub(today, yesterday), yesterday), 100), 1);
+    }
+
+    /**
+     * 计算增长百分比（较上周）
+     *
+     * @param thisWeek 本周数量
+     * @param lastWeek 上周数量
+     * @return 增长百分比
+     */
+    private BigDecimal calcGrowthFromLastWeek(Long thisWeek, Long lastWeek) {
+        return (0 == lastWeek)
+            ? BigDecimal.valueOf(100)
+            : NumberUtil.round(NumberUtil.mul(NumberUtil.div(NumberUtil.sub(thisWeek, lastWeek), lastWeek), 100), 1);
     }
 
     /**

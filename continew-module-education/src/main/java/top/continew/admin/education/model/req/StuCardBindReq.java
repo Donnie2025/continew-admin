@@ -70,11 +70,11 @@ public class StuCardBindReq implements Serializable {
     private String cardName;
 
     /**
-     * 会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
-    @Schema(description = "会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）")
-    @NotNull(message = "会员卡类型不能为空")
-    private Integer cardType;
+    @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
+    @NotBlank(message = "会员卡类型不能为空")
+    private String cardType;
 
     /**
      * 充值次数

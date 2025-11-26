@@ -18,6 +18,7 @@ package top.continew.admin.education.model.entity;
 
 import lombok.Data;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import top.continew.admin.common.model.entity.BaseDO;
@@ -57,17 +58,38 @@ public class StuCardDO extends BaseDO {
     /**
      * 会员卡名称
      */
+    @TableField("card_title")
     private String cardName;
 
     /**
-     * 会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
-    private Integer cardType;
+    private String cardType;
 
     /**
-     * 剩余次数/余额
+     * 剩余次数（用于次卡）
      */
-    private BigDecimal balance;
+    private Integer remainTimes;
+
+    /**
+     * 剩余余额（用于储蓄卡）
+     */
+    private BigDecimal remainBalance;
+
+    /**
+     * 激活日期
+     */
+    private LocalDate activateDate;
+
+    /**
+     * 购买价格
+     */
+    private BigDecimal purchasePrice;
+
+    /**
+     * 备注
+     */
+    private String remark;
 
     /**
      * 到期日期

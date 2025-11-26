@@ -63,16 +63,28 @@ public class StuCardResp extends BaseResp {
     private String cardName;
 
     /**
-     * 会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
-    @Schema(description = "会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）")
-    private Integer cardType;
+    @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
+    private String cardType;
 
     /**
-     * 剩余次数/余额
+     * 剩余次数（用于次卡）
      */
-    @Schema(description = "剩余次数/余额")
-    private BigDecimal balance;
+    @Schema(description = "剩余次数")
+    private Integer remainTimes;
+
+    /**
+     * 剩余余额（用于储蓄卡）
+     */
+    @Schema(description = "剩余余额")
+    private BigDecimal remainBalance;
+
+    /**
+     * 购买价格
+     */
+    @Schema(description = "购买价格")
+    private BigDecimal purchasePrice;
 
     /**
      * 到期日期

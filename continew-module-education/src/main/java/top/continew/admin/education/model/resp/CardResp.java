@@ -39,34 +39,46 @@ public class CardResp extends BaseResp {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 会员卡名称
+     * 会员卡标题
      */
-    @Schema(description = "会员卡名称")
-    private String name;
+    @Schema(description = "会员卡标题")
+    private String title;
 
     /**
-     * 会员卡类型
+     * 副标题
      */
-    @Schema(description = "会员卡类型")
-    private Integer type;
+    @Schema(description = "副标题")
+    private String subTitle;
 
     /**
-     * 可用次数
+     * 会员卡描述
      */
-    @Schema(description = "可用次数")
-    private Integer availableCount;
+    @Schema(description = "会员卡描述")
+    private String description;
 
     /**
-     * 有效天数
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
-    @Schema(description = "有效天数")
-    private Integer availableDay;
+    @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
+    private String type;
 
     /**
-     * 可用余额
+     * 初始次数
      */
-    @Schema(description = "可用余额")
-    private BigDecimal availableBalance;
+    @Schema(description = "初始次数")
+    private Integer initTimes;
+
+    /**
+     * 初始有效天数
+     */
+    @Schema(description = "初始有效天数")
+    private Integer initDays;
+
+    /**
+     * 初始余额
+     */
+    @Schema(description = "初始余额")
+    private BigDecimal initBalance;
 
     /**
      * 代理售卖价格
@@ -75,46 +87,22 @@ public class CardResp extends BaseResp {
     private BigDecimal price;
 
     /**
-     * 是否仅代理可售
-     */
-    @Schema(description = "是否仅代理可售")
-    private Integer isAgentOnly;
-
-    /**
-     * 是否支持线上购卡（1：支持；0：不支持）
-     */
-    @Schema(description = "是否支持线上购卡（1：支持；0：不支持）")
-    private Integer isOnlineSale;
-
-    /**
-     * 是否可续费
-     */
-    @Schema(description = "是否可续费")
-    private Integer isRenewable;
-
-    /**
-     * 续费次数
-     */
-    @Schema(description = "续费次数")
-    private Integer renewTimes;
-
-    /**
-     * 续费天数
-     */
-    @Schema(description = "续费天数")
-    private Integer renewDays;
-
-    /**
-     * 续费价格
-     */
-    @Schema(description = "续费价格")
-    private BigDecimal renewPrice;
-
-    /**
      * 排序字段，值越小排序越靠前
      */
     @Schema(description = "排序字段，值越小排序越靠前")
     private Integer sort;
+
+    /**
+     * 所属机构ID
+     */
+    @Schema(description = "所属机构ID")
+    private Long institutionId;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    private String remark;
 
     /**
      * 状态

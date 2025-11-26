@@ -19,6 +19,7 @@ package top.continew.admin.controller.education;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.CardQuery;
@@ -53,5 +54,17 @@ public class CardController extends BaseController<CardService, CardResp, CardDe
     @GetMapping("/active")
     public R<List<CardResp>> listActiveCards() {
         return R.ok(baseService.listActiveCards());
+    }
+
+    /**
+     * 获取会员卡详情（小程序公开接口）
+     *
+     * @param id 会员卡ID
+     * @return 会员卡详情
+     */
+    @Operation(summary = "获取会员卡详情", description = "小程序端获取会员卡详情，无需登录")
+    @GetMapping("/active/{id}")
+    public R<CardDetailResp> getActiveCardDetail(@PathVariable Long id) {
+        return R.ok(this.get(id));
     }
 }

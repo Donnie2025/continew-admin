@@ -224,7 +224,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .liveState(req.getLiveState() != null ? req.getLiveState() : 0)
             .openState(req.getOpenState() != null ? req.getOpenState() : 0)
             .cameraHide(0) // 0-显示坐席区
-            .seatNum(req.getSeatNum() != null ? req.getSeatNum() : 0) // 设置上台人数，默认不限制
+            .seatNum(req.getSeatNum() != null ? req.getSeatNum() : 0) // 设置上台人数，默认不限制（ClassinClient会自动+1包含老师）
             .build();
 
         try {
@@ -243,7 +243,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         LambdaQueryWrapper<LessonDO> wrapper = Wrappers.lambdaQuery(LessonDO.class)
             .eq(LessonDO::getCourseId, courseId)
             .ne(LessonDO::getStatus, 2) // 过滤掉已删除的课节（status=2）
-            .orderByAsc(LessonDO::getStartTime); // 按开始时间正序排列
+            .orderByDesc(LessonDO::getStartTime); // 按开始时间倒序排列（最新的在前）
         List<LessonDO> list = baseMapper.selectList(wrapper);
 
         if (list.isEmpty()) {

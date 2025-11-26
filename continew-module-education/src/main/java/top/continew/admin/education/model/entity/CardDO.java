@@ -39,29 +39,44 @@ public class CardDO extends BaseDO {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 会员卡名称
+     * 会员卡标题
      */
-    private String name;
+    private String title;
 
     /**
-     * 会员卡类型
+     * 副标题
      */
-    private Integer type;
+    private String subTitle;
 
     /**
-     * 可用次数
+     * 会员卡描述
      */
-    private Integer availableCount;
+    private String description;
 
     /**
-     * 有效天数
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
+     * 缩写 英文全称 中文
+     * TL Times Limited 次卡有限期
+     * TU Times Unlimited 次卡无限期
+     * BL Balance Limited 储蓄卡有限期
+     * BU Balance Unlimited 储蓄卡无限期
      */
-    private Integer availableDay;
+    private String type;
 
     /**
-     * 可用余额
+     * 初始次数
      */
-    private BigDecimal availableBalance;
+    private Integer initTimes;
+
+    /**
+     * 初始有效天数
+     */
+    private Integer initDays;
+
+    /**
+     * 初始余额
+     */
+    private BigDecimal initBalance;
 
     /**
      * 代理售卖价格
@@ -69,39 +84,19 @@ public class CardDO extends BaseDO {
     private BigDecimal price;
 
     /**
-     * 是否仅代理可售
-     */
-    private Integer isAgentOnly;
-
-    /**
-     * 是否支持线上购卡（1：支持；0：不支持）
-     */
-    private Integer isOnlineSale;
-
-    /**
-     * 是否可续费
-     */
-    private Integer isRenewable;
-
-    /**
-     * 续费次数
-     */
-    private Integer renewTimes;
-
-    /**
-     * 续费天数
-     */
-    private Integer renewDays;
-
-    /**
-     * 续费价格
-     */
-    private BigDecimal renewPrice;
-
-    /**
      * 排序字段，值越小排序越靠前
      */
     private Integer sort;
+
+    /**
+     * 所属机构ID
+     */
+    private Long institutionId;
+
+    /**
+     * 备注
+     */
+    private String remark;
 
     /**
      * 状态

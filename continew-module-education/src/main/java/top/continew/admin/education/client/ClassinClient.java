@@ -310,7 +310,8 @@ public class ClassinClient {
             bodyParams.set("handsUpEnable", req.getHandsUpEnable());
         }
         if (req.getSeatNum() != null) {
-            bodyParams.set("seatNum", req.getSeatNum());
+            // ClassIn的seatNum是总上台人数（包括老师），所以需要+1
+            bodyParams.set("seatNum", req.getSeatNum() + 1);
         }
 
         // 获取激活机构配置
@@ -599,7 +600,8 @@ public class ClassinClient {
             params.set("stageNum", req.getStageNum());
         }
         if (req.getSeatNum() != null) {
-            params.set("seatNum", req.getSeatNum());
+            // ClassIn的seatNum是总上台人数（包括老师），所以需要+1
+            params.set("seatNum", req.getSeatNum() + 1);
         }
         if (req.getSubject() != null) {
             params.set("subject", req.getSubject());
