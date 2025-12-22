@@ -19,6 +19,7 @@ package top.continew.admin.education.service;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.SalaryQuery;
 import top.continew.admin.education.model.req.SalaryBatchImportReq;
+import top.continew.admin.education.model.req.SalaryBatchSettleReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
@@ -39,4 +40,12 @@ public interface SalaryService extends BaseService<SalaryResp, SalaryDetailResp,
      * @return 导入结果
      */
     SalaryBatchImportResp batchImport(SalaryBatchImportReq req);
+
+    /**
+     * 批量结算薪资
+     *
+     * @param req 批量结算请求参数
+     * @return 成功结算的记录数量
+     */
+    int batchSettle(SalaryBatchSettleReq req);
 }

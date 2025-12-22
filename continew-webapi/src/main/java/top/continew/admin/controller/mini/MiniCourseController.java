@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package top.continew.admin.controller.education;
+package top.continew.admin.controller.mini;
 
 import cn.dev33.satoken.annotation.SaIgnore;
 import io.swagger.v3.oas.annotations.Operation;

@@ -20,6 +20,7 @@ import top.continew.admin.education.model.req.CourseStudentReq;
 import top.continew.admin.education.model.resp.CourseStudentResp;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 班级学生关联业务接口
@@ -58,4 +59,20 @@ public interface CourseStudentService {
      * @param courseId 班级ID
      */
     void deleteAllByCourseId(Long courseId);
+
+    /**
+     * 统计班级的学生数量
+     *
+     * @param courseId 班级ID
+     * @return 学生数量
+     */
+    int countStudentsByCourseId(Long courseId);
+
+    /**
+     * 批量统计多个班级的学生数量
+     *
+     * @param courseIds 班级ID列表
+     * @return 班级ID -> 学生数量的映射
+     */
+    Map<Long, Integer> countStudentsByCourseIds(List<Long> courseIds);
 }

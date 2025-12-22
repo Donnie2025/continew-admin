@@ -91,11 +91,11 @@ public class BookingDetailResp extends BaseDetailResp {
     private Long cardId;
 
     /**
-     * 预约会员卡名称
+     * 预约会员卡标题
      */
-    @Schema(description = "预约会员卡名称")
-    @ExcelProperty(value = "预约会员卡名称")
-    private String cardName;
+    @Schema(description = "预约会员卡标题")
+    @ExcelProperty(value = "预约会员卡标题")
+    private String cardTitle;
 
     /**
      * 操作人名字

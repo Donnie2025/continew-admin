@@ -46,8 +46,13 @@ public class ClassinUserServiceImpl extends BaseServiceImpl<ClassinUserMapper, C
     public Long create(ClassinUserReq req) {
         // 通过 registerStudentIfAbsent 方法来处理学生注册，此方法主要用于非学生角色的直接创建
         CheckUtils.throwIfNull(req.getClassinInstitutionId(), "机构ID不能为空");
-        String classinUid = classinClient.registerClassin(req, req.getClassinInstitutionId());
-        req.setClassinUid(classinUid);
+        
+        // 如果已经有ClassIn UID，说明已经在ClassIn注册过，直接使用
+        if (req.getClassinUid() == null || req.getClassinUid().isEmpty()) {
+            String classinUid = classinClient.registerClassin(req, req.getClassinInstitutionId());
+            req.setClassinUid(classinUid);
+        }
+        
         return super.create(req);
     }
 

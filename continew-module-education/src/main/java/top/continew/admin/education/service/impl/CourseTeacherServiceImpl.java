@@ -207,6 +207,41 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         courseTeacherMapper.delete(wrapper);
     }
 
+    @Override
+    public int countTeachersByCourseId(Long courseId) {
+        LambdaQueryWrapper<CourseTeacherDO> wrapper = Wrappers.lambdaQuery(CourseTeacherDO.class)
+            .eq(CourseTeacherDO::getCourseId, courseId);
+        return Math.toIntExact(courseTeacherMapper.selectCount(wrapper));
+    }
+
+    @Override
+    public Map<Long, Integer> countTeachersByCourseIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // 查询所有相关的课程教师关联记录
+        LambdaQueryWrapper<CourseTeacherDO> wrapper = Wrappers.lambdaQuery(CourseTeacherDO.class)
+            .in(CourseTeacherDO::getCourseId, courseIds)
+            .select(CourseTeacherDO::getCourseId); // 只查询courseId字段，提升性能
+
+        List<CourseTeacherDO> courseTeachers = courseTeacherMapper.selectList(wrapper);
+
+        // 按courseId分组统计数量
+        Map<Long, Integer> countMap = courseTeachers.stream()
+            .collect(Collectors.groupingBy(
+                CourseTeacherDO::getCourseId,
+                Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
+            ));
+
+        // 确保所有courseId都有对应的统计结果，没有关联教师的课程返回0
+        for (Long courseId : courseIds) {
+            countMap.putIfAbsent(courseId, 0);
+        }
+
+        return countMap;
+    }
+
     /**
      * 将教师添加到ClassIn课程中
      *

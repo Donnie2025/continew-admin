@@ -66,7 +66,8 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
             .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name)
             .orderByAsc(TeacherDO::getSort);
-
+        
+        // 不限制返回数量，让前端能够显示所有符合条件的老师
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
     }
 

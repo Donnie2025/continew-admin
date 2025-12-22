@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.SalaryQuery;
 import top.continew.admin.education.model.req.SalaryBatchImportReq;
+import top.continew.admin.education.model.req.SalaryBatchSettleReq;
 import top.continew.admin.education.model.req.SalaryInitializeReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
@@ -70,5 +71,15 @@ public class SalaryController extends BaseController<SalaryService, SalaryResp, 
     @PostMapping("/batch-import")
     public SalaryBatchImportResp batchImport(@Validated @RequestBody SalaryBatchImportReq req) {
         return baseService.batchImport(req);
+    }
+
+    /**
+     * 批量结算薪资
+     */
+    @Operation(summary = "批量结算薪资", description = "批量将选中的薪资记录标记为已结算状态")
+    @PostMapping("/batch-settle")
+    public R<Integer> batchSettle(@Validated @RequestBody SalaryBatchSettleReq req) {
+        int count = baseService.batchSettle(req);
+        return R.ok(count);
     }
 }

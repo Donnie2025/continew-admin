@@ -181,7 +181,7 @@ public class DashboardServiceImpl implements DashboardService {
         Long thisWeek = salaryMapper.selectThisWeekCourseCount();
         Long lastWeek = salaryMapper.selectLastWeekCourseCount();
         BigDecimal growth = calcGrowthFromLastWeek(thisWeek, lastWeek);
-        
+
         DashboardOverviewCommonResp resp = new DashboardOverviewCommonResp();
         resp.setToday(thisWeek);  // 本周当作"今日"
         resp.setGrowth(growth);

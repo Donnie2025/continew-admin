@@ -93,11 +93,11 @@ public class BookingReq implements Serializable {
     private String phone;
 
     /**
-     * 预约会员卡名称
+     * 预约会员卡标题
      */
-    @Schema(description = "预约会员卡名称")
-    @Length(max = 100, message = "预约会员卡名称长度不能超过 {max} 个字符")
-    private String cardName;
+    @Schema(description = "预约会员卡标题")
+    @Length(max = 100, message = "预约会员卡标题长度不能超过 {max} 个字符")
+    private String cardTitle;
 
     /**
      * 操作人名字

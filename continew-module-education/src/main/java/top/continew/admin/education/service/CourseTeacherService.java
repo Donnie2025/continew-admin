@@ -20,6 +20,7 @@ import top.continew.admin.education.model.req.CourseTeacherReq;
 import top.continew.admin.education.model.resp.CourseTeacherResp;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 班级老师关联业务接口
@@ -58,4 +59,20 @@ public interface CourseTeacherService {
      * @param courseId 班级ID
      */
     void deleteAllByCourseId(Long courseId);
+
+    /**
+     * 统计班级的教师数量
+     *
+     * @param courseId 班级ID
+     * @return 教师数量
+     */
+    int countTeachersByCourseId(Long courseId);
+
+    /**
+     * 批量统计多个班级的教师数量
+     *
+     * @param courseIds 班级ID列表
+     * @return 班级ID -> 教师数量的映射
+     */
+    Map<Long, Integer> countTeachersByCourseIds(List<Long> courseIds);
 }

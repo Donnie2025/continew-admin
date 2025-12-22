@@ -59,9 +59,9 @@ public class TransactionDO extends BaseDO {
     private Long cardId;
 
     /**
-     * 会员卡名称
+     * 会员卡标题
      */
-    private String cardName;
+    private String cardTitle;
 
     /**
      * 变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）

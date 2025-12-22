@@ -28,6 +28,7 @@ import top.continew.admin.education.model.entity.SalaryDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.query.SalaryQuery;
 import top.continew.admin.education.model.req.SalaryBatchImportReq;
+import top.continew.admin.education.model.req.SalaryBatchSettleReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
@@ -386,5 +387,65 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
 
         BigDecimal finalAmount = courseAmount.subtract(deductionAmount).add(tipAmount);
         salary.setFinalAmount(finalAmount);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int batchSettle(SalaryBatchSettleReq req) {
+        if (req.getIds() == null || req.getIds().isEmpty()) {
+            throw new BusinessException("薪资记录ID列表不能为空");
+        }
+
+        log.info("开始批量结算薪资，记录数量: {}", req.getIds().size());
+
+        // 查询待结算的薪资记录
+        List<SalaryDO> salaries = baseMapper.selectBatchIds(req.getIds());
+        if (salaries.isEmpty()) {
+            throw new BusinessException("未找到待结算的薪资记录");
+        }
+
+        // 检查是否有已结算的记录
+        List<SalaryDO> settledSalaries = salaries.stream()
+            .filter(salary -> salary.getIsSettled() != null && salary.getIsSettled() == 1)
+            .collect(Collectors.toList());
+
+        if (!settledSalaries.isEmpty()) {
+            String settledNames = settledSalaries.stream()
+                .map(SalaryDO::getTeacherName)
+                .collect(Collectors.joining(", "));
+            throw new BusinessException("以下薪资记录已结算，无法重复结算: " + settledNames);
+        }
+
+        // 检查是否有失效的记录
+        List<SalaryDO> inactiveSalaries = salaries.stream()
+            .filter(salary -> salary.getStatus() == null || salary.getStatus() != 1)
+            .collect(Collectors.toList());
+
+        if (!inactiveSalaries.isEmpty()) {
+            String inactiveNames = inactiveSalaries.stream()
+                .map(SalaryDO::getTeacherName)
+                .collect(Collectors.joining(", "));
+            throw new BusinessException("以下薪资记录状态异常，无法结算: " + inactiveNames);
+        }
+
+        // 批量更新结算状态
+        int successCount = 0;
+        for (SalaryDO salary : salaries) {
+            boolean updated = baseMapper.lambdaUpdate()
+                .eq(SalaryDO::getId, salary.getId())
+                .eq(SalaryDO::getIsSettled, 0) // 确保只更新未结算的记录
+                .set(SalaryDO::getIsSettled, 1)
+                .update();
+
+            if (updated) {
+                successCount++;
+                log.info("薪资记录[ID={}, 教师={}]已结算", salary.getId(), salary.getTeacherName());
+            } else {
+                log.warn("薪资记录[ID={}, 教师={}]结算失败，可能已被其他操作修改", salary.getId(), salary.getTeacherName());
+            }
+        }
+
+        log.info("批量结算完成，成功结算 {} 条记录", successCount);
+        return successCount;
     }
 }

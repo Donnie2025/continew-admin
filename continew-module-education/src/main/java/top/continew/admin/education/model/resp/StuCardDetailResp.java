@@ -64,11 +64,11 @@ public class StuCardDetailResp extends BaseDetailResp {
     private Long cardId;
 
     /**
-     * 会员卡名称
+     * 会员卡标题
      */
-    @Schema(description = "会员卡名称")
-    @ExcelProperty(value = "会员卡名称")
-    private String cardName;
+    @Schema(description = "会员卡标题")
+    @ExcelProperty(value = "会员卡标题")
+    private String cardTitle;
 
     /**
      * 会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）

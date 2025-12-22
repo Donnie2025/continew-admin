@@ -39,6 +39,7 @@ import top.continew.admin.education.service.CourseStudentService;
 import top.continew.starter.core.validation.CheckUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -188,5 +189,40 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         LambdaQueryWrapper<CourseStudentDO> wrapper = Wrappers.lambdaQuery(CourseStudentDO.class)
             .eq(CourseStudentDO::getCourseId, courseId);
         courseStudentMapper.delete(wrapper);
+    }
+
+    @Override
+    public int countStudentsByCourseId(Long courseId) {
+        LambdaQueryWrapper<CourseStudentDO> wrapper = Wrappers.lambdaQuery(CourseStudentDO.class)
+            .eq(CourseStudentDO::getCourseId, courseId);
+        return Math.toIntExact(courseStudentMapper.selectCount(wrapper));
+    }
+
+    @Override
+    public Map<Long, Integer> countStudentsByCourseIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // 查询所有相关的课程学生关联记录
+        LambdaQueryWrapper<CourseStudentDO> wrapper = Wrappers.lambdaQuery(CourseStudentDO.class)
+            .in(CourseStudentDO::getCourseId, courseIds)
+            .select(CourseStudentDO::getCourseId); // 只查询courseId字段，提升性能
+
+        List<CourseStudentDO> courseStudents = courseStudentMapper.selectList(wrapper);
+
+        // 按courseId分组统计数量
+        Map<Long, Integer> countMap = courseStudents.stream()
+            .collect(Collectors.groupingBy(
+                CourseStudentDO::getCourseId,
+                Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
+            ));
+
+        // 确保所有courseId都有对应的统计结果，没有关联学生的课程返回0
+        for (Long courseId : courseIds) {
+            countMap.putIfAbsent(courseId, 0);
+        }
+
+        return countMap;
     }
 }

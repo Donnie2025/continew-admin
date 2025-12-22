@@ -95,4 +95,16 @@ public class CourseResp extends BaseResp {
      */
     @Schema(description = "班级学生列表")
     private java.util.List<CourseStudentResp> students;
+
+    /**
+     * 教师数量
+     */
+    @Schema(description = "教师数量")
+    private Integer teacherCount;
+
+    /**
+     * 学生数量
+     */
+    @Schema(description = "学生数量")
+    private Integer studentCount;
 }

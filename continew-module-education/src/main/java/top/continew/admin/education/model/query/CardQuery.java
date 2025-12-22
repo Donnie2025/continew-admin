@@ -40,9 +40,16 @@ public class CardQuery implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 会员卡名称
+     * 会员卡标题
      */
-    @Schema(description = "会员卡名称")
+    @Schema(description = "会员卡标题")
+    @Query(type = QueryType.LIKE)
+    private String title;
+
+    /**
+     * 会员卡类型
+     */
+    @Schema(description = "会员卡类型")
     @Query(type = QueryType.EQ)
-    private String name;
+    private String type;
 }

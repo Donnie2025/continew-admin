@@ -91,7 +91,7 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         transactionDO.setStuId(req.getStuId());
         transactionDO.setStuName(req.getStuName());
         transactionDO.setCardId(req.getCardId());
-        transactionDO.setCardName(req.getCardName());
+        transactionDO.setCardTitle(req.getCardTitle());
         transactionDO.setType(TransactionTypeEnum.BIND.getCode()); // 绑定类型
         transactionDO.setCreditAmount(req.getBalance()); // 充值次数
         transactionDO.setBeforeAmount(originalBalance); // 变动前余额

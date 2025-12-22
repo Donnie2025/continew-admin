@@ -174,54 +174,68 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         // 1. 查询分页数据
         PageResp<CourseResp> page = super.page(query, pageQuery);
 
-        // 2. 填充班主任姓名和机构名称，不查询关联的老师和学生（提升列表页性能）
+        // 2. 填充班主任姓名、机构名称和数量统计
         List<CourseResp> records = page.getList();
         if (!records.isEmpty()) {
-            // 2.1 收集所有班主任ID
+            // 2.1 收集所有课程ID
+            List<Long> courseIds = records.stream()
+                .map(CourseResp::getId)
+                .collect(java.util.stream.Collectors.toList());
+
+            // 2.2 批量统计教师和学生数量（优化：2次查询代替N次）
+            java.util.Map<Long, Integer> teacherCountMap = courseTeacherService.countTeachersByCourseIds(courseIds);
+            java.util.Map<Long, Integer> studentCountMap = courseStudentService.countStudentsByCourseIds(courseIds);
+
+            // 2.3 收集所有班主任ID
             List<Long> mainTeacherIds = records.stream()
                 .map(CourseResp::getMainTeacherId)
                 .filter(id -> id != null)
                 .distinct()
                 .collect(java.util.stream.Collectors.toList());
 
-            // 2.2 批量查询所有班主任信息（优化：1次查询代替N次）
+            // 2.4 批量查询所有班主任信息（优化：1次查询代替N次）
+            java.util.Map<Long, String> teacherNameMap = new java.util.HashMap<>();
             if (!mainTeacherIds.isEmpty()) {
                 com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TeacherDO> wrapper = com.baomidou.mybatisplus.core.toolkit.Wrappers
                     .lambdaQuery(TeacherDO.class)
                     .in(TeacherDO::getId, mainTeacherIds);
                 List<TeacherDO> teachers = teacherMapper.selectList(wrapper);
-                java.util.Map<Long, String> teacherNameMap = teachers.stream()
+                teacherNameMap = teachers.stream()
                     .collect(java.util.stream.Collectors.toMap(TeacherDO::getId, TeacherDO::getName));
-
-                // 2.3 填充班主任姓名
-                for (CourseResp record : records) {
-                    if (record.getMainTeacherId() != null) {
-                        record.setMainTeacherName(teacherNameMap.get(record.getMainTeacherId()));
-                    }
-                }
             }
 
-            // 2.4 收集所有机构ID
+            // 2.5 收集所有机构ID
             List<Long> institutionIds = records.stream()
                 .map(CourseResp::getInstitutionId)
                 .filter(id -> id != null)
                 .distinct()
                 .collect(java.util.stream.Collectors.toList());
 
-            // 2.5 批量查询所有机构信息（优化：1次查询代替N次）
+            // 2.6 批量查询所有机构信息（优化：1次查询代替N次）
+            java.util.Map<Long, String> institutionNameMap = new java.util.HashMap<>();
             if (!institutionIds.isEmpty()) {
                 com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<InstitutionDO> wrapper = com.baomidou.mybatisplus.core.toolkit.Wrappers
                     .lambdaQuery(InstitutionDO.class)
                     .in(InstitutionDO::getId, institutionIds);
                 List<InstitutionDO> institutions = institutionMapper.selectList(wrapper);
-                java.util.Map<Long, String> institutionNameMap = institutions.stream()
+                institutionNameMap = institutions.stream()
                     .collect(java.util.stream.Collectors.toMap(InstitutionDO::getId, InstitutionDO::getName));
+            }
 
-                // 2.6 填充机构名称
-                for (CourseResp record : records) {
-                    if (record.getInstitutionId() != null) {
-                        record.setInstitutionName(institutionNameMap.get(record.getInstitutionId()));
-                    }
+            // 2.7 填充所有信息
+            for (CourseResp record : records) {
+                // 填充数量统计
+                record.setTeacherCount(teacherCountMap.getOrDefault(record.getId(), 0));
+                record.setStudentCount(studentCountMap.getOrDefault(record.getId(), 0));
+                
+                // 填充班主任姓名
+                if (record.getMainTeacherId() != null) {
+                    record.setMainTeacherName(teacherNameMap.get(record.getMainTeacherId()));
+                }
+                
+                // 填充机构名称
+                if (record.getInstitutionId() != null) {
+                    record.setInstitutionName(institutionNameMap.get(record.getInstitutionId()));
                 }
             }
         }
@@ -265,24 +279,73 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         List<CourseDO> courses = baseMapper.selectList(wrapper);
 
         // 转换为响应对象
-        return courses.stream().map(course -> {
+        List<CourseResp> respList = courses.stream().map(course -> {
             CourseResp resp = BeanUtil.copyProperties(course, CourseResp.class);
-            // 填充班主任姓名
-            if (course.getMainTeacherId() != null) {
-                TeacherDO teacher = teacherMapper.selectById(course.getMainTeacherId());
-                if (teacher != null) {
-                    resp.setMainTeacherName(teacher.getName());
-                }
-            }
-            // 填充机构名称
-            if (course.getInstitutionId() != null) {
-                InstitutionDO institution = institutionMapper.selectById(course.getInstitutionId());
-                if (institution != null) {
-                    resp.setInstitutionName(institution.getName());
-                }
-            }
             return resp;
         }).collect(Collectors.toList());
+
+        // 批量填充相关信息
+        if (!respList.isEmpty()) {
+            // 收集所有课程ID
+            List<Long> courseIds = respList.stream()
+                .map(CourseResp::getId)
+                .collect(Collectors.toList());
+
+            // 批量统计教师和学生数量
+            java.util.Map<Long, Integer> teacherCountMap = courseTeacherService.countTeachersByCourseIds(courseIds);
+            java.util.Map<Long, Integer> studentCountMap = courseStudentService.countStudentsByCourseIds(courseIds);
+
+            // 收集所有班主任ID和机构ID
+            List<Long> teacherIds = respList.stream()
+                .map(CourseResp::getMainTeacherId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+            
+            List<Long> institutionIds = respList.stream()
+                .map(CourseResp::getInstitutionId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+            // 批量查询教师和机构信息
+            java.util.Map<Long, String> teacherNameMap = new java.util.HashMap<>();
+            if (!teacherIds.isEmpty()) {
+                LambdaQueryWrapper<TeacherDO> teacherWrapper = Wrappers.lambdaQuery(TeacherDO.class)
+                    .in(TeacherDO::getId, teacherIds);
+                List<TeacherDO> teachers = teacherMapper.selectList(teacherWrapper);
+                teacherNameMap = teachers.stream()
+                    .collect(Collectors.toMap(TeacherDO::getId, TeacherDO::getName));
+            }
+
+            java.util.Map<Long, String> institutionNameMap = new java.util.HashMap<>();
+            if (!institutionIds.isEmpty()) {
+                LambdaQueryWrapper<InstitutionDO> institutionWrapper = Wrappers.lambdaQuery(InstitutionDO.class)
+                    .in(InstitutionDO::getId, institutionIds);
+                List<InstitutionDO> institutions = institutionMapper.selectList(institutionWrapper);
+                institutionNameMap = institutions.stream()
+                    .collect(Collectors.toMap(InstitutionDO::getId, InstitutionDO::getName));
+            }
+
+            // 填充所有信息
+            for (CourseResp resp : respList) {
+                // 填充数量统计
+                resp.setTeacherCount(teacherCountMap.getOrDefault(resp.getId(), 0));
+                resp.setStudentCount(studentCountMap.getOrDefault(resp.getId(), 0));
+                
+                // 填充班主任姓名
+                if (resp.getMainTeacherId() != null) {
+                    resp.setMainTeacherName(teacherNameMap.get(resp.getMainTeacherId()));
+                }
+                
+                // 填充机构名称
+                if (resp.getInstitutionId() != null) {
+                    resp.setInstitutionName(institutionNameMap.get(resp.getInstitutionId()));
+                }
+            }
+        }
+
+        return respList;
     }
 
     @Override
@@ -291,6 +354,10 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         CheckUtils.throwIfNull(course, "班级不存在");
 
         CourseResp resp = BeanUtil.copyProperties(course, CourseResp.class);
+
+        // 统计教师和学生数量
+        resp.setTeacherCount(courseTeacherService.countTeachersByCourseId(id));
+        resp.setStudentCount(courseStudentService.countStudentsByCourseId(id));
 
         // 填充班主任姓名
         if (course.getMainTeacherId() != null) {

@@ -208,7 +208,7 @@ public class ClassinHelper {
             ClassinUserReq userReq = new ClassinUserReq();
             userReq.setMemberId(teacherId);
             userReq.setUserType(ClassinConstants.USER_TYPE_TEACHER);
-            userReq.setClassinUid(classinUid);
+            userReq.setClassinUid(classinUid); // 设置已获取的ClassIn UID，避免重复注册
             userReq.setNickname(teacher.getName());
             userReq.setTelephone(teacher.getPhone());
             userReq.setEmail(teacher.getEmail());
@@ -216,6 +216,7 @@ public class ClassinHelper {
             userReq.setStatus(DisEnableStatusEnum.ENABLE.getValue());
             userReq.setClassinInstitutionId(institutionId);
 
+            // 调用create方法，由于已设置Classin UID，不会再次调用注册接口
             classinUserService.create(userReq);
             log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUid);
 

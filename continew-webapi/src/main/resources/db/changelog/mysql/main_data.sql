@@ -234,7 +234,8 @@ INSERT INTO `sys_dict`
 VALUES
 (1, '公告分类', 'notice_type', NULL, b'1', 1, NOW()),
 (2, '客户端类型', 'client_type', NULL, b'1', 1, NOW()),
-(3, '短信厂商', 'sms_supplier', NULL, b'1', 1, NOW());
+(3, '短信厂商', 'sms_supplier', NULL, b'1', 1, NOW()),
+(4, '会员卡类型', 'card_type', '会员卡类型字典', b'1', 1, NOW());
 
 INSERT INTO `sys_dict_item`
 (`id`, `label`, `value`, `color`, `sort`, `description`, `status`, `dict_id`, `create_user`, `create_time`)
@@ -246,7 +247,11 @@ VALUES
 (5, '小程序', 'XCX', 'warning', 3, NULL, 1, 2, 1, NOW()),
 (6, '阿里云', 'alibaba', 'warning', 1, NULL, 1, 3, 1, NOW()),
 (7, '腾讯云', 'tencent', 'primary', 2, NULL, 1, 3, 1, NOW()),
-(8, '容联云', 'cloopen', 'success', 3, NULL, 1, 3, 1, NOW());
+(8, '容联云', 'cloopen', 'success', 3, NULL, 1, 3, 1, NOW()),
+(9, '次卡有限期', 'TL', 'blue', 1, '次卡有限期：有固定次数和有效期限制', 1, 4, 1, NOW()),
+(10, '次卡无限期', 'TU', 'green', 2, '次卡无限期：有固定次数但无有效期限制', 1, 4, 1, NOW()),
+(11, '储蓄卡有限期', 'BL', 'orange', 3, '储蓄卡有限期：有余额和有效期限制', 1, 4, 1, NOW()),
+(12, '储蓄卡无限期', 'BU', 'purple', 4, '储蓄卡无限期：有余额但无有效期限制', 1, 4, 1, NOW());
 
 -- 初始化默认用户和角色关联数据
 INSERT INTO `sys_user_role`

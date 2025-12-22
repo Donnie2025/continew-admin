@@ -14,92 +14,83 @@
  * limitations under the License.
  */
 
-package top.continew.admin.education.model.req;
-
-import jakarta.validation.constraints.*;
+package top.continew.admin.education.model.query;
 
 import lombok.Data;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import org.hibernate.validator.constraints.Length;
+import top.continew.starter.data.core.annotation.Query;
+import top.continew.starter.data.core.enums.QueryType;
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.*;
-import java.math.BigDecimal;
 
 /**
- * 会员卡绑定请求参数
+ * 订单查询条件
  *
  * @author don
- * @since 2025/05/10 22:11
+ * @since 2025/11/26 22:05
  */
 @Data
-@Schema(description = "会员卡绑定请求参数")
-public class StuCardBindReq implements Serializable {
+@Schema(description = "订单查询条件")
+public class OrderQuery implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
-     * 学生ID
+     * 订单编号
      */
-    @Schema(description = "学生ID")
-    @NotNull(message = "学生ID不能为空")
-    private Long stuId;
+    @Schema(description = "订单编号")
+    @Query(type = QueryType.EQ)
+    private String orderNo;
 
     /**
      * 学生姓名
      */
     @Schema(description = "学生姓名")
-    @NotBlank(message = "学生姓名不能为空")
+    @Query(type = QueryType.EQ)
     private String stuName;
 
     /**
      * 会员卡ID
      */
     @Schema(description = "会员卡ID")
-    @NotNull(message = "会员卡ID不能为空")
+    @Query(type = QueryType.EQ)
     private Long cardId;
 
     /**
      * 会员卡标题
      */
     @Schema(description = "会员卡标题")
-    @NotBlank(message = "会员卡标题不能为空")
+    @Query(type = QueryType.EQ)
     private String cardTitle;
 
     /**
      * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
     @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
-    @NotBlank(message = "会员卡类型不能为空")
+    @Query(type = QueryType.EQ)
     private String cardType;
 
     /**
-     * 充值次数
+     * 支付方式（wechat:微信支付, alipay:支付宝）
      */
-    @Schema(description = "充值次数")
-    @NotNull(message = "充值次数不能为空")
-    private BigDecimal balance;
+    @Schema(description = "支付方式（wechat:微信支付, alipay:支付宝）")
+    @Query(type = QueryType.EQ)
+    private String paymentType;
 
     /**
-     * 到期日期
+     * 订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）
      */
-    @Schema(description = "到期日期")
-    private LocalDate expireDate;
+    @Schema(description = "订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）")
+    @Query(type = QueryType.EQ)
+    private String orderStatus;
 
     /**
-     * 实收金额
+     * 创建人
      */
-    @Schema(description = "实收金额")
-    @NotNull(message = "实收金额不能为空")
-    private BigDecimal actualAmount;
-
-    /**
-     * 备注
-     */
-    @Schema(description = "备注")
-    @Length(max = 255, message = "备注长度不能超过255")
-    private String remark;
+    @Schema(description = "创建人")
+    @Query(type = QueryType.EQ)
+    private Long createUser;
 }

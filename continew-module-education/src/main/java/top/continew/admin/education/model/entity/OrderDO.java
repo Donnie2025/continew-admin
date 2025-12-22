@@ -14,87 +14,98 @@
  * limitations under the License.
  */
 
-package top.continew.admin.education.model.resp;
+package top.continew.admin.education.model.entity;
 
 import lombok.Data;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.baomidou.mybatisplus.annotation.TableName;
 
-import top.continew.admin.common.model.resp.BaseResp;
+import top.continew.admin.common.model.entity.BaseDO;
+
 import java.io.Serial;
 import java.time.*;
 import java.math.BigDecimal;
 
 /**
- * 会员绑卡信息
+ * 订单实体
  *
  * @author don
- * @since 2025/05/10 22:11
+ * @since 2025/11/26 22:05
  */
 @Data
-@Schema(description = "会员绑卡信息")
-public class StuCardResp extends BaseResp {
+@TableName("edu_order")
+public class OrderDO extends BaseDO {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
+     * 订单编号
+     */
+    private String orderNo;
+
+    /**
      * 学生ID
      */
-    @Schema(description = "学生ID")
     private Long stuId;
 
     /**
      * 学生姓名
      */
-    @Schema(description = "学生姓名")
     private String stuName;
 
     /**
      * 会员卡ID
      */
-    @Schema(description = "会员卡ID")
     private Long cardId;
 
     /**
      * 会员卡标题
      */
-    @Schema(description = "会员卡标题")
     private String cardTitle;
 
     /**
      * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
-    @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
     private String cardType;
 
     /**
-     * 剩余次数（用于次卡）
+     * 订单金额
      */
-    @Schema(description = "剩余次数")
-    private Integer remainTimes;
+    private BigDecimal orderPrice;
 
     /**
-     * 剩余余额（用于储蓄卡）
+     * 支付方式（wechat:微信支付, alipay:支付宝）
      */
-    @Schema(description = "剩余余额")
-    private BigDecimal remainBalance;
+    private String paymentType;
 
     /**
-     * 购买价格
+     * 订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）
      */
-    @Schema(description = "购买价格")
-    private BigDecimal purchasePrice;
+    private String orderStatus;
 
     /**
-     * 到期日期
+     * 关联的学生会员卡ID（下单时创建空白卡）
      */
-    @Schema(description = "到期日期")
-    private LocalDate expireDate;
+    private Long stuCardId;
 
     /**
-     * 卡状态（1：启用，学生端可见；0：禁用，学生端不可见，后台管理系统可见）
+     * 支付时间
      */
-    @Schema(description = "卡状态（1：启用，学生端可见；0：禁用，学生端不可见，后台管理系统可见）")
-    private Integer cardStatus;
+    private LocalDateTime paymentTime;
+
+    /**
+     * 确认时间
+     */
+    private LocalDateTime confirmTime;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
+     * 所属机构ID
+     */
+    private Long institutionId;
 }

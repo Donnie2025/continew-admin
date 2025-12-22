@@ -178,7 +178,7 @@ public class ClassinClient {
 
         // 特殊处理：用户已注册也视为成功
         if (resp.getErrorInfo().getErrno() == 135 || resp.getErrorInfo().getErrno() == 461) {
-            log.info("用户已在ClassIn注册，直接获取用户ID");
+            log.info("用户已在ClassIn注册，直接获取用户ID: {}", resp.getData());
             return resp.getData();
         }
 

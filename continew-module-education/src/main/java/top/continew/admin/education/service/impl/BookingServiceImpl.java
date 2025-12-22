@@ -140,8 +140,8 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         if (cardId != null) {
             StuCardDetailResp stuCard = stuCardService.get(cardId);
             if (stuCard != null) {
-                req.setCardName(stuCard.getCardName());
-                log.info("设置会员卡名称: {}", stuCard.getCardName());
+                req.setCardTitle(stuCard.getCardTitle());
+                log.info("设置会员卡标题: {}", stuCard.getCardTitle());
             }
         }
 
