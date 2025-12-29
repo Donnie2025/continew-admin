@@ -20,23 +20,24 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.common.context.UserContextHolder;
-import top.continew.admin.education.mapper.*;
+import top.continew.admin.education.mapper.CardMapper;
+import top.continew.admin.education.mapper.OrderMapper;
+import top.continew.admin.education.mapper.StuCardMapper;
+import top.continew.admin.education.mapper.TransactionMapper;
 import top.continew.admin.education.model.entity.CardDO;
 import top.continew.admin.education.model.entity.OrderDO;
 import top.continew.admin.education.model.entity.StuCardDO;
 import top.continew.admin.education.model.entity.TransactionDO;
-import top.continew.admin.education.model.resp.OrderDetailResp;
-import top.continew.starter.core.exception.BusinessException;
-import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.model.query.OrderQuery;
 import top.continew.admin.education.model.req.OrderReq;
+import top.continew.admin.education.model.resp.OrderDetailResp;
 import top.continew.admin.education.model.resp.OrderResp;
 import top.continew.admin.education.service.OrderService;
+import top.continew.starter.core.exception.BusinessException;
+import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -171,7 +172,7 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         transaction.setStuName(order.getStuName());
         transaction.setCardId(order.getCardId());
         transaction.setCardTitle(order.getCardTitle());
-        transaction.setType("activate"); // 激活
+        transaction.setTransType("activate"); // 激活
 
         // 根据卡类型记录交易
         BigDecimal amount = BigDecimal.ZERO;
@@ -182,9 +183,9 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         }
 
         transaction.setCreditAmount(amount);
-        transaction.setBeforeAmount(BigDecimal.ZERO);
-        transaction.setAfterAmount(amount);
-        transaction.setActualAmount(order.getOrderPrice());
+        transaction.setBeforeAmt(BigDecimal.ZERO);
+        transaction.setAfterAmt(amount);
+        transaction.setAmount(order.getOrderPrice());
         transaction.setRemark("订单确认激活：" + order.getOrderNo());
         transaction.setCreateUser(UserContextHolder.getUserId());
         transaction.setOperatorId(UserContextHolder.getUserId());

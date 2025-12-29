@@ -128,25 +128,14 @@ public class CredentialServiceImpl implements CredentialService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime oneHourAgo = now.minusHours(1);
 
-        // 优先查找教师凭证记录
+        // 目前只支持学生登录，所有用户都作为学生处理
         CredentialDO credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
             .eq(CredentialDO::getPhone, req.getPhone())
-            .eq(CredentialDO::getUserType, "teacher")
+            .eq(CredentialDO::getUserType, "student")
             .eq(CredentialDO::getCredentialType, "phone")
             .eq(CredentialDO::getIsActive, true));
 
-        String actualUserType = "teacher";
-
-        // 如果没找到教师凭证，再查找学生凭证
-        if (credential == null) {
-            log.debug("未找到教师凭证，尝试查找学生凭证，手机号：{}", req.getPhone());
-            credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
-                .eq(CredentialDO::getPhone, req.getPhone())
-                .eq(CredentialDO::getUserType, "student")
-                .eq(CredentialDO::getCredentialType, "phone")
-                .eq(CredentialDO::getIsActive, true));
-            actualUserType = "student";
-        }
+        String actualUserType = "student";
 
         if (credential == null) {
             log.warn("用户凭证不存在，手机号：{}", req.getPhone());

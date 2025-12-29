@@ -56,4 +56,11 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @return 教师列表
      */
     List<TeacherResp> searchTeachers(String keyword);
+
+    /**
+     * 置顶教师（将sort字段设置为1）
+     *
+     * @param id 教师ID
+     */
+    void setTop(Long id);
 }

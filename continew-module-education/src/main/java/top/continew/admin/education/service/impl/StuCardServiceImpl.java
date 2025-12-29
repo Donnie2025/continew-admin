@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 import top.continew.admin.common.context.UserContextHolder;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.enums.TransactionTypeEnum;
@@ -62,10 +64,23 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         // 1. 创建会员卡绑定记录
         StuCardDO stuCardDO = new StuCardDO();
         BeanUtil.copyProperties(req, stuCardDO);
+        
+        // 手动设置字段名不匹配的属性
+        stuCardDO.setCardName(req.getCardTitle()); // cardTitle -> cardName
+        
+        // 设置激活日期和购买价格
+        stuCardDO.setActivateDate(LocalDate.now()); // 设置激活日期为今天
+        stuCardDO.setPurchasePrice(req.getActualAmount()); // 设置购买价格
 
         // 设置状态为启用
         stuCardDO.setStatus(1);
         stuCardDO.setCardStatus(1);
+        
+        // 手动设置审计字段（因为跳过了token验证，无法自动获取当前用户）
+        stuCardDO.setCreateUser(req.getStuId()); // 使用学生ID作为创建人
+        stuCardDO.setCreateTime(java.time.LocalDateTime.now());
+        stuCardDO.setUpdateUser(req.getStuId());
+        stuCardDO.setUpdateTime(java.time.LocalDateTime.now());
 
         // 根据卡类型设置次数或余额
         BigDecimal originalBalance = BigDecimal.ZERO;
@@ -85,31 +100,35 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         // 保存会员卡绑定记录
         baseMapper.insert(stuCardDO);
 
-        // 2. 创建交易记录
+        // 2. 创建交易记录（根据新的表结构）
         TransactionDO transactionDO = new TransactionDO();
         transactionDO.setStuCardId(stuCardDO.getId());
         transactionDO.setStuId(req.getStuId());
         transactionDO.setStuName(req.getStuName());
         transactionDO.setCardId(req.getCardId());
         transactionDO.setCardTitle(req.getCardTitle());
-        transactionDO.setType(TransactionTypeEnum.BIND.getCode()); // 绑定类型
-        transactionDO.setCreditAmount(req.getBalance()); // 充值次数
-        transactionDO.setBeforeAmount(originalBalance); // 变动前余额
-        transactionDO.setAfterAmount(newBalance); // 变动后余额
-        transactionDO.setActualAmount(req.getActualAmount()); // 实收金额
+        transactionDO.setTransType("bind"); // 绑定类型，使用字符串
+    
+        
+        // 设置数据库表中存在的字段
+        transactionDO.setBeforeAmt(originalBalance); // 变动前余额 -> before_amt
+        transactionDO.setAfterAmt(newBalance); // 变动后余额 -> after_amt
+        transactionDO.setAmount(req.getBalance()); // 会员卡的次数或余额 -> amount字段
         transactionDO.setRemark(req.getRemark());
-
-        // 设置操作人信息
-        Long currentUserId = UserContextHolder.getUserId();
-        String currentUsername = UserContextHolder.getUsername();
-        transactionDO.setOperatorId(currentUserId);
-        transactionDO.setOperatorName(currentUsername);
+        
+        // 手动设置交易记录的审计字段
+        transactionDO.setCreateUser(req.getStuId());
+        transactionDO.setCreateTime(java.time.LocalDateTime.now());
+        transactionDO.setUpdateUser(req.getStuId());
+        transactionDO.setUpdateTime(java.time.LocalDateTime.now());
 
         // 保存交易记录
         transactionMapper.insert(transactionDO);
 
-        // 返回绑定结果
-        return BeanUtil.copyProperties(stuCardDO, StuCardResp.class);
+        // 返回绑定结果，手动处理字段映射
+        StuCardResp resp = BeanUtil.copyProperties(stuCardDO, StuCardResp.class);
+        resp.setCardTitle(stuCardDO.getCardName()); // cardName -> cardTitle
+        return resp;
     }
 
     @Override
@@ -118,26 +137,22 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
             return new ArrayList<>();
         }
 
-        // 构建查询条件
+        // 构建查询条件 - 先简化条件，只查询该学生的所有会员卡
         LambdaQueryWrapper<StuCardDO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(StuCardDO::getStuId, stuId)
-            .eq(StuCardDO::getStatus, 1)  // 启用状态
-            .eq(StuCardDO::getCardStatus, 1)  // 卡状态启用
-            .and(wrapper -> wrapper.gt(StuCardDO::getRemainTimes, 0)  // 次数大于0
-                .or()
-                .gt(StuCardDO::getRemainBalance, BigDecimal.ZERO)  // 或余额大于0
-            )
-            .and(wrapper -> wrapper.isNull(StuCardDO::getExpireDate)  // 无过期日期
-                .or()
-                .ge(StuCardDO::getExpireDate, LocalDate.now())  // 或未过期
-            );
+            .eq(StuCardDO::getStatus, 1);  // 只要求启用状态
 
         // 查询结果
         List<StuCardDO> stuCardList = baseMapper.selectList(queryWrapper);
 
-        // 转换为响应对象
+        // 转换为响应对象，手动处理字段映射
         return stuCardList.stream()
-            .map(card -> BeanUtil.copyProperties(card, StuCardResp.class))
+            .map(card -> {
+                StuCardResp resp = BeanUtil.copyProperties(card, StuCardResp.class);
+                // 手动设置字段名不匹配的属性
+                resp.setCardTitle(card.getCardName()); // cardName -> cardTitle
+                return resp;
+            })
             .collect(Collectors.toList());
     }
 }

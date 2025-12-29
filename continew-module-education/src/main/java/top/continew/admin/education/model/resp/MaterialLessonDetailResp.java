@@ -1,0 +1,62 @@
+package top.continew.admin.education.model.resp;
+
+import lombok.Data;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
+import com.alibaba.excel.annotation.ExcelProperty;
+
+import top.continew.admin.common.model.resp.BaseDetailResp;
+import java.io.Serial;
+import java.time.*;
+
+/**
+ * 课节详情信息
+ *
+ * @author don
+ * @since 2025/12/29 21:22
+ */
+@Data
+@ExcelIgnoreUnannotated
+@Schema(description = "课节详情信息")
+public class MaterialLessonDetailResp extends BaseDetailResp {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 教材ID
+     */
+    @Schema(description = "教材ID")
+    @ExcelProperty(value = "教材ID")
+    private Long materialId;
+
+    /**
+     * 教材名称（冗余字段，格式：name + level）
+     */
+    @Schema(description = "教材名称（冗余字段，格式：name + level）")
+    @ExcelProperty(value = "教材名称（冗余字段，格式：name + level）")
+    private String materialName;
+
+    /**
+     * 课节名字
+     */
+    @Schema(description = "课节名字")
+    @ExcelProperty(value = "课节名字")
+    private String lessonName;
+
+    /**
+     * 课节链接
+     */
+    @Schema(description = "课节链接")
+    @ExcelProperty(value = "课节链接")
+    private String lessonUrl;
+
+    /**
+     * 状态（1:启用 0:禁用）
+     */
+    @Schema(description = "状态（1:启用 0:禁用）")
+    @ExcelProperty(value = "状态（1:启用 0:禁用）")
+    private Integer status;
+}

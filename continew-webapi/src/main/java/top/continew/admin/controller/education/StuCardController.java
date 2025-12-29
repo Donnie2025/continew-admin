@@ -47,7 +47,7 @@ import java.util.List;
 @Tag(name = "会员绑卡管理 API")
 @RestController
 @RequiredArgsConstructor
-@CrudRequestMapping(value = "/education/stuCard", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
+@CrudRequestMapping(value = "/api/education/stuCard", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
 public class StuCardController extends BaseController<StuCardService, StuCardResp, StuCardDetailResp, StuCardQuery, StuCardReq> {
 

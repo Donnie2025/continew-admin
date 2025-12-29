@@ -16,10 +16,8 @@
 
 package top.continew.admin.education.model.entity;
 
-import lombok.Data;
-
 import com.baomidou.mybatisplus.annotation.TableName;
-
+import lombok.Data;
 import top.continew.admin.common.model.entity.BaseDO;
 
 import java.io.Serial;
@@ -66,7 +64,7 @@ public class TransactionDO extends BaseDO {
     /**
      * 变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）
      */
-    private String type;
+    private String transType;
 
     /**
      * 支出金额（扣款）
@@ -91,17 +89,17 @@ public class TransactionDO extends BaseDO {
     /**
      * 变动前余额/次数
      */
-    private BigDecimal beforeAmount;
+    private BigDecimal beforeAmt;
 
     /**
      * 变动后余额/次数
      */
-    private BigDecimal afterAmount;
+    private BigDecimal afterAmt;
 
     /**
      * 实收金额
      */
-    private BigDecimal actualAmount;
+    private BigDecimal amount;
 
     /**
      * 备注

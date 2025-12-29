@@ -230,6 +230,11 @@ sa-token.extension:
     - /file/**
     # 小程序API
     - /mini/**
+    - /api/mini/**
+    # 会员卡公开API
+    - /api/education/card/active/**
+    # 会员卡购买API
+    - /api/education/stuCard/bind
 
 --- ### Just Auth 配置
 justauth:

@@ -34,6 +34,7 @@ import top.continew.admin.education.service.TeacherService;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.util.List;
 import java.util.stream.Collectors;
 import cn.hutool.core.util.StrUtil;
@@ -65,7 +66,8 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
     public List<TeacherResp> listActiveTeachers(String name) {
         LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
             .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name)
-            .orderByAsc(TeacherDO::getSort);
+            .orderByAsc(TeacherDO::getSort)
+            .orderByDesc(TeacherDO::getUpdateTime);
         
         // 不限制返回数量，让前端能够显示所有符合条件的老师
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
@@ -86,9 +88,31 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
             .eq(TeacherDO::getStatus, DisEnableStatusEnum.ENABLE.getValue())
             .and(wrapper -> wrapper.like(TeacherDO::getName, keyword).or().like(TeacherDO::getPhone, keyword))
             .orderByAsc(TeacherDO::getSort)
+            .orderByDesc(TeacherDO::getUpdateTime)
             .last("LIMIT 20"); // 限制返回数量
 
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
+    }
+
+    @Override
+    protected QueryWrapper<TeacherDO> buildQueryWrapper(TeacherQuery query) {
+        QueryWrapper<TeacherDO> queryWrapper = super.buildQueryWrapper(query);
+        // 添加默认排序：按sort字段升序排列，如果sort相同则按update_time倒序
+        queryWrapper.orderByAsc("sort").orderByDesc("update_time");
+        return queryWrapper;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void setTop(Long id) {
+        TeacherDO teacher = this.baseMapper.selectById(id);
+        if (teacher == null) {
+            throw new RuntimeException("教师不存在");
+        }
+        
+        // 将sort字段设置为1实现置顶
+        teacher.setSort(1);
+        this.baseMapper.updateById(teacher);
     }
 
     /**

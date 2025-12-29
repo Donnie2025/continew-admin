@@ -226,6 +226,11 @@ sa-token.extension:
     - /*/*.css
     - /*/*.js
     - /websocket/**
+    # 小程序API
+    - /mini/**
+    - /api/mini/**
+    # 会员卡公开API
+    - /api/education/card/active/**
     # 本地存储资源
     - /file/**
 

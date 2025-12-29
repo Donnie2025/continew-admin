@@ -32,6 +32,7 @@ import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.service.TeacherService;
 
 import java.util.List;
+import top.continew.starter.web.model.R;
 
 /**
  * 教师管理 API
@@ -55,5 +56,12 @@ public class TeacherController extends BaseController<TeacherService, TeacherRes
     @Operation(summary = "搜索教师", description = "根据关键字（姓名或手机号）搜索启用状态的教师")
     public List<TeacherResp> search(@RequestParam String keyword) {
         return this.baseService.searchTeachers(keyword);
+    }
+
+    @PostMapping("/{id}/set-top")
+    @Operation(summary = "置顶教师", description = "将指定教师置顶（设置sort为1）")
+    public R<Void> setTop(@PathVariable Long id) {
+        this.baseService.setTop(id);
+        return R.ok();
     }
 }
