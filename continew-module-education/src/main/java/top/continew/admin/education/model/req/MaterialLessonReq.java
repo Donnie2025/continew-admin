@@ -35,7 +35,6 @@ public class MaterialLessonReq implements Serializable {
      * 教材名称（冗余字段，格式：name + level）
      */
     @Schema(description = "教材名称（冗余字段，格式：name + level）")
-    @NotBlank(message = "教材名称（冗余字段，格式：name + level）不能为空")
     @Length(max = 150, message = "教材名称（冗余字段，格式：name + level）长度不能超过 {max} 个字符")
     private String materialName;
 
@@ -51,20 +50,17 @@ public class MaterialLessonReq implements Serializable {
      * 状态（1:启用 0:禁用）
      */
     @Schema(description = "状态（1:启用 0:禁用）")
-    @NotNull(message = "状态（1:启用 0:禁用）不能为空")
     private Integer status;
 
     /**
      * 创建人
      */
     @Schema(description = "创建人")
-    @NotNull(message = "创建人不能为空")
     private Long createUser;
 
     /**
      * 创建时间
      */
     @Schema(description = "创建时间")
-    @NotNull(message = "创建时间不能为空")
     private LocalDateTime createTime;
 }

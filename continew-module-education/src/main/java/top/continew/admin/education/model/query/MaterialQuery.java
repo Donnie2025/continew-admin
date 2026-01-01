@@ -34,7 +34,7 @@ public class MaterialQuery implements Serializable {
      * 教材名字
      */
     @Schema(description = "教材名字")
-    @Query(type = QueryType.EQ)
+    @Query(type = QueryType.LIKE)
     private String name;
 
     /**
@@ -58,12 +58,6 @@ public class MaterialQuery implements Serializable {
     @Query(type = QueryType.EQ)
     private Boolean isShow;
 
-    /**
-     * 排序
-     */
-    @Schema(description = "排序")
-    @Query(type = QueryType.EQ)
-    private Integer sort;
 
     /**
      * 状态（1:启用 0:禁用）

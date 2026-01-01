@@ -44,23 +44,37 @@ public class MaterialReq implements Serializable {
      * 级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）
      */
     @Schema(description = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）")
-    @NotBlank(message = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）不能为空")
-    @Length(max = 50, message = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）长度不能超过 {max} 个字符")
+    @NotBlank(message = "级别不能为空")
+    @Length(max = 50, message = "级别长度不能超过 {max} 个字符")
     private String level;
 
     /**
      * 分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）
      */
     @Schema(description = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）")
-    @NotBlank(message = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）不能为空")
-    @Length(max = 50, message = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）长度不能超过 {max} 个字符")
+    @NotBlank(message = "分类不能为空")
+    @Length(max = 50, message = "分类长度不能超过 {max} 个字符")
     private String category;
+
+    /**
+     * 封面图片
+     */
+    @Schema(description = "封面图片")
+    @Length(max = 500, message = "封面图片URL长度不能超过 {max} 个字符")
+    private String coverImg;
+
+    /**
+     * 教材描述
+     */
+    @Schema(description = "教材描述")
+    @Length(max = 500, message = "教材描述长度不能超过 {max} 个字符")
+    private String description;
 
     /**
      * 是否前端展示（1:展示 0:不展示）
      */
     @Schema(description = "是否前端展示（1:展示 0:不展示）")
-    @NotNull(message = "是否前端展示（1:展示 0:不展示）不能为空")
+    @NotNull(message = "是否前端展示不能为空")
     private Boolean isShow;
 
     /**
@@ -68,26 +82,25 @@ public class MaterialReq implements Serializable {
      */
     @Schema(description = "排序")
     @NotNull(message = "排序不能为空")
+    @Min(value = 0, message = "排序值不能小于0")
+    @Max(value = 9999, message = "排序值不能大于9999")
     private Integer sort;
 
     /**
      * 状态（1:启用 0:禁用）
      */
     @Schema(description = "状态（1:启用 0:禁用）")
-    @NotNull(message = "状态（1:启用 0:禁用）不能为空")
     private Integer status;
 
     /**
      * 创建人
      */
     @Schema(description = "创建人")
-    @NotNull(message = "创建人不能为空")
     private Long createUser;
 
     /**
      * 创建时间
      */
     @Schema(description = "创建时间")
-    @NotNull(message = "创建时间不能为空")
     private LocalDateTime createTime;
 }

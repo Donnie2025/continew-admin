@@ -55,7 +55,7 @@ public class MaterialResp extends BaseResp {
      * 教材描述
      */
     @Schema(description = "教材描述")
-    private String desc;
+    private String description;
 
     /**
      * 是否前端展示（1:展示 0:不展示）
