@@ -16,6 +16,8 @@
 
 package top.continew.admin.education.mapper;
 
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import top.continew.starter.data.mp.base.BaseMapper;
 import top.continew.admin.education.model.entity.CourseDO;
 
@@ -25,4 +27,16 @@ import top.continew.admin.education.model.entity.CourseDO;
  * @author don
  * @since 2025/06/21 23:25
  */
-public interface CourseMapper extends BaseMapper<CourseDO> {}
+public interface CourseMapper extends BaseMapper<CourseDO> {
+
+    /**
+     * 查找学生和老师的共同课程
+     * 使用INNER JOIN一次性查询，性能更优
+     *
+     * @param teacherId 老师ID
+     * @param studentId 学生ID
+     * @return 共同课程ID列表
+     */
+    @Select("SELECT DISTINCT ct.course_id " + "FROM edu_course_teacher ct " + "INNER JOIN edu_course_student cs ON ct.course_id = cs.course_id " + "WHERE ct.teacher_id = #{teacherId} " + "AND cs.student_id = #{studentId} " + "AND ct.status = 1 " + "AND cs.status = 1 " + "ORDER BY ct.course_id DESC " + "LIMIT 1")
+    Long findCommonCourse(@Param("teacherId") Long teacherId, @Param("studentId") Long studentId);
+}

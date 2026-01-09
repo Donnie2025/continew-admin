@@ -231,6 +231,9 @@ sa-token.extension:
     - /api/mini/**
     # 会员卡公开API
     - /api/education/card/active/**
+    # 教材相关公开API
+    - /education/material/**
+    - /education/materialLesson/**
     # 本地存储资源
     - /file/**
 

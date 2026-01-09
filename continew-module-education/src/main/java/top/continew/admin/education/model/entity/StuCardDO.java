@@ -67,14 +67,10 @@ public class StuCardDO extends BaseDO {
     private String cardType;
 
     /**
-     * 剩余次数（用于次卡）
+     * 余额（统一用于所有卡类型）
      */
-    private Integer remainTimes;
-
-    /**
-     * 剩余余额（用于储蓄卡）
-     */
-    private BigDecimal remainBalance;
+    @TableField("balance")
+    private BigDecimal balance;
 
     /**
      * 激活日期

@@ -24,9 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
-import top.continew.admin.common.context.UserContextHolder;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
-import top.continew.admin.education.enums.TransactionTypeEnum;
+import top.continew.admin.education.service.CardService;
+import top.continew.admin.education.constants.CardTypeConstants;
 import top.continew.admin.education.mapper.StuCardMapper;
 import top.continew.admin.education.mapper.TransactionMapper;
 import top.continew.admin.education.model.entity.StuCardDO;
@@ -57,65 +57,139 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO, StuCardResp, StuCardDetailResp, StuCardQuery, StuCardReq> implements StuCardService {
 
     private final TransactionMapper transactionMapper;
+    private final CardService cardService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public StuCardResp bindCard(StuCardBindReq req) {
-        // 1. 创建会员卡绑定记录
-        StuCardDO stuCardDO = new StuCardDO();
-        BeanUtil.copyProperties(req, stuCardDO);
-        
-        // 手动设置字段名不匹配的属性
-        stuCardDO.setCardName(req.getCardTitle()); // cardTitle -> cardName
-        
-        // 设置激活日期和购买价格
-        stuCardDO.setActivateDate(LocalDate.now()); // 设置激活日期为今天
-        stuCardDO.setPurchasePrice(req.getActualAmount()); // 设置购买价格
-
-        // 设置状态为启用
-        stuCardDO.setStatus(1);
-        stuCardDO.setCardStatus(1);
-        
-        // 手动设置审计字段（因为跳过了token验证，无法自动获取当前用户）
-        stuCardDO.setCreateUser(req.getStuId()); // 使用学生ID作为创建人
-        stuCardDO.setCreateTime(java.time.LocalDateTime.now());
-        stuCardDO.setUpdateUser(req.getStuId());
-        stuCardDO.setUpdateTime(java.time.LocalDateTime.now());
-
-        // 根据卡类型设置次数或余额
-        BigDecimal originalBalance = BigDecimal.ZERO;
-        BigDecimal newBalance = originalBalance.add(req.getBalance());
-
-        // cardType: TL,TU 为次卡，BL,BU 为储蓄卡
-        if ("TL".equals(req.getCardType()) || "TU".equals(req.getCardType())) {
-            // 次卡：设置剩余次数
-            stuCardDO.setRemainTimes(req.getBalance().intValue());
-            stuCardDO.setRemainBalance(BigDecimal.ZERO);
-        } else {
-            // 储蓄卡：设置剩余余额
-            stuCardDO.setRemainTimes(0);
-            stuCardDO.setRemainBalance(req.getBalance());
+        // 1. 获取会员卡模板信息
+        var cardDetail = cardService.get(req.getCardId());
+        if (cardDetail == null) {
+            throw new RuntimeException("会员卡不存在");
         }
 
-        // 保存会员卡绑定记录
-        baseMapper.insert(stuCardDO);
+        // 2. 检查用户是否已经绑定过该会员卡
+        LambdaQueryWrapper<StuCardDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(StuCardDO::getStuId, req.getStuId())
+            .eq(StuCardDO::getCardId, req.getCardId())
+            .eq(StuCardDO::getStatus, 1)
+            .eq(StuCardDO::getCardStatus, 1); // 确保卡状态也是启用的
+        StuCardDO existingCard = baseMapper.selectOne(queryWrapper);
 
-        // 2. 创建交易记录（根据新的表结构）
+        // 添加调试日志
+        System.out.println("=== 购买会员卡调试信息 ===");
+        System.out.println("学生ID: " + req.getStuId());
+        System.out.println("卡片ID: " + req.getCardId());
+        System.out.println("查询到的现有卡片: " + (existingCard != null ? "存在" : "不存在"));
+        if (existingCard != null) {
+            System.out.println("现有卡片余额: " + existingCard.getBalance());
+            System.out.println("现有卡片有效期: " + existingCard.getExpireDate());
+        }
+
+        StuCardDO stuCardDO;
+        String transType;
+        BigDecimal originalBalance;
+
+        if (existingCard != null) {
+            // 3. 已绑定：更新余额和有效期
+            stuCardDO = existingCard;
+            transType = "recharge";
+            originalBalance = stuCardDO.getBalance() != null ? stuCardDO.getBalance() : BigDecimal.ZERO;
+
+            // 增加余额
+            BigDecimal newBalance = originalBalance.add(req.getBalance());
+            stuCardDO.setBalance(newBalance);
+
+            // 如果是有限期卡类型，需要处理有效期
+            if (CardTypeConstants.isLimitedCard(cardDetail.getType()) && cardDetail
+                .getInitDays() != null && cardDetail.getInitDays() > 0) {
+                LocalDate currentExpireDate = stuCardDO.getExpireDate();
+                LocalDate today = LocalDate.now();
+                
+                // 判断是否余额为0（包括次数和金额）
+                boolean isZeroBalance = false;
+                if (CardTypeConstants.isTimesCard(cardDetail.getType())) {
+                    // 次卡类型：检查余额（作为次数使用）
+                    isZeroBalance = (originalBalance.compareTo(BigDecimal.ZERO) == 0);
+                } else if (CardTypeConstants.isBalanceCard(cardDetail.getType())) {
+                    // 储蓄卡类型：检查余额
+                    isZeroBalance = (originalBalance.compareTo(BigDecimal.ZERO) == 0);
+                }
+
+                // 如果余额为0，或者当前有效期已过期或为空，从今天开始计算
+                LocalDate baseDate;
+                if (isZeroBalance || currentExpireDate == null || currentExpireDate.isBefore(today)) {
+                    baseDate = today;
+                    System.out.println("余额为0或已过期，有效期从今天开始计算: " + today);
+                } else {
+                    baseDate = currentExpireDate;
+                    System.out.println("有余额且未过期，有效期从原到期日延长: " + currentExpireDate);
+                }
+                
+                LocalDate newExpireDate = baseDate.plusDays(cardDetail.getInitDays());
+                stuCardDO.setExpireDate(newExpireDate);
+                System.out.println("新的到期日期: " + newExpireDate);
+            }
+
+            // 更新记录
+            stuCardDO.setUpdateUser(req.getStuId());
+            stuCardDO.setUpdateTime(java.time.LocalDateTime.now());
+            baseMapper.updateById(stuCardDO);
+        } else {
+            // 4. 未绑定：创建新的绑定记录
+            System.out.println("未找到现有卡片，创建新的绑定记录");
+            stuCardDO = new StuCardDO();
+            transType = "bind";
+            originalBalance = BigDecimal.ZERO;
+
+            BeanUtil.copyProperties(req, stuCardDO);
+
+            // 手动设置字段名不匹配的属性
+            stuCardDO.setCardName(req.getCardTitle()); // cardTitle -> cardName
+            stuCardDO.setCardType(cardDetail.getType()); // 从模板获取卡类型
+
+            // 设置激活日期和购买价格
+            stuCardDO.setActivateDate(LocalDate.now());
+            stuCardDO.setPurchasePrice(req.getActualAmount());
+
+            // 设置有效期（如果是有限期卡类型）
+            if (CardTypeConstants.isLimitedCard(cardDetail.getType()) && cardDetail.getInitDays() != null && cardDetail
+                .getInitDays() > 0) {
+                stuCardDO.setExpireDate(LocalDate.now().plusDays(cardDetail.getInitDays()));
+            }
+
+            // 设置余额
+            stuCardDO.setBalance(req.getBalance());
+
+            // 设置状态为启用
+            stuCardDO.setStatus(1);
+            stuCardDO.setCardStatus(1);
+
+            // 手动设置审计字段
+            stuCardDO.setCreateUser(req.getStuId());
+            stuCardDO.setCreateTime(java.time.LocalDateTime.now());
+            stuCardDO.setUpdateUser(req.getStuId());
+            stuCardDO.setUpdateTime(java.time.LocalDateTime.now());
+
+            // 保存会员卡绑定记录
+            baseMapper.insert(stuCardDO);
+        }
+
+        // 5. 创建交易记录
+        BigDecimal newBalance = stuCardDO.getBalance();
         TransactionDO transactionDO = new TransactionDO();
         transactionDO.setStuCardId(stuCardDO.getId());
         transactionDO.setStuId(req.getStuId());
         transactionDO.setStuName(req.getStuName());
-        transactionDO.setCardId(req.getCardId());
         transactionDO.setCardTitle(req.getCardTitle());
-        transactionDO.setTransType("bind"); // 绑定类型，使用字符串
-    
-        
-        // 设置数据库表中存在的字段
-        transactionDO.setBeforeAmt(originalBalance); // 变动前余额 -> before_amt
-        transactionDO.setAfterAmt(newBalance); // 变动后余额 -> after_amt
-        transactionDO.setAmount(req.getBalance()); // 会员卡的次数或余额 -> amount字段
-        transactionDO.setRemark(req.getRemark());
-        
+        transactionDO.setTransType(transType);
+
+        // 设置交易金额和余额变动
+        transactionDO.setBeforeAmt(originalBalance);
+        transactionDO.setAfterAmt(newBalance);
+        transactionDO.setAmount(req.getBalance()); // 本次充值金额
+        transactionDO.setRemark(existingCard != null ? "会员卡续费充值" : "首次购买会员卡");
+
         // 手动设置交易记录的审计字段
         transactionDO.setCreateUser(req.getStuId());
         transactionDO.setCreateTime(java.time.LocalDateTime.now());
@@ -125,9 +199,9 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
         // 保存交易记录
         transactionMapper.insert(transactionDO);
 
-        // 返回绑定结果，手动处理字段映射
+        // 6. 返回结果
         StuCardResp resp = BeanUtil.copyProperties(stuCardDO, StuCardResp.class);
-        resp.setCardTitle(stuCardDO.getCardName()); // cardName -> cardTitle
+        resp.setCardTitle(stuCardDO.getCardName());
         return resp;
     }
 
@@ -139,20 +213,17 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
 
         // 构建查询条件 - 先简化条件，只查询该学生的所有会员卡
         LambdaQueryWrapper<StuCardDO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(StuCardDO::getStuId, stuId)
-            .eq(StuCardDO::getStatus, 1);  // 只要求启用状态
+        queryWrapper.eq(StuCardDO::getStuId, stuId).eq(StuCardDO::getStatus, 1);  // 只要求启用状态
 
         // 查询结果
         List<StuCardDO> stuCardList = baseMapper.selectList(queryWrapper);
 
         // 转换为响应对象，手动处理字段映射
-        return stuCardList.stream()
-            .map(card -> {
-                StuCardResp resp = BeanUtil.copyProperties(card, StuCardResp.class);
-                // 手动设置字段名不匹配的属性
-                resp.setCardTitle(card.getCardName()); // cardName -> cardTitle
-                return resp;
-            })
-            .collect(Collectors.toList());
+        return stuCardList.stream().map(card -> {
+            StuCardResp resp = BeanUtil.copyProperties(card, StuCardResp.class);
+            // 手动设置字段名不匹配的属性
+            resp.setCardTitle(card.getCardName()); // cardName -> cardTitle
+            return resp;
+        }).collect(Collectors.toList());
     }
 }

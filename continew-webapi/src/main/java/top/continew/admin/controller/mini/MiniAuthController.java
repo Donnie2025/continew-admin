@@ -21,9 +21,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
+import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
 import top.continew.admin.education.model.req.MiniWechatLoginReq;
 import top.continew.admin.education.model.resp.MiniLoginResp;
@@ -35,6 +37,7 @@ import top.continew.admin.education.service.MiniAuthService;
  * @author don
  * @since 2025/11/19
  */
+@Slf4j
 @Tag(name = "小程序认证 API")
 @Validated
 @RestController
@@ -49,6 +52,13 @@ public class MiniAuthController {
     @PostMapping("/login/wechat")
     public MiniLoginResp loginByWechat(@Validated @RequestBody MiniWechatLoginReq req, HttpServletRequest request) {
         return miniAuthService.loginByWechat(req, request);
+    }
+
+    @SaIgnore
+    @Operation(summary = "密码登录", description = "小程序手机号+密码登录")
+    @PostMapping("/login/password")
+    public MiniLoginResp loginByPassword(@Validated @RequestBody MiniPasswordLoginReq req, HttpServletRequest request) {
+        return miniAuthService.loginByPassword(req, request);
     }
 
     @Operation(summary = "发送验证码", description = "发送手机验证码")

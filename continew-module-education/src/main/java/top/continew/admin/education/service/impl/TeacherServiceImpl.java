@@ -68,7 +68,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
             .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name)
             .orderByAsc(TeacherDO::getSort)
             .orderByDesc(TeacherDO::getUpdateTime);
-        
+
         // 不限制返回数量，让前端能够显示所有符合条件的老师
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
     }
@@ -109,7 +109,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         if (teacher == null) {
             throw new RuntimeException("教师不存在");
         }
-        
+
         // 将sort字段设置为1实现置顶
         teacher.setSort(1);
         this.baseMapper.updateById(teacher);

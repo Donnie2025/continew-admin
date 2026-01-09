@@ -64,17 +64,12 @@ public class CardDO extends BaseDO {
     private String type;
 
     /**
-     * 初始次数
-     */
-    private Integer initTimes;
-
-    /**
      * 初始有效天数
      */
     private Integer initDays;
 
     /**
-     * 初始余额
+     * 初始余额（统一用于所有卡类型）
      */
     private BigDecimal initBalance;
 

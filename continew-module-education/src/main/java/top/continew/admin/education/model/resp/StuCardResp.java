@@ -69,16 +69,10 @@ public class StuCardResp extends BaseResp {
     private String cardType;
 
     /**
-     * 剩余次数（用于次卡）
+     * 余额（统一用于所有卡类型）
      */
-    @Schema(description = "剩余次数")
-    private Integer remainTimes;
-
-    /**
-     * 剩余余额（用于储蓄卡）
-     */
-    @Schema(description = "剩余余额")
-    private BigDecimal remainBalance;
+    @Schema(description = "余额")
+    private BigDecimal balance;
 
     /**
      * 购买价格

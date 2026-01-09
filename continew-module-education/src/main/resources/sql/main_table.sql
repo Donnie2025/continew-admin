@@ -81,19 +81,19 @@ CREATE TABLE `edu_slot` (
 CREATE TABLE `edu_booking` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `slot_id` bigint(20) NOT NULL COMMENT '所属课程ID',
-  `start_date` varchar(8) NOT NULL COMMENT '开课日期（格式：YYYYMMDD）',
-  `start_time` varchar(5) NOT NULL COMMENT '开课时间（格式：HH:MM）',
+  `slot_date` varchar(8) NOT NULL COMMENT '开课日期（格式：YYYYMMDD）',
+  `slot_time` varchar(5) NOT NULL COMMENT '开课时间（格式：HH:MM）',
   `student_id` bigint(20) NOT NULL COMMENT '所属学生ID',
   `student_name` varchar(50) NOT NULL COMMENT '所属学生姓名',
-  `phone` varchar(20) NOT NULL COMMENT '预约手机号',
+  `student_phone` varchar(20) NOT NULL COMMENT '学生手机号',
+  `teacher_id` bigint(20) DEFAULT NULL COMMENT '教师ID',
+  `teacher_name` varchar(50) DEFAULT NULL COMMENT '教师姓名',
   `card_id` bigint(20) DEFAULT NULL COMMENT '预约会员卡ID',
   `card_name` varchar(100) DEFAULT NULL COMMENT '预约会员卡名称',
-  `operator_name` varchar(50) NOT NULL COMMENT '操作人名字',
-  `operate_time` datetime NOT NULL COMMENT '操作时间',
   `material_id` bigint(20) DEFAULT NULL COMMENT '预约教材ID',
   `material_name` varchar(100) DEFAULT NULL COMMENT '预约教材名字',
+  `lesson_id` bigint(20) DEFAULT NULL COMMENT '课节ID',
   `lesson_name` varchar(100) DEFAULT NULL COMMENT '预约课节名字',
-  `material_url` varchar(512) DEFAULT NULL COMMENT '预约教材链接',
   `remark` varchar(1024) DEFAULT NULL COMMENT '预约备注',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -103,7 +103,9 @@ CREATE TABLE `edu_booking` (
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_booking_slot` FOREIGN KEY (`slot_id`) REFERENCES `edu_slot` (`id`),
   CONSTRAINT `fk_booking_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
-  CONSTRAINT `fk_booking_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`)
+  CONSTRAINT `fk_booking_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`),
+  CONSTRAINT `fk_booking_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `edu_material_lesson` (`id`),
+  CONSTRAINT `fk_booking_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='预约表';
 
 CREATE TABLE `edu_card` (

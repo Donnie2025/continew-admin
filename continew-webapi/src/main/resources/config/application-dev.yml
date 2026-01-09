@@ -228,15 +228,11 @@ sa-token.extension:
     - /*/api-docs/**
     # 本地存储资源
     - /file/**
-    # 小程序API
+    # 小程序API（不需要登录的）
     - /mini/**
-    - /api/mini/**
-    # 会员卡公开API
-    - /api/education/card/active/**
-    # 会员卡购买API
-    - /api/education/stuCard/bind
-
---- ### Just Auth 配置
+    - /api/mini/auth/**
+    - /api/mini/teacher/active
+## Just Auth 配置
 justauth:
   enabled: true
   type:

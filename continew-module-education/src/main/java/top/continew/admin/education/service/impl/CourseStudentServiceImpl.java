@@ -213,10 +213,8 @@ public class CourseStudentServiceImpl implements CourseStudentService {
 
         // 按courseId分组统计数量
         Map<Long, Integer> countMap = courseStudents.stream()
-            .collect(Collectors.groupingBy(
-                CourseStudentDO::getCourseId,
-                Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
-            ));
+            .collect(Collectors.groupingBy(CourseStudentDO::getCourseId, Collectors.collectingAndThen(Collectors
+                .counting(), Math::toIntExact)));
 
         // 确保所有courseId都有对应的统计结果，没有关联学生的课程返回0
         for (Long courseId : courseIds) {

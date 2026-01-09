@@ -229,10 +229,8 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
 
         // 按courseId分组统计数量
         Map<Long, Integer> countMap = courseTeachers.stream()
-            .collect(Collectors.groupingBy(
-                CourseTeacherDO::getCourseId,
-                Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
-            ));
+            .collect(Collectors.groupingBy(CourseTeacherDO::getCourseId, Collectors.collectingAndThen(Collectors
+                .counting(), Math::toIntExact)));
 
         // 确保所有courseId都有对应的统计结果，没有关联教师的课程返回0
         for (Long courseId : courseIds) {

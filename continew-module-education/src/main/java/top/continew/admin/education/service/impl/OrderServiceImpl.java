@@ -72,6 +72,9 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
 
         // 2. 获取当前登录学生信息
         Long stuId = UserContextHolder.getUserId();
+        if (stuId == null) {
+            throw new BusinessException("用户未登录，请先登录后再创建订单");
+        }
         String stuName = UserContextHolder.getUsername();
 
         // 3. 创建空白学生会员卡
@@ -81,8 +84,8 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         stuCard.setCardId(card.getId());
         stuCard.setCardName(card.getTitle());
         stuCard.setCardType(card.getType()); // String类型
-        stuCard.setRemainTimes(0); // 空白卡，次数为0
-        stuCard.setRemainBalance(BigDecimal.ZERO); // 空白卡，余额为0
+        // 空白卡，余额为0（统一使用balance）
+        stuCard.setBalance(BigDecimal.ZERO); // 空白卡，余额为0
         stuCard.setActivateDate(null); // 未激活
         stuCard.setExpireDate(null); // 未设置过期时间
         stuCard.setPurchasePrice(card.getPrice());
@@ -148,15 +151,13 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             expireDate = activateDate.plusDays(card.getInitDays());
         }
 
-        // 根据卡类型设置次数或余额
-        if (card.getInitTimes() != null && card.getInitTimes() > 0) {
-            // 次卡
-            stuCard.setRemainTimes(card.getInitTimes());
-            stuCard.setRemainBalance(BigDecimal.ZERO);
-        } else if (card.getInitBalance() != null) {
-            // 储蓄卡
-            stuCard.setRemainTimes(0);
-            stuCard.setRemainBalance(card.getInitBalance());
+        // 统一使用 initBalance 管理所有卡类型的余额
+        if (card.getInitBalance() != null) {
+            // 统一使用初始余额
+            stuCard.setBalance(card.getInitBalance());
+        } else {
+            // 默认余额为0
+            stuCard.setBalance(BigDecimal.ZERO);
         }
 
         stuCard.setActivateDate(activateDate);
@@ -170,26 +171,17 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         transaction.setStuCardId(stuCard.getId());
         transaction.setStuId(order.getStuId());
         transaction.setStuName(order.getStuName());
-        transaction.setCardId(order.getCardId());
         transaction.setCardTitle(order.getCardTitle());
         transaction.setTransType("activate"); // 激活
 
-        // 根据卡类型记录交易
-        BigDecimal amount = BigDecimal.ZERO;
-        if (card.getInitTimes() != null && card.getInitTimes() > 0) {
-            amount = new BigDecimal(card.getInitTimes());
-        } else if (card.getInitBalance() != null) {
-            amount = card.getInitBalance();
-        }
+        // 统一使用 initBalance 记录交易金额
+        BigDecimal amount = card.getInitBalance() != null ? card.getInitBalance() : BigDecimal.ZERO;
 
-        transaction.setCreditAmount(amount);
         transaction.setBeforeAmt(BigDecimal.ZERO);
         transaction.setAfterAmt(amount);
         transaction.setAmount(order.getOrderPrice());
         transaction.setRemark("订单确认激活：" + order.getOrderNo());
         transaction.setCreateUser(UserContextHolder.getUserId());
-        transaction.setOperatorId(UserContextHolder.getUserId());
-        transaction.setOperatorName(UserContextHolder.getUsername());
         transactionMapper.insert(transaction);
 
         // 6. 更新订单状态

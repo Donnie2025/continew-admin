@@ -188,4 +188,13 @@ public class GlobalExceptionHandler {
         log.error("[{}] {}", request.getMethod(), request.getRequestURI(), e);
         return R.fail(String.valueOf(HttpStatus.METHOD_NOT_ALLOWED.value()), "请求方式 '%s' 不支持".formatted(e.getMethod()));
     }
+
+    /**
+     * 通用异常处理器 - 捕获所有未处理的异常
+     */
+    @ExceptionHandler(Exception.class)
+    public R handleException(Exception e, HttpServletRequest request) {
+        log.error("[{}] {} - 未处理的异常: {}", request.getMethod(), request.getRequestURI(), e.getMessage(), e);
+        return R.fail("1", "error");
+    }
 }

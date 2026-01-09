@@ -34,12 +34,17 @@ import org.springframework.stereotype.Service;
 import top.continew.admin.common.context.UserContext;
 import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.context.UserExtraContext;
+import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
+import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
 import top.continew.admin.education.model.req.MiniWechatLoginReq;
+import top.continew.admin.education.model.req.CredentialVerifyPasswordReq;
+import top.continew.admin.education.model.resp.CredentialVerifyPasswordResp;
 import top.continew.admin.education.model.resp.MiniLoginResp;
 import top.continew.admin.education.service.MiniAuthService;
+import top.continew.admin.education.service.CredentialService;
 import top.continew.admin.education.service.StudentService;
 import top.continew.starter.core.exception.BadRequestException;
 import top.continew.starter.core.validation.ValidationUtils;
@@ -63,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 public class MiniAuthServiceImpl implements MiniAuthService {
 
     private final StudentService studentService;
+    private final CredentialService credentialService;
     private final StringRedisTemplate stringRedisTemplate;
 
     @Value("${wechat.miniprogram.app-id:}")
@@ -98,9 +104,10 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         SaLoginParameter loginParameter = new SaLoginParameter();
         loginParameter.setDeviceType("miniprogram");
         loginParameter.setExtraData(BeanUtil.beanToMap(new UserExtraContext(request)));
-        StpUtil.login(student.getId(), loginParameter);
+        // 使用小程序专用的StpLogic进行登录，避免与后台管理系统的用户ID冲突
+        StpMiniUtil.login(student.getId(), loginParameter.getDeviceType());
         UserContextHolder.setContext(userContext);
-        String token = StpUtil.getTokenValue();
+        String token = StpMiniUtil.getTokenValue();
 
         log.info("小程序登录成功: userId={}, openid={}", student.getId(), student.getOpenid());
 
@@ -125,6 +132,74 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             .phone(student.getPhone()) // 返回手机号，用于前端判断是否需要采集
             .userType("student")
             .build();
+    }
+
+    @Override
+    public MiniLoginResp loginByPassword(MiniPasswordLoginReq req, HttpServletRequest request) {
+        log.info("=== 小程序密码登录开始 ===");
+        log.info("请求参数: phone={}, password={}", req.getPhone(), req.getPassword());
+
+        try {
+
+            // 1. 根据手机号查找学生
+            StudentDO student = studentService.getByPhone(req.getPhone());
+            if (student == null) {
+                throw new BadRequestException("手机号未注册，请先注册或使用微信登录");
+            }
+
+            // 2. 验证密码
+            CredentialVerifyPasswordReq verifyReq = new CredentialVerifyPasswordReq();
+            verifyReq.setUserType("student");
+            verifyReq.setPhone(req.getPhone());
+            verifyReq.setPassword(req.getPassword()); // 密码已经是Base64编码的
+
+            CredentialVerifyPasswordResp verifyResp = credentialService.verifyPassword(verifyReq);
+            if (!Boolean.TRUE.equals(verifyResp.getSuccess())) {
+                throw new BadRequestException(verifyResp.getMessage());
+            }
+
+            // 3. 构建用户上下文（小程序用户无权限和角色，密码永不过期）
+            UserContext userContext = new UserContext(Collections.emptySet(), Collections.emptySet(), -1);
+            userContext.setId(student.getId());
+            userContext.setUsername(student.getPhone()); // 使用手机号作为username
+            userContext.setDeptId(null); // 学生无部门
+            userContext.setPwdResetTime(null); // 无密码重置时间
+            userContext.setClientType("miniprogram");
+            userContext.setClientId("miniprogram");
+
+            // 4. 使用小程序专用的StpLogic进行登录
+            StpMiniUtil.login(student.getId(), "miniprogram");
+
+            // 将用户上下文保存到小程序的session中
+            StpMiniUtil.getStpLogic().getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
+
+            String token = StpMiniUtil.getTokenValue();
+
+            // 验证token是否有效
+            Object verifyLoginId = StpMiniUtil.getStpLogic().getLoginIdByToken(token);
+            log.info("小程序密码登录成功: userId={}, phone={}, token={}, verifyLoginId={}", student.getId(), student
+                .getPhone(), token, verifyLoginId);
+
+            // 5. 返回登录响应
+            String displayName = StrUtil.isNotBlank(student.getName()) ? student.getName() : "用户";
+            String avatarUrl = StrUtil.isNotBlank(student.getAvatar())
+                ? student.getAvatar()
+                : "/assets/images/default.jpeg";
+
+            return MiniLoginResp.builder()
+                .token(token)
+                .userId(student.getId())
+                .userName(displayName)
+                .nickname(student.getNickname())
+                .avatar(avatarUrl)
+                .phone(student.getPhone())
+                .userType("student")
+                .build();
+
+        } catch (Exception e) {
+            log.error("小程序密码登录失败: phone={}, error={}", req.getPhone(), e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**

@@ -18,6 +18,7 @@ package top.continew.admin.education.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
+import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
 import top.continew.admin.education.model.req.MiniWechatLoginReq;
 import top.continew.admin.education.model.resp.MiniLoginResp;
@@ -38,6 +39,15 @@ public interface MiniAuthService {
      * @return 登录响应参数
      */
     MiniLoginResp loginByWechat(MiniWechatLoginReq req, HttpServletRequest request);
+
+    /**
+     * 密码登录
+     *
+     * @param req     请求参数
+     * @param request 请求对象
+     * @return 登录响应参数
+     */
+    MiniLoginResp loginByPassword(MiniPasswordLoginReq req, HttpServletRequest request);
 
     /**
      * 发送验证码

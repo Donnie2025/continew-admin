@@ -27,6 +27,7 @@ import cn.dev33.satoken.sign.SaSignUtil;
 import cn.dev33.satoken.stp.StpInterface;
 import cn.dev33.satoken.stp.StpUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -53,6 +54,7 @@ import java.util.*;
  * @author chengzi
  * @since 2022/12/19 22:13
  */
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class SaTokenConfiguration {
@@ -81,6 +83,7 @@ public class SaTokenConfiguration {
             .check(r -> {
                 // 如果包含 sign，进行 API 接口参数签名验证
                 SaRequest saRequest = SaHolder.getRequest();
+                String requestPath = saRequest.getRequestPath();
                 Collection<String> paramNames = saRequest.getParamNames();
                 if (paramNames.stream().anyMatch(SaSignTemplate.sign::equals)) {
                     try {
@@ -91,6 +94,7 @@ public class SaTokenConfiguration {
                     return;
                 }
                 // 不包含 sign 参数，进行普通登录验证
+                // 普通请求，使用默认StpUtil进行登录检查
                 StpUtil.checkLogin();
                 if (SaRouter.isMatchCurrURI(loginPasswordProperties.getExcludes())) {
                     return;

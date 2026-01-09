@@ -52,67 +52,32 @@ public class TransactionDO extends BaseDO {
     private String stuName;
 
     /**
-     * 会员卡ID
-     */
-    private Long cardId;
-
-    /**
      * 会员卡标题
      */
     private String cardTitle;
 
     /**
-     * 变动类型（credit:充值, debit:扣费, freeze:冻结, activate:激活, cancel:取消约课, bind:首次绑卡, book_debit:约课扣费）
+     * 交易类型
      */
     private String transType;
 
     /**
-     * 支出金额（扣款）
+     * 交易金额
      */
-    private BigDecimal debitAmount;
+    private BigDecimal amount;
 
     /**
-     * 收入金额（充值/收入）
-     */
-    private BigDecimal creditAmount;
-
-    /**
-     * 减少有效期天数
-     */
-    private Integer debitDays;
-
-    /**
-     * 增加有效期天数
-     */
-    private Integer creditDays;
-
-    /**
-     * 变动前余额/次数
+     * 变动前余额
      */
     private BigDecimal beforeAmt;
 
     /**
-     * 变动后余额/次数
+     * 变动后余额
      */
     private BigDecimal afterAmt;
-
-    /**
-     * 实收金额
-     */
-    private BigDecimal amount;
 
     /**
      * 备注
      */
     private String remark;
-
-    /**
-     * 操作人ID
-     */
-    private Long operatorId;
-
-    /**
-     * 操作人姓名
-     */
-    private String operatorName;
 }

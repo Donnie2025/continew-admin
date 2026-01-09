@@ -227,12 +227,12 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 // 填充数量统计
                 record.setTeacherCount(teacherCountMap.getOrDefault(record.getId(), 0));
                 record.setStudentCount(studentCountMap.getOrDefault(record.getId(), 0));
-                
+
                 // 填充班主任姓名
                 if (record.getMainTeacherId() != null) {
                     record.setMainTeacherName(teacherNameMap.get(record.getMainTeacherId()));
                 }
-                
+
                 // 填充机构名称
                 if (record.getInstitutionId() != null) {
                     record.setInstitutionName(institutionNameMap.get(record.getInstitutionId()));
@@ -287,9 +287,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         // 批量填充相关信息
         if (!respList.isEmpty()) {
             // 收集所有课程ID
-            List<Long> courseIds = respList.stream()
-                .map(CourseResp::getId)
-                .collect(Collectors.toList());
+            List<Long> courseIds = respList.stream().map(CourseResp::getId).collect(Collectors.toList());
 
             // 批量统计教师和学生数量
             java.util.Map<Long, Integer> teacherCountMap = courseTeacherService.countTeachersByCourseIds(courseIds);
@@ -301,7 +299,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 .filter(id -> id != null)
                 .distinct()
                 .collect(Collectors.toList());
-            
+
             List<Long> institutionIds = respList.stream()
                 .map(CourseResp::getInstitutionId)
                 .filter(id -> id != null)
@@ -314,8 +312,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 LambdaQueryWrapper<TeacherDO> teacherWrapper = Wrappers.lambdaQuery(TeacherDO.class)
                     .in(TeacherDO::getId, teacherIds);
                 List<TeacherDO> teachers = teacherMapper.selectList(teacherWrapper);
-                teacherNameMap = teachers.stream()
-                    .collect(Collectors.toMap(TeacherDO::getId, TeacherDO::getName));
+                teacherNameMap = teachers.stream().collect(Collectors.toMap(TeacherDO::getId, TeacherDO::getName));
             }
 
             java.util.Map<Long, String> institutionNameMap = new java.util.HashMap<>();
@@ -332,12 +329,12 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 // 填充数量统计
                 resp.setTeacherCount(teacherCountMap.getOrDefault(resp.getId(), 0));
                 resp.setStudentCount(studentCountMap.getOrDefault(resp.getId(), 0));
-                
+
                 // 填充班主任姓名
                 if (resp.getMainTeacherId() != null) {
                     resp.setMainTeacherName(teacherNameMap.get(resp.getMainTeacherId()));
                 }
-                
+
                 // 填充机构名称
                 if (resp.getInstitutionId() != null) {
                     resp.setInstitutionName(institutionNameMap.get(resp.getInstitutionId()));

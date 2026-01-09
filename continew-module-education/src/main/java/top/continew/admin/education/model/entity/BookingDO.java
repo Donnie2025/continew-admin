@@ -23,7 +23,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import top.continew.admin.common.model.entity.BaseDO;
 
 import java.io.Serial;
-import java.time.*;
 
 /**
  * 预约实体
@@ -44,14 +43,19 @@ public class BookingDO extends BaseDO {
     private Long slotId;
 
     /**
-     * 
+     * 课节ID
      */
-    private String startDate;
+    private Long lessonId;
 
     /**
-     * 
+     * 开课日期（格式：YYYYMMDD）
      */
-    private String startTime;
+    private String slotDate;
+
+    /**
+     * 开课时间（格式：HH:MM）
+     */
+    private String slotTime;
 
     /**
      * 所属学生ID
@@ -64,12 +68,22 @@ public class BookingDO extends BaseDO {
     private String studentName;
 
     /**
-     * 预约手机号
+     * 学生手机号
      */
-    private String phone;
+    private String studentPhone;
 
     /**
-     * 预约会员卡ID
+     * 教师ID
+     */
+    private Long teacherId;
+
+    /**
+     * 教师姓名
+     */
+    private String teacherName;
+
+    /**
+     * 学生会员卡ID（关联edu_stu_card表）
      */
     private Long stuCardId;
 
@@ -77,16 +91,6 @@ public class BookingDO extends BaseDO {
      * 预约会员卡名称
      */
     private String cardName;
-
-    /**
-     * 操作人名字
-     */
-    private String operatorName;
-
-    /**
-     * 操作时间
-     */
-    private LocalDateTime operateTime;
 
     /**
      * 预约教材ID
@@ -102,11 +106,6 @@ public class BookingDO extends BaseDO {
      * 预约课节名字
      */
     private String lessonName;
-
-    /**
-     * 预约教材链接
-     */
-    private String materialUrl;
 
     /**
      * 预约备注
