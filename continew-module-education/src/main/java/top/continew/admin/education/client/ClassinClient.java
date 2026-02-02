@@ -77,6 +77,9 @@ public class ClassinClient {
         if (StrUtil.isBlank(api.getAddSchoolStudent())) {
             throw new IllegalStateException("ClassIn添加学生接口路径不能为空，请检查配置文件中的classin.api.addSchoolStudent配置项");
         }
+        if (StrUtil.isBlank(api.getEditSchoolStudent())) {
+            throw new IllegalStateException("ClassIn编辑学生接口路径不能为空，请检查配置文件中的classin.api.editSchoolStudent配置项");
+        }
         if (StrUtil.isBlank(api.getAddTeacher())) {
             throw new IllegalStateException("ClassIn添加教师接口路径不能为空，请检查配置文件中的classin.api.addTeacher配置项");
         }
@@ -188,6 +191,76 @@ public class ClassinClient {
                 .getError()));
         }
         return resp.getData();
+    }
+
+    /**
+     * 调用ClassIn编辑学生接口
+     * 
+     * 官方API文档: https://docs.eeo.cn/api/zh-hans/user/editSchoolStudent.html
+     * 
+     * @param classinUid    ClassIn用户UID (studentUid)
+     * @param studentName   新的学生姓名 (studentName)
+     * @param institutionId 机构ID
+     */
+    public void editSchoolStudent(String classinUid, String studentName, Long institutionId) {
+        // 参数校验
+        if (StrUtil.isBlank(classinUid)) {
+            throw new BusinessException("ClassIn用户UID不能为空");
+        }
+        if (StrUtil.isBlank(studentName)) {
+            throw new BusinessException("学生姓名不能为空");
+        }
+        if (studentName.length() > 24) {
+            throw new BusinessException("学生姓名不能超过24个字符");
+        }
+        if (institutionId == null) {
+            throw new BusinessException("机构ID不能为空");
+        }
+
+        // 获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        CheckUtils.throwIfNull(institution, "机构不存在，机构ID: {}", institutionId);
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+        if (StrUtil.isBlank(appId) || StrUtil.isBlank(appSecret)) {
+            throw new BusinessException(StrUtil.format("机构[{}]的 SID（AppId）或 SECRET（AppSecret）为空，请检查数据库配置", institution.getName()));
+        }
+
+        log.info("开始调用ClassIn编辑学生接口: classinUid={}, studentName={}, institutionId={}", classinUid, studentName, institutionId);
+
+        // 根据官方API文档构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(appId, appSecret);
+        params.set("studentUid", classinUid);     // 官方参数名称
+        params.set("studentName", studentName);  // 官方参数名称
+
+        // 调用接口 - 使用官方API路径
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getEditSchoolStudent();
+        ClassinBaseResp<Object> resp = ClassinUtils.executePost(apiUrl, params, Object.class);
+
+        // 根据官方文档处理响应
+        if (resp.getErrorInfo().getErrno() != 1) {
+            String errorMsg;
+            switch (resp.getErrorInfo().getErrno()) {
+                case 100:
+                    errorMsg = "参数不全或错误";
+                    break;
+                case 102:
+                    errorMsg = "无权限（安全验证没通过）";
+                    break;
+                case 104:
+                    errorMsg = "操作失败（未知错误）";
+                    break;
+                case 228:
+                    errorMsg = "机构下无此学生";
+                    break;
+                default:
+                    errorMsg = resp.getErrorInfo().getError();
+            }
+            throw new BusinessException(StrUtil.format("ClassIn编辑学生失败: {}", errorMsg));
+        }
+
+        log.info("ClassIn编辑学生成功: classinUid={}, studentName={}", classinUid, studentName);
     }
 
     /**

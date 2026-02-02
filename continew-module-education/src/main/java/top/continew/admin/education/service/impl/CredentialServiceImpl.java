@@ -100,7 +100,8 @@ public class CredentialServiceImpl implements CredentialService {
                 credentialMapper.insert(credential);
                 log.info("为用户[{}/{}]创建新的凭证记录", req.getUserType(), req.getUserId());
             } else {
-                // 更新现有凭证的密码
+                // 更新现有凭证的密码和手机号
+                credential.setPhone(phone);  // 更新手机号
                 credential.setPassword(encodedPassword);
                 credential.setPasswordUpdatedTime(now);
                 credential.setUpdateTime(now);
@@ -111,7 +112,7 @@ public class CredentialServiceImpl implements CredentialService {
                 credential.setFreezeUntil(null);
 
                 credentialMapper.updateById(credential);
-                log.info("更新用户[{}/{}]的凭证密码", req.getUserType(), req.getUserId());
+                log.info("更新用户[{}/{}]的凭证密码和手机号", req.getUserType(), req.getUserId());
             }
 
             log.info("用户[{}/{}]密码设置成功", req.getUserType(), req.getUserId());
@@ -128,17 +129,17 @@ public class CredentialServiceImpl implements CredentialService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime oneHourAgo = now.minusHours(1);
 
-        // 目前只支持学生登录，所有用户都作为学生处理
+        // 根据请求中的用户类型查询凭证（支持teacher和student）
         CredentialDO credential = credentialMapper.selectOne(Wrappers.lambdaQuery(CredentialDO.class)
             .eq(CredentialDO::getPhone, req.getPhone())
-            .eq(CredentialDO::getUserType, "student")
+            .eq(CredentialDO::getUserType, req.getUserType())
             .eq(CredentialDO::getCredentialType, "phone")
             .eq(CredentialDO::getIsActive, true));
 
-        String actualUserType = "student";
+        String actualUserType = req.getUserType();
 
         if (credential == null) {
-            log.warn("用户凭证不存在，手机号：{}", req.getPhone());
+            log.warn("用户凭证不存在，类型：{}，手机号：{}", actualUserType, req.getPhone());
             return CredentialVerifyPasswordResp.builder().success(false).message("用户不存在或未设置密码").build();
         }
 

@@ -187,9 +187,10 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         for (CourseTeacherDO courseTeacher : list) {
             CourseTeacherResp resp = BeanUtil.copyProperties(courseTeacher, CourseTeacherResp.class);
 
-            // 从Map中获取老师信息，填充手机号和邮箱
+            // 从Map中获取老师信息，填充名称、手机号和邮箱
             TeacherDO teacher = teacherMap.get(courseTeacher.getTeacherId());
             if (teacher != null) {
+                resp.setTeacherName(teacher.getName());
                 resp.setTeacherPhone(teacher.getPhone());
                 resp.setTeacherEmail(teacher.getEmail());
             }

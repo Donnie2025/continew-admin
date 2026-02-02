@@ -73,4 +73,25 @@ public class StudentController extends BaseController<StudentService, StudentRes
     public StudentBatchImportResp batchImport(@Valid @RequestBody StudentBatchImportReq req) {
         return baseService.batchImport(req);
     }
+
+    /**
+     * 修改学生姓名并同步到ClassIn
+     *
+     * @param id      学生ID
+     * @param newName 新姓名
+     * @return 操作结果
+     */
+    @PutMapping("/{id}/name")
+    @Operation(summary = "修改学生姓名", description = "修改学生姓名并同步到ClassIn平台")
+    public R<String> updateStudentName(
+        @Parameter(description = "学生ID") @PathVariable Long id,
+        @Parameter(description = "新姓名") @RequestParam String newName) {
+        
+        boolean success = baseService.updateStudentNameAndSyncClassin(id, newName);
+        if (success) {
+            return R.success("学生姓名修改成功");
+        } else {
+            return R.fail("学生姓名修改失败");
+        }
+    }
 }

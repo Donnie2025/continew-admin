@@ -66,6 +66,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     private final ClassinUserService classinUserService;
     private final CourseMapper courseMapper;
     private final TeacherMapper teacherMapper;
+    private final top.continew.admin.education.helper.ClassinHelper classinHelper;
 
     /**
      * 重写创建方法，增加对接ClassIn创建教室功能
@@ -91,12 +92,22 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             throw new BusinessException("教师不存在，教师ID：" + req.getTeacherId());
         }
 
-        // 3. 获取教师的ClassIn用户信息
+        // 3. 获取或自动创建教师的ClassIn用户信息
         ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserTypeAndInstitution(req
             .getTeacherId(), ClassinConstants.USER_TYPE_TEACHER, institutionId);
+        
+        // 如果教师在该机构下没有ClassIn账号，自动创建
         if (classinUser == null || classinUser.getClassinUid() == null) {
-            throw new BusinessException("未找到教师的ClassIn用户信息，请确保教师已关联ClassIn账号");
+            log.info("教师[{}]在机构[{}]下没有ClassIn账号，开始自动创建", teacher.getName(), institutionId);
+            classinUser = classinHelper.registerTeacherIfAbsent(req.getTeacherId(), teacher, institutionId);
+            
+            // 如果自动创建失败，抛出异常
+            if (classinUser == null || classinUser.getClassinUid() == null) {
+                throw new BusinessException("教师[" + teacher.getName() + "]的ClassIn账号自动创建失败，请检查教师的手机号或邮箱是否填写");
+            }
+            log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUser.getClassinUid());
         }
+        
         Long teacherClassinUid = Long.parseLong(classinUser.getClassinUid());
 
         // 4. 先创建ClassIn单元（如果不存在）

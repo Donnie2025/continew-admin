@@ -63,4 +63,12 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @param id 教师ID
      */
     void setTop(Long id);
+
+    /**
+     * 根据ID获取教师实体
+     *
+     * @param id 教师ID
+     * @return 教师实体
+     */
+    TeacherDO getById(Long id);
 }

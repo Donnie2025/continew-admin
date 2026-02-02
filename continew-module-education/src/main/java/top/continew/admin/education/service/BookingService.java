@@ -23,6 +23,7 @@ import top.continew.admin.education.model.query.BookingQuery;
 import top.continew.admin.education.model.req.BookingReq;
 import top.continew.admin.education.model.resp.BookingDetailResp;
 import top.continew.admin.education.model.resp.BookingResp;
+import top.continew.admin.education.model.resp.MyBookingResp;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,14 @@ public interface BookingService extends BaseService<BookingResp, BookingDetailRe
      * @return 课时ID到学生姓名列表的映射
      */
     Map<Long, List<String>> findStudentNamesBySlotIds(List<Long> slotIds);
+
+    /**
+     * 根据课时ID列表查询详细的预约信息
+     *
+     * @param slotIds 课时ID列表
+     * @return 课时ID到预约详细信息列表的映射
+     */
+    Map<Long, List<BookingDO>> findDetailedBookingsBySlotIds(List<Long> slotIds);
 
     /**
      * 根据学生ID获取预约列表
@@ -120,4 +129,45 @@ public interface BookingService extends BaseService<BookingResp, BookingDetailRe
      * @return 已完成的课件ID列表
      */
     List<Long> getCompletedLessonIds(Long studentId, Long materialId);
+
+    /**
+     * 获取当前学生的预约列表（用于小程序"我的预约"功能）
+     * 
+     * @return 我的预约列表
+     */
+    List<MyBookingResp> getMyBookings();
+
+    /**
+     * 取消预约
+     * 验证取消条件：1.只能取消未开课状态的课程 2.距离开课时间必须超过2小时
+     * 
+     * @param bookingId 预约ID
+     * @throws RuntimeException 当不满足取消条件时抛出异常
+     */
+    void cancelBooking(Long bookingId);
+
+    /**
+     * 教师取消预约（无时间限制）
+     * 
+     * @param bookingId 预约ID
+     * @throws RuntimeException 当预约记录不存在或状态异常时抛出异常
+     */
+    void cancelBookingByTeacher(Long bookingId);
+
+    /**
+     * 教师通过时间段和学生取消预约（无时间限制）
+     * 
+     * @param slotId    时间段ID
+     * @param studentId 学生ID
+     * @throws RuntimeException 当预约记录不存在或状态异常时抛出异常
+     */
+    void cancelBookingBySlotAndStudent(Long slotId, Long studentId);
+
+    /**
+     * 根据时间段ID获取预约列表
+     * 
+     * @param slotId 时间段ID
+     * @return 预约列表
+     */
+    List<BookingDO> getBySlotId(Long slotId);
 }

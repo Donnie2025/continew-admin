@@ -23,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.SlotMapper;
@@ -34,7 +36,11 @@ import top.continew.admin.education.model.req.SlotReq;
 import top.continew.admin.education.model.resp.SlotDetailResp;
 import top.continew.admin.education.model.resp.SlotResp;
 import top.continew.starter.extension.crud.model.query.SortQuery;
+import top.continew.admin.education.model.entity.BookingDO;
+import top.continew.admin.education.service.BookingService;
 import top.continew.admin.education.service.SlotService;
+import top.continew.admin.education.service.TeacherService;
+import top.continew.admin.education.model.entity.TeacherDO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +58,9 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private static final Logger log = LoggerFactory.getLogger(SlotServiceImpl.class);
+
+    private final BookingService bookingService;
+    private final TeacherService teacherService;
 
     /**
      * 批量创建课程时间
@@ -175,5 +184,155 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
 
         // 不存在记录，调用父类方法创建新记录
         return super.create(req);
+    }
+
+    @Override
+    public void disableById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("时间段ID不能为空");
+        }
+
+        // 构造更新对象，只更新status字段
+        SlotDO updateSlot = new SlotDO();
+        updateSlot.setId(id);
+        updateSlot.setStatus(0); // 设置为禁用状态（软删除）
+
+        int updateResult = baseMapper.updateById(updateSlot);
+        if (updateResult == 0) {
+            throw new RuntimeException("软删除时间段失败，可能记录不存在: ID=" + id);
+        }
+
+        log.info("成功软删除时间段: ID={}", id);
+    }
+
+    @Override
+    public Map<String, Integer> batchDeleteUnbookedSlots(List<Long> slotIds) {
+        Map<String, Integer> result = new HashMap<>();
+        int successCount = 0;
+        int failedCount = 0;
+
+        log.info("开始批量删除未预约时间段, 数量: {}", slotIds.size());
+
+        for (Long slotId : slotIds) {
+            try {
+                // 1. 检查时间段是否存在
+                SlotDetailResp slot = this.get(slotId);
+                if (slot == null) {
+                    log.warn("时间段不存在，跳过删除: ID={}", slotId);
+                    failedCount++;
+                    continue;
+                }
+
+                // 2. 检查是否有预约记录
+                List<BookingDO> bookings = bookingService.getBySlotId(slotId);
+                if (bookings != null && !bookings.isEmpty()) {
+                    log.warn("时间段已有预约，跳过删除: ID={}, 预约数量: {}", slotId, bookings.size());
+                    failedCount++;
+                    continue;
+                }
+
+                // 3. 执行软删除
+                this.disableById(slotId);
+                successCount++;
+                log.debug("删除时间段成功: ID={}", slotId);
+
+            } catch (Exception e) {
+                log.error("删除时间段失败: ID={}", slotId, e);
+                failedCount++;
+            }
+        }
+
+        result.put("success", successCount);
+        result.put("failed", failedCount);
+
+        log.info("批量删除完成: 成功={}, 失败={}", successCount, failedCount);
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getWeeklyStats(Long teacherId) {
+        Map<String, Object> stats = new HashMap<>();
+
+        // 计算本周的开始和结束日期 (周一到周日)
+        java.time.LocalDate now = java.time.LocalDate.now();
+        java.time.LocalDate startOfWeek = now.with(java.time.DayOfWeek.MONDAY);
+        java.time.LocalDate endOfWeek = now.with(java.time.DayOfWeek.SUNDAY);
+
+        String startDateStr = startOfWeek.format(DATE_FORMATTER);
+        String endDateStr = endOfWeek.format(DATE_FORMATTER);
+
+        log.info("获取教师本周统计数据: teacherId={}, 时间范围: {} - {}", teacherId, startDateStr, endDateStr);
+
+        try {
+            // 1. 获取教师信息
+            TeacherDO teacher = teacherService.getById(teacherId);
+            if (teacher == null) {
+                log.warn("教师不存在: teacherId={}", teacherId);
+                stats.put("classesThisWeek", 0);
+                stats.put("bookedSlots", 0);
+                stats.put("availableSlots", 0);
+                stats.put("showSalary", false);
+                stats.put("estimatedEarning", 0);
+                return stats;
+            }
+
+            // 2. 查询本周所有开放的时间段 (status=1)
+            SlotQuery query = new SlotQuery();
+            query.setTeacherId(teacherId);
+            query.setDateRange(startDateStr, endDateStr);
+            query.setStatus(1); // 只查询启用状态的时间段
+
+            List<SlotResp> allSlots = this.list(query, null);
+            int totalClasses = allSlots != null ? allSlots.size() : 0;
+
+            // 3. 查询有预约的时间段数量
+            int bookedSlots = 0;
+            if (allSlots != null && !allSlots.isEmpty()) {
+                // 提取所有时间段ID
+                List<Long> slotIds = allSlots.stream()
+                    .map(SlotResp::getId)
+                    .collect(java.util.stream.Collectors.toList());
+
+                // 查询有预约记录的时间段
+                Map<Long, List<String>> studentNamesMap = bookingService.findStudentNamesBySlotIds(slotIds);
+
+                // 计算有预约的时间段数量
+                bookedSlots = (int)studentNamesMap.entrySet()
+                    .stream()
+                    .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                    .count();
+            }
+
+            // 4. 计算可用的时间段数量 (总数 - 已预约数)
+            int availableSlots = totalClasses - bookedSlots;
+
+            // 5. 检查是否展示工资
+            boolean showSalary = teacher.getShowSalary() != null && teacher.getShowSalary() == 1;
+
+            // 6. 计算预估收入 (单价 * 已预约节数)
+            int estimatedEarning = 0;
+            if (showSalary && teacher.getRate() != null) {
+                estimatedEarning = teacher.getRate() * bookedSlots;
+            }
+
+            stats.put("classesThisWeek", totalClasses);
+            stats.put("bookedSlots", bookedSlots);
+            stats.put("availableSlots", availableSlots);
+            stats.put("showSalary", showSalary);
+            stats.put("estimatedEarning", estimatedEarning);
+
+            log.info("教师本周统计结果: 总课时={}, 已预约={}, 可预约={}, 展示工资={}, 预估收入={}", totalClasses, bookedSlots, availableSlots, showSalary, estimatedEarning);
+
+        } catch (Exception e) {
+            log.error("获取教师本周统计数据失败: teacherId={}", teacherId, e);
+            // 返回默认值
+            stats.put("classesThisWeek", 0);
+            stats.put("bookedSlots", 0);
+            stats.put("availableSlots", 0);
+            stats.put("showSalary", false);
+            stats.put("estimatedEarning", 0);
+        }
+
+        return stats;
     }
 }

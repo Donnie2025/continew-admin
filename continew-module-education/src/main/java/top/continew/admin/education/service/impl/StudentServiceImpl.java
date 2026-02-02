@@ -34,6 +34,11 @@ import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.service.StudentService;
+import top.continew.admin.education.service.ClassinUserService;
+import top.continew.admin.education.service.InstitutionService;
+import top.continew.admin.education.client.ClassinClient;
+import top.continew.admin.education.model.entity.ClassinUserDO;
+import top.continew.admin.education.constant.ClassinConstants;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -49,8 +54,17 @@ import cn.hutool.core.util.StrUtil;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO, StudentResp, StudentDetailResp, StudentQuery, StudentReq> implements StudentService {
+
+    private final ClassinClient classinClient;
+    private final ClassinUserService classinUserService;
+    private final InstitutionService institutionService;
+
+    public StudentServiceImpl(ClassinClient classinClient, ClassinUserService classinUserService, InstitutionService institutionService) {
+        this.classinClient = classinClient;
+        this.classinUserService = classinUserService;
+        this.institutionService = institutionService;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -221,5 +235,70 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
     @Override
     public boolean updateStudent(StudentDO student) {
         return this.updateById(student);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateStudentNameAndSyncClassin(Long studentId, String newName) {
+        try {
+            // 1. 参数校验
+            if (studentId == null) {
+                log.error("学生ID不能为空");
+                return false;
+            }
+            if (StrUtil.isBlank(newName)) {
+                log.error("新姓名不能为空");
+                return false;
+            }
+
+            // 2. 查询学生信息
+            StudentDO student = this.getById(studentId);
+            if (student == null) {
+                log.error("学生不存在，ID: {}", studentId);
+                return false;
+            }
+
+            // 3. 更新本地学生姓名
+            String oldName = student.getName();
+            student.setName(newName);
+            boolean updateResult = this.updateById(student);
+            if (!updateResult) {
+                log.error("更新学生姓名失败，ID: {}", studentId);
+                return false;
+            }
+
+            log.info("本地更新学生姓名成功: ID={}, oldName={}, newName={}", studentId, oldName, newName);
+
+            // 4. 同步到ClassIn（如果学生已关联ClassIn账号）
+            try {
+                // 获取学生的ClassIn用户信息
+                ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
+                
+                if (classinUser != null && StrUtil.isNotBlank(classinUser.getClassinUid())) {
+                    // 获取机构ID（从ClassIn用户记录中获取）
+                    Long institutionId = classinUser.getClassinInstitutionId();
+                    if (institutionId != null) {
+                        // 调用ClassIn API更新学生姓名
+                        classinClient.editSchoolStudent(classinUser.getClassinUid(), newName, institutionId);
+                        log.info("ClassIn同步学生姓名成功: studentId={}, classinUid={}, newName={}", 
+                            studentId, classinUser.getClassinUid(), newName);
+                    } else {
+                        log.warn("学生关联的ClassIn用户缺少机构ID，无法同步到ClassIn: studentId={}", studentId);
+                    }
+                } else {
+                    log.info("学生未关联ClassIn账号，跳过ClassIn同步: studentId={}", studentId);
+                }
+            } catch (Exception e) {
+                // ClassIn同步失败不影响本地更新的成功
+                log.error("同步学生姓名到ClassIn失败，但本地更新成功: studentId={}, newName={}, error={}", 
+                    studentId, newName, e.getMessage());
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("更新学生姓名并同步ClassIn失败: studentId={}, newName={}, error={}", 
+                studentId, newName, e.getMessage(), e);
+            return false;
+        }
     }
 }

@@ -136,6 +136,82 @@ public class MiniTeacherController {
     }
 
     @SaIgnore
+    @PostMapping("/batch/available-dates")
+    @Operation(summary = "批量获取教师可用日期统计", description = "批量获取多个教师的可用日期统计信息，优化性能")
+    public R<Map<Long, Map<String, Object>>> getBatchAvailableDates(@RequestBody List<Long> teacherIds,
+                                                                    @RequestParam(defaultValue = "2") Integer days) {
+        log.info("批量获取教师可约日期统计, 教师数量: {}, 天数: {}", teacherIds.size(), days);
+
+        try {
+            Map<Long, Map<String, Object>> result = new HashMap<>();
+            LocalDate today = LocalDate.now();
+            LocalDate tomorrow = today.plusDays(1);
+
+            // 为每个教师计算可用日期统计
+            for (Long teacherId : teacherIds) {
+                Map<String, Object> teacherStats = new HashMap<>();
+
+                // 计算今天的可约数量
+                int todaySlots = getAvailableSlotsForDate(teacherId, today);
+                // 计算明天的可约数量
+                int tomorrowSlots = getAvailableSlotsForDate(teacherId, tomorrow);
+
+                teacherStats.put("today", todaySlots);
+                teacherStats.put("tomorrow", tomorrowSlots);
+
+                result.put(teacherId, teacherStats);
+            }
+
+            log.info("批量获取教师可约日期统计完成, 处理了{}个教师", teacherIds.size());
+            return R.ok(result);
+
+        } catch (Exception e) {
+            log.error("批量获取教师可约日期统计失败, 教师IDs: {}", teacherIds, e);
+            return R.fail("500", "批量获取可约日期失败");
+        }
+    }
+
+    /**
+     * 获取指定教师在指定日期的可约时间段数量
+     */
+    private int getAvailableSlotsForDate(Long teacherId, LocalDate date) {
+        try {
+            String dateStr = date.format(DATE_FORMATTER);
+
+            // 查询该日期的时间段
+            SlotQuery query = new SlotQuery();
+            query.setTeacherId(teacherId);
+            query.setStartDate(dateStr);
+            query.setStatus(1); // 只查询启用状态的时间段
+
+            List<SlotResp> slots = slotService.list(query, null);
+
+            if (slots == null || slots.isEmpty()) {
+                return 0;
+            }
+
+            // 查询已预约的时间段
+            List<Long> slotIds = slots.stream().map(SlotResp::getId).collect(Collectors.toList());
+            Map<Long, List<String>> bookedSlotsMap = bookingService.findStudentNamesBySlotIds(slotIds);
+
+            // 计算可用的时间段数量
+            int availableCount = 0;
+            for (SlotResp slot : slots) {
+                List<String> studentNames = bookedSlotsMap.get(slot.getId());
+                if (studentNames == null || studentNames.isEmpty()) {
+                    availableCount++;
+                }
+            }
+
+            return availableCount;
+
+        } catch (Exception e) {
+            log.error("获取教师{}在日期{}的可约时间段数量失败", teacherId, date, e);
+            return 0;
+        }
+    }
+
+    @SaIgnore
     @GetMapping("/{teacherId}/slots")
     @Operation(summary = "获取教师指定日期的时间段", description = "获取教师在指定日期的所有可约时间段")
     public R<List<Map<String, Object>>> getSlots(@PathVariable Long teacherId, @RequestParam String date) {

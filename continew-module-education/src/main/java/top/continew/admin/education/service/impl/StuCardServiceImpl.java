@@ -101,11 +101,11 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
             stuCardDO.setBalance(newBalance);
 
             // 如果是有限期卡类型，需要处理有效期
-            if (CardTypeConstants.isLimitedCard(cardDetail.getType()) && cardDetail
-                .getInitDays() != null && cardDetail.getInitDays() > 0) {
+            if (CardTypeConstants.isLimitedCard(cardDetail.getType()) && cardDetail.getInitDays() != null && cardDetail
+                .getInitDays() > 0) {
                 LocalDate currentExpireDate = stuCardDO.getExpireDate();
                 LocalDate today = LocalDate.now();
-                
+
                 // 判断是否余额为0（包括次数和金额）
                 boolean isZeroBalance = false;
                 if (CardTypeConstants.isTimesCard(cardDetail.getType())) {
@@ -125,7 +125,7 @@ public class StuCardServiceImpl extends BaseServiceImpl<StuCardMapper, StuCardDO
                     baseDate = currentExpireDate;
                     System.out.println("有余额且未过期，有效期从原到期日延长: " + currentExpireDate);
                 }
-                
+
                 LocalDate newExpireDate = baseDate.plusDays(cardDetail.getInitDays());
                 stuCardDO.setExpireDate(newExpireDate);
                 System.out.println("新的到期日期: " + newExpireDate);

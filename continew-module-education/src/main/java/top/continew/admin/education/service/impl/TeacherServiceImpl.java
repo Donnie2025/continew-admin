@@ -67,7 +67,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
             .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name)
             .orderByAsc(TeacherDO::getSort)
-            .orderByDesc(TeacherDO::getUpdateTime);
+            .orderByDesc(TeacherDO::getCreateTime);
 
         // 不限制返回数量，让前端能够显示所有符合条件的老师
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
@@ -88,7 +88,7 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
             .eq(TeacherDO::getStatus, DisEnableStatusEnum.ENABLE.getValue())
             .and(wrapper -> wrapper.like(TeacherDO::getName, keyword).or().like(TeacherDO::getPhone, keyword))
             .orderByAsc(TeacherDO::getSort)
-            .orderByDesc(TeacherDO::getUpdateTime)
+            .orderByDesc(TeacherDO::getCreateTime)
             .last("LIMIT 20"); // 限制返回数量
 
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
@@ -97,8 +97,8 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
     @Override
     protected QueryWrapper<TeacherDO> buildQueryWrapper(TeacherQuery query) {
         QueryWrapper<TeacherDO> queryWrapper = super.buildQueryWrapper(query);
-        // 添加默认排序：按sort字段升序排列，如果sort相同则按update_time倒序
-        queryWrapper.orderByAsc("sort").orderByDesc("update_time");
+        // 添加默认排序：按sort字段升序排列，如果sort相同则按create_time倒序
+        queryWrapper.orderByAsc("sort").orderByDesc("create_time");
         return queryWrapper;
     }
 
@@ -113,6 +113,14 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         // 将sort字段设置为1实现置顶
         teacher.setSort(1);
         this.baseMapper.updateById(teacher);
+    }
+
+    @Override
+    public TeacherDO getById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return this.baseMapper.selectById(id);
     }
 
     /**

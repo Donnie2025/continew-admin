@@ -41,6 +41,8 @@ import top.continew.admin.education.model.query.CourseQuery;
 import top.continew.admin.education.model.req.CourseReq;
 import top.continew.admin.education.model.resp.CourseDetailResp;
 import top.continew.admin.education.model.resp.CourseResp;
+import top.continew.admin.education.model.resp.CourseTeacherResp;
+import top.continew.admin.education.model.resp.CourseStudentResp;
 import top.continew.admin.education.service.CourseService;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
@@ -182,9 +184,13 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 .map(CourseResp::getId)
                 .collect(java.util.stream.Collectors.toList());
 
-            // 2.2 批量统计教师和学生数量（优化：2次查询代替N次）
-            java.util.Map<Long, Integer> teacherCountMap = courseTeacherService.countTeachersByCourseIds(courseIds);
-            java.util.Map<Long, Integer> studentCountMap = courseStudentService.countStudentsByCourseIds(courseIds);
+            // 2.2 批量查询教师和学生列表
+            java.util.Map<Long, List<CourseTeacherResp>> teachersMap = new java.util.HashMap<>();
+            java.util.Map<Long, List<CourseStudentResp>> studentsMap = new java.util.HashMap<>();
+            for (Long courseId : courseIds) {
+                teachersMap.put(courseId, courseTeacherService.listTeachersByCourseId(courseId));
+                studentsMap.put(courseId, courseStudentService.listStudentsByCourseId(courseId));
+            }
 
             // 2.3 收集所有班主任ID
             List<Long> mainTeacherIds = records.stream()
@@ -224,9 +230,13 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
 
             // 2.7 填充所有信息
             for (CourseResp record : records) {
-                // 填充数量统计
-                record.setTeacherCount(teacherCountMap.getOrDefault(record.getId(), 0));
-                record.setStudentCount(studentCountMap.getOrDefault(record.getId(), 0));
+                // 填充教师和学生列表
+                List<CourseTeacherResp> teachers = teachersMap.getOrDefault(record.getId(), java.util.Collections.emptyList());
+                List<CourseStudentResp> students = studentsMap.getOrDefault(record.getId(), java.util.Collections.emptyList());
+                record.setTeachers(teachers);
+                record.setStudents(students);
+                record.setTeacherCount(teachers.size());
+                record.setStudentCount(students.size());
 
                 // 填充班主任姓名
                 if (record.getMainTeacherId() != null) {

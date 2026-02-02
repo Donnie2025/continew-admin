@@ -171,9 +171,10 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         for (CourseStudentDO courseStudent : list) {
             CourseStudentResp resp = BeanUtil.copyProperties(courseStudent, CourseStudentResp.class);
 
-            // 从Map中获取学生信息，填充手机号和邮箱
+            // 从Map中获取学生信息，填充名称、手机号和邮箱
             StudentDO student = studentMap.get(courseStudent.getStudentId());
             if (student != null) {
+                resp.setStudentName(student.getName());
                 resp.setStudentPhone(student.getPhone());
                 resp.setStudentEmail(student.getEmail());
             }

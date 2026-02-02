@@ -4,6 +4,7 @@ classin:
     url: https://api.eeo.cn
     register: /partner/api/course.api.php?action=register
     addSchoolStudent: /partner/api/course.api.php?action=addSchoolStudent
+    editSchoolStudent: /partner/api/course.api.php?action=editSchoolStudent
     addTeacher: /partner/api/course.api.php?action=addTeacher
     addCourse: /partner/api/course.api.php?action=addCourse
     editCourse: /partner/api/course.api.php?action=editCourse

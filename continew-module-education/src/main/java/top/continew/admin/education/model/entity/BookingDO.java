@@ -103,9 +103,24 @@ public class BookingDO extends BaseDO {
     private String materialName;
 
     /**
+     * 预约教材编码
+     */
+    private String materialCode;
+
+    /**
+     * 预约教材级别
+     */
+    private String materialLevel;
+
+    /**
      * 预约课节名字
      */
     private String lessonName;
+
+    /**
+     * 预约课节链接
+     */
+    private String lessonUrl;
 
     /**
      * 预约备注

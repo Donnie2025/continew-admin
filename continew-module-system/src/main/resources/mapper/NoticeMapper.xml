@@ -53,13 +53,13 @@
     <select id="selectDashboardList"
             resultType="top.continew.admin.system.model.resp.dashboard.DashboardNoticeResp">
         SELECT
-        id, title, type, is_top
+        id, title, type, sort as is_top
         FROM sys_notice
-        WHERE status = 3
+        WHERE 1=1
         <if test="userId != null">
             AND (notice_scope = 1 OR (notice_scope = 2 AND JSON_CONTAINS(notice_users, CONCAT('"', #{userId}, '"'))))
         </if>
-        ORDER BY is_top DESC, publish_time DESC
+        ORDER BY sort DESC, create_time DESC
         LIMIT 5
     </select>
 </mapper>

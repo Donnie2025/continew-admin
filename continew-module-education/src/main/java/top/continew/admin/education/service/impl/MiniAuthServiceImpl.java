@@ -36,6 +36,7 @@ import top.continew.admin.common.context.UserContextHolder;
 import top.continew.admin.common.context.UserExtraContext;
 import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.education.model.entity.StudentDO;
+import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
 import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
@@ -46,6 +47,8 @@ import top.continew.admin.education.model.resp.MiniLoginResp;
 import top.continew.admin.education.service.MiniAuthService;
 import top.continew.admin.education.service.CredentialService;
 import top.continew.admin.education.service.StudentService;
+import top.continew.admin.education.service.TeacherService;
+import top.continew.admin.education.enums.UserType;
 import top.continew.starter.core.exception.BadRequestException;
 import top.continew.starter.core.validation.ValidationUtils;
 import top.continew.starter.web.util.ServletUtils;
@@ -68,6 +71,7 @@ import java.util.concurrent.TimeUnit;
 public class MiniAuthServiceImpl implements MiniAuthService {
 
     private final StudentService studentService;
+    private final TeacherService teacherService;
     private final CredentialService credentialService;
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -130,26 +134,43 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             .nickname(student.getNickname())
             .avatar(avatarUrl)
             .phone(student.getPhone()) // 返回手机号，用于前端判断是否需要采集
-            .userType("student")
+            .userType(UserType.STUDENT.getValue())
             .build();
     }
 
     @Override
     public MiniLoginResp loginByPassword(MiniPasswordLoginReq req, HttpServletRequest request) {
         log.info("=== 小程序密码登录开始 ===");
-        log.info("请求参数: phone={}, password={}", req.getPhone(), req.getPassword());
+        log.info("请求参数: phone={}, userType={}", req.getPhone(), req.getUserType());
 
         try {
+            // 1. 根据客户端传递的用户类型查找用户
+            TeacherDO teacher = null;
+            StudentDO student = null;
+            String userType = req.getUserType();
 
-            // 1. 根据手机号查找学生
-            StudentDO student = studentService.getByPhone(req.getPhone());
-            if (student == null) {
-                throw new BadRequestException("手机号未注册，请先注册或使用微信登录");
+            // 验证用户类型
+            if (!UserType.isValid(userType)) {
+                throw new BadRequestException("无效的用户类型: " + userType);
+            }
+
+            if (UserType.TEACHER.getValue().equals(userType)) {
+                teacher = teacherService.getByPhone(req.getPhone());
+                if (teacher == null) {
+                    throw new BadRequestException("教师手机号未注册，请联系管理员");
+                }
+                log.info("找到教师用户: teacherId={}, name={}", teacher.getId(), teacher.getName());
+            } else if (UserType.STUDENT.getValue().equals(userType)) {
+                student = studentService.getByPhone(req.getPhone());
+                if (student == null) {
+                    throw new BadRequestException("学生手机号未注册，请联系管理员");
+                }
+                log.info("找到学生用户: studentId={}, name={}", student.getId(), student.getName());
             }
 
             // 2. 验证密码
             CredentialVerifyPasswordReq verifyReq = new CredentialVerifyPasswordReq();
-            verifyReq.setUserType("student");
+            verifyReq.setUserType(userType);
             verifyReq.setPhone(req.getPhone());
             verifyReq.setPassword(req.getPassword()); // 密码已经是Base64编码的
 
@@ -159,16 +180,23 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             }
 
             // 3. 构建用户上下文（小程序用户无权限和角色，密码永不过期）
+            Long userId;
+            if (UserType.TEACHER.getValue().equals(userType)) {
+                userId = teacher.getId();
+            } else {
+                userId = student.getId();
+            }
+
             UserContext userContext = new UserContext(Collections.emptySet(), Collections.emptySet(), -1);
-            userContext.setId(student.getId());
-            userContext.setUsername(student.getPhone()); // 使用手机号作为username
-            userContext.setDeptId(null); // 学生无部门
-            userContext.setPwdResetTime(null); // 无密码重置时间
+            userContext.setId(userId);
+            userContext.setUsername(req.getPhone()); // 使用手机号作为username
+            userContext.setDeptId(null);
+            userContext.setPwdResetTime(null);
             userContext.setClientType("miniprogram");
             userContext.setClientId("miniprogram");
 
             // 4. 使用小程序专用的StpLogic进行登录
-            StpMiniUtil.login(student.getId(), "miniprogram");
+            StpMiniUtil.login(userId, "miniprogram");
 
             // 将用户上下文保存到小程序的session中
             StpMiniUtil.getStpLogic().getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
@@ -177,23 +205,36 @@ public class MiniAuthServiceImpl implements MiniAuthService {
 
             // 验证token是否有效
             Object verifyLoginId = StpMiniUtil.getStpLogic().getLoginIdByToken(token);
-            log.info("小程序密码登录成功: userId={}, phone={}, token={}, verifyLoginId={}", student.getId(), student
-                .getPhone(), token, verifyLoginId);
+            log.info("小程序密码登录成功: userId={}, phone={}, userType={}, token={}, verifyLoginId={}", userId, req
+                .getPhone(), userType, token, verifyLoginId);
 
             // 5. 返回登录响应
-            String displayName = StrUtil.isNotBlank(student.getName()) ? student.getName() : "用户";
-            String avatarUrl = StrUtil.isNotBlank(student.getAvatar())
-                ? student.getAvatar()
-                : "/assets/images/default.jpeg";
+            String displayName, nickname, avatarUrl, phone;
+
+            if (UserType.TEACHER.getValue().equals(userType)) {
+                displayName = StrUtil.isNotBlank(teacher.getName()) ? teacher.getName() : "教师";
+                nickname = teacher.getName();
+                avatarUrl = StrUtil.isNotBlank(teacher.getAvatar())
+                    ? teacher.getAvatar()
+                    : "/assets/images/default.jpeg";
+                phone = teacher.getPhone();
+            } else {
+                displayName = StrUtil.isNotBlank(student.getName()) ? student.getName() : "用户";
+                nickname = student.getNickname();
+                avatarUrl = StrUtil.isNotBlank(student.getAvatar())
+                    ? student.getAvatar()
+                    : "/assets/images/default.jpeg";
+                phone = student.getPhone();
+            }
 
             return MiniLoginResp.builder()
                 .token(token)
-                .userId(student.getId())
+                .userId(userId)
                 .userName(displayName)
-                .nickname(student.getNickname())
+                .nickname(nickname)
                 .avatar(avatarUrl)
-                .phone(student.getPhone())
-                .userType("student")
+                .phone(phone)
+                .userType(userType)
                 .build();
 
         } catch (Exception e) {

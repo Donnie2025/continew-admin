@@ -59,6 +59,11 @@ public class ClassinProperties {
         private String addSchoolStudent;
 
         /**
+         * 编辑学生接口路径
+         */
+        private String editSchoolStudent;
+
+        /**
          * 添加教师接口路径
          */
         private String addTeacher;

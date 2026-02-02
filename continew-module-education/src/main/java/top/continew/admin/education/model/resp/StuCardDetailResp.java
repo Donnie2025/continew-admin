@@ -71,11 +71,11 @@ public class StuCardDetailResp extends BaseDetailResp {
     private String cardTitle;
 
     /**
-     * 会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）
+     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
      */
-    @Schema(description = "会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）")
-    @ExcelProperty(value = "会员卡类型（1：次卡有限期；2：次卡无限期；3：储蓄卡有限期；4：储蓄卡无限期）")
-    private Integer cardType;
+    @Schema(description = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
+    @ExcelProperty(value = "会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）")
+    private String cardType;
 
     /**
      * 剩余次数/余额

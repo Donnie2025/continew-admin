@@ -140,6 +140,12 @@ public class TeacherReq implements Serializable {
     private String groupName;
 
     /**
+     * 是否在教师端展示工资（0：不展示；1：展示）
+     */
+    @Schema(description = "是否在教师端展示工资（0：不展示；1：展示）")
+    private Integer showSalary;
+
+    /**
      * 排序
      */
     @Schema(description = "排序")

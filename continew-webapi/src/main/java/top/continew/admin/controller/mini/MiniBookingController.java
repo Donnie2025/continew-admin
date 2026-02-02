@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import top.continew.admin.education.model.entity.BookingDO;
 import top.continew.admin.education.model.req.BatchBookingReq;
 import top.continew.admin.education.service.BookingService;
+import top.continew.admin.education.model.resp.MyBookingResp;
 
 import java.util.List;
 
@@ -48,6 +49,12 @@ public class MiniBookingController {
     @PostMapping("/create")
     public List<Long> createBooking(@Valid @RequestBody BatchBookingReq batchReq) {
         return bookingService.createBatchBookingWithTransaction(batchReq);
+    }
+
+    @Operation(summary = "获取我的预约列表", description = "获取当前学生的所有预约记录")
+    @GetMapping("/my")
+    public List<MyBookingResp> getMyBookings() {
+        return bookingService.getMyBookings();
     }
 
     @Operation(summary = "创建预约（RESTful风格）", description = "创建课程预约记录（事务性操作）")
@@ -87,6 +94,25 @@ public class MiniBookingController {
     @GetMapping("/last-booking")
     public BookingDO getLastBooking() {
         return bookingService.getLastBookingByCurrentStudent();
+    }
+
+    @Operation(summary = "取消预约", description = "取消预约记录，需要满足时间条件（距离开课2小时以上）")
+    @PostMapping("/cancel/{id}")
+    public void cancelBooking(@Parameter(description = "预约ID") @PathVariable Long id) {
+        bookingService.cancelBooking(id);
+    }
+
+    @Operation(summary = "教师取消预约", description = "教师取消预约记录，不受时间限制")
+    @PostMapping("/cancel-by-teacher/{id}")
+    public void cancelBookingByTeacher(@Parameter(description = "预约ID") @PathVariable Long id) {
+        bookingService.cancelBookingByTeacher(id);
+    }
+
+    @Operation(summary = "教师通过时间段取消预约", description = "教师通过时间段ID和学生ID取消预约，不受时间限制")
+    @PostMapping("/cancel-by-slot/{slotId}/student/{studentId}")
+    public void cancelBookingBySlotAndStudent(@Parameter(description = "时间段ID") @PathVariable Long slotId,
+                                              @Parameter(description = "学生ID") @PathVariable Long studentId) {
+        bookingService.cancelBookingBySlotAndStudent(slotId, studentId);
     }
 
 }

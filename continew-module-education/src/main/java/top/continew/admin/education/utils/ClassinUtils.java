@@ -59,6 +59,7 @@ public class ClassinUtils {
         params.set("SID", appId);
         params.set("safeKey", safeKey);
         params.set("timeStamp", timeStamp);
+        params.set("allowAddFriend", 0);
         return params;
     }
 

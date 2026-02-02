@@ -66,7 +66,7 @@ public class MaterialLessonServiceImpl extends BaseServiceImpl<MaterialLessonMap
 
     private final MaterialMapper materialMapper;
     private final FeishuService feishuService;
-    
+
     @Autowired
     private BookingService bookingService;
 
@@ -273,20 +273,20 @@ public class MaterialLessonServiceImpl extends BaseServiceImpl<MaterialLessonMap
     public List<MaterialLessonWithCompletionResp> listWithCompletionStatus(Long materialId) {
         try {
             log.info("获取教材课程列表（包含完成状态）: materialId={}", materialId);
-            
+
             // 1. 获取教材的所有课程
             LambdaQueryWrapper<MaterialLessonDO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(MaterialLessonDO::getMaterialId, materialId)
                 .eq(MaterialLessonDO::getStatus, 1) // 只查询启用的课程
                 .orderByAsc(MaterialLessonDO::getLessonName); // 按课程名称排序
-            
+
             List<MaterialLessonDO> lessons = baseMapper.selectList(queryWrapper);
-            
+
             if (lessons.isEmpty()) {
                 log.info("教材下没有找到课程: materialId={}", materialId);
                 return new ArrayList<>();
             }
-            
+
             // 2. 获取当前学生已完成的课程ID列表
             Set<Long> completedLessonIds = new HashSet<>();
             try {
@@ -301,38 +301,38 @@ public class MaterialLessonServiceImpl extends BaseServiceImpl<MaterialLessonMap
             } catch (Exception e) {
                 log.warn("获取学生完成状态失败，将返回未完成状态: {}", e.getMessage());
             }
-            
+
             // 3. 组装响应数据
             List<MaterialLessonWithCompletionResp> result = new ArrayList<>();
             for (MaterialLessonDO lesson : lessons) {
                 MaterialLessonWithCompletionResp resp = new MaterialLessonWithCompletionResp();
-                
+
                 // 复制基础字段
                 BeanUtils.copyProperties(lesson, resp);
-                
+
                 // 设置完成状态
                 boolean isCompleted = completedLessonIds.contains(lesson.getId());
                 resp.setCompleted(isCompleted);
-                
+
                 // 如果已完成，可以设置完成时间（这里暂时不实现，因为需要额外查询）
                 if (isCompleted) {
                     resp.setCompletionTime("已完成"); // 简化处理
                 }
-                
+
                 result.add(resp);
             }
-            
-            log.info("返回课程列表: materialId={}, totalCount={}, completedCount={}", 
-                materialId, result.size(), completedLessonIds.size());
-            
+
+            log.info("返回课程列表: materialId={}, totalCount={}, completedCount={}", materialId, result
+                .size(), completedLessonIds.size());
+
             return result;
-            
+
         } catch (Exception e) {
             log.error("获取教材课程列表失败: materialId={}, error={}", materialId, e.getMessage(), e);
             return new ArrayList<>();
         }
     }
-    
+
     /**
      * 获取当前登录学生ID
      * 这里需要根据实际的用户上下文获取方式进行调整

@@ -141,6 +141,20 @@ public class TeacherDetailResp extends BaseDetailResp {
     private String description;
 
     /**
+     * 所属组
+     */
+    @Schema(description = "所属组")
+    @ExcelProperty(value = "所属组")
+    private String groupName;
+
+    /**
+     * 是否在教师端展示工资（0：不展示；1：展示）
+     */
+    @Schema(description = "是否在教师端展示工资（0：不展示；1：展示）")
+    @ExcelProperty(value = "是否在教师端展示工资")
+    private Integer showSalary;
+
+    /**
      * 排序
      */
     @Schema(description = "排序")

@@ -90,4 +90,13 @@ public interface StudentService extends BaseService<StudentResp, StudentDetailRe
      * @return 是否更新成功
      */
     boolean updateStudent(StudentDO student);
+
+    /**
+     * 更新学生姓名并同步到ClassIn
+     *
+     * @param studentId 学生ID
+     * @param newName   新姓名
+     * @return 是否更新成功
+     */
+    boolean updateStudentNameAndSyncClassin(Long studentId, String newName);
 }

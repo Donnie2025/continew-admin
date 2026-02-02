@@ -20,6 +20,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,9 @@ import top.continew.admin.education.model.entity.LessonDO;
 import top.continew.admin.education.model.entity.StuCardDO;
 import top.continew.admin.education.model.query.BookingQuery;
 import top.continew.admin.education.model.req.BookingReq;
+import top.continew.admin.education.model.resp.BookingResp;
+import top.continew.admin.education.model.resp.BookingDetailResp;
+import top.continew.admin.education.model.resp.MyBookingResp;
 import top.continew.admin.education.model.req.CourseReq;
 import top.continew.admin.education.model.req.CourseTeacherReq;
 import top.continew.admin.education.model.req.CourseStudentReq;
@@ -50,6 +56,8 @@ import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -132,10 +140,12 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         log.info("预约参数: studentId={}, cardId={}, materialId={}, slotId={}, createUser={}", studentId, cardId, req
             .getMaterialId(), slotId, req.getCreateUser());
 
-        // 检查该学生是否已经预约过该课时
+        // 检查该学生是否已经预约过该课时（只检查已预约状态的记录）
         if (studentId != null && slotId != null) {
             LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStudentId, studentId);
+            queryWrapper.eq(BookingDO::getSlotId, slotId)
+                .eq(BookingDO::getStudentId, studentId)
+                .eq(BookingDO::getStatus, 1); // 只检查已预约状态的记录
             long count = baseMapper.selectCount(queryWrapper);
             if (count > 0) {
                 throw new RuntimeException("您已经预约过该课时，不能重复预约");
@@ -143,9 +153,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             log.info("检查重复预约通过");
 
             // 新增：校验课时预约人数不能超过studentCount
-            // 查询该课时已预约人数
+            // 查询该课时已预约人数（只统计已预约状态的记录）
             LambdaQueryWrapper<BookingDO> slotCountWrapper = new LambdaQueryWrapper<>();
-            slotCountWrapper.eq(BookingDO::getSlotId, slotId);
+            slotCountWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStatus, 1); // 只统计已预约状态的记录
             long bookedCount = baseMapper.selectCount(slotCountWrapper);
             // 获取课时最大可预约人数
             SlotDetailResp slot = slotService.get(slotId);
@@ -161,9 +171,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         if (slotId != null) {
             SlotDetailResp slot = slotService.get(slotId);
             if (slot != null) {
-                req.setStartDate(slot.getStartDate());
-                req.setStartTime(slot.getStartTime());
-                log.info("设置课时信息: startDate={}, startTime={}", slot.getStartDate(), slot.getStartTime());
+                req.setSlotDate(slot.getStartDate());
+                req.setSlotTime(slot.getStartTime());
+                log.info("设置课时信息: slotDate={}, slotTime={}", slot.getStartDate(), slot.getStartTime());
             }
         }
 
@@ -215,9 +225,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             return new HashMap<>();
         }
 
-        // 查询所有匹配的预约记录
+        // 查询所有匹配的预约记录（只查询已预约状态的记录）
         LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.in(BookingDO::getSlotId, slotIds);
+        queryWrapper.in(BookingDO::getSlotId, slotIds).eq(BookingDO::getStatus, 1); // 只查询已预约状态的记录
         List<BookingDO> bookings = baseMapper.selectList(queryWrapper);
 
         // 按照slotId分组，合并多个学生的名字
@@ -225,6 +235,21 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             .filter(booking -> booking.getStudentName() != null && !booking.getStudentName().isEmpty())
             .collect(Collectors.groupingBy(BookingDO::getSlotId, Collectors
                 .mapping(BookingDO::getStudentName, Collectors.toList())));
+    }
+
+    @Override
+    public Map<Long, List<BookingDO>> findDetailedBookingsBySlotIds(List<Long> slotIds) {
+        if (slotIds == null || slotIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        // 查询所有匹配的预约记录（只查询已预约状态的记录）
+        LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(BookingDO::getSlotId, slotIds).eq(BookingDO::getStatus, 1); // 只查询已预约状态的记录
+        List<BookingDO> bookings = baseMapper.selectList(queryWrapper);
+
+        // 按照slotId分组，返回完整的预约详情列表
+        return bookings.stream().collect(Collectors.groupingBy(BookingDO::getSlotId));
     }
 
     /**
@@ -478,7 +503,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             queryWrapper.eq(BookingDO::getTeacherId, booking.getTeacherId())
                 .eq(BookingDO::getSlotDate, booking.getSlotDate())
                 .eq(BookingDO::getSlotTime, booking.getSlotTime())
-                .ne(BookingDO::getStatus, 0); // 排除已取消的预约
+                .eq(BookingDO::getStatus, 1); // 只查询已预约状态的记录
 
             List<BookingDO> existingBookings = baseMapper.selectList(queryWrapper);
 
@@ -543,9 +568,34 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             List<BookingDO> bookings = new ArrayList<>();
             for (int i = 0; i < batchReq.getSlots().size(); i++) {
                 BatchBookingReq.SlotInfo slotInfo = batchReq.getSlots().get(i);
-                
+
+                // 检查该时间段的预约容量
+                Long slotId = Long.valueOf(slotInfo.getSlotId());
+                LambdaQueryWrapper<BookingDO> slotCountWrapper = new LambdaQueryWrapper<>();
+                slotCountWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStatus, 1); // 只统计已预约状态的记录
+                long bookedCount = baseMapper.selectCount(slotCountWrapper);
+
+                // 获取课时最大可预约人数
+                SlotDetailResp slot = slotService.get(slotId);
+                if (slot != null && slot.getStudentCount() != null) {
+                    int maxCount = slot.getStudentCount();
+                    if (bookedCount >= maxCount) {
+                        throw new RuntimeException("时间段 " + slotInfo.getStartTime() + " 预约人数已满，无法继续预约");
+                    }
+                }
+
+                // 检查该学生是否已经预约过该课时
+                LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(BookingDO::getSlotId, slotId)
+                    .eq(BookingDO::getStudentId, studentId)
+                    .eq(BookingDO::getStatus, 1); // 只检查已预约状态的记录
+                long existingCount = baseMapper.selectCount(queryWrapper);
+                if (existingCount > 0) {
+                    throw new RuntimeException("您已经预约过时间段 " + slotInfo.getStartTime() + "，不能重复预约");
+                }
+
                 BookingDO booking = new BookingDO();
-                booking.setSlotId(Long.valueOf(slotInfo.getSlotId()));
+                booking.setSlotId(slotId);
                 booking.setSlotDate(slotInfo.getDate().replace("-", ""));
                 booking.setSlotTime(slotInfo.getStartTime());
                 booking.setStudentId(studentId);
@@ -554,7 +604,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 booking.setTeacherId(batchReq.getTeacherId());
                 booking.setMaterialId(batchReq.getMaterialId());
                 booking.setStuCardId(batchReq.getStuCardId());
-                
+
                 // 设置课节ID - 优先使用每个时间段的lessonId，否则使用全局的lessonId
                 Long lessonId = null;
                 if (slotInfo.getLessonId() != null) {
@@ -562,10 +612,10 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 } else if (batchReq.getLessonId() != null) {
                     lessonId = batchReq.getLessonId();
                 }
-                
+
                 if (lessonId != null) {
                     booking.setLessonId(lessonId);
-                    
+
                     // 获取课节信息用于设置lesson_name
                     try {
                         MaterialLessonDetailResp lessonInfo = materialLessonService.get(lessonId);
@@ -580,6 +630,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 // 设置教材信息
                 if (material != null) {
                     booking.setMaterialName(material.getName());
+                    booking.setMaterialLevel(material.getLevel());
                 }
 
                 // 设置会员卡信息
@@ -589,11 +640,11 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
                 // 设置教师信息
                 booking.setTeacherName(teacher.getName());
-                
+
                 // 设置预约备注
                 booking.setRemark(batchReq.getNote());
                 booking.setStatus(1); // 有效状态
-                
+
                 bookings.add(booking);
             }
 
@@ -766,15 +817,15 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             // 查询该学生的最后一次预约记录
             LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(BookingDO::getStudentId, studentId)
-                .ne(BookingDO::getStatus, 0) // 排除已取消的预约
+                .eq(BookingDO::getStatus, 1) // 只查询已预约状态的记录
                 .orderByDesc(BookingDO::getCreateTime) // 按创建时间降序
                 .last("LIMIT 1"); // 只取第一条记录
 
             BookingDO lastBooking = baseMapper.selectOne(queryWrapper);
-            
+
             if (lastBooking != null) {
-                log.info("找到学生最后预约记录: studentId={}, bookingId={}, materialId={}, lessonId={}", 
-                    studentId, lastBooking.getId(), lastBooking.getMaterialId(), lastBooking.getLessonId());
+                log.info("找到学生最后预约记录: studentId={}, bookingId={}, materialId={}, lessonId={}", studentId, lastBooking
+                    .getId(), lastBooking.getMaterialId(), lastBooking.getLessonId());
             } else {
                 log.info("学生暂无预约记录: studentId={}", studentId);
             }
@@ -791,39 +842,434 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     public List<Long> getCompletedLessonIds(Long studentId, Long materialId) {
         try {
             log.info("查询学生已完成的课件列表: studentId={}, materialId={}", studentId, materialId);
-            
+
             // 构建查询条件
             LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(BookingDO::getStudentId, studentId)
                 .isNotNull(BookingDO::getLessonId)
                 .eq(BookingDO::getStatus, 1); // 只查询有效的预约记录
-            
+
             // 如果指定了教材ID，则过滤特定教材的课件
             if (materialId != null) {
                 queryWrapper.eq(BookingDO::getMaterialId, materialId);
             }
-            
+
             // 添加时间条件：预约时间已过的记录
             // 使用SQL函数将slot_date和slot_time组合成完整的日期时间进行比较
             queryWrapper.apply("CONCAT(slot_date, ' ', slot_time) < NOW()");
-            
+
             // 查询预约记录
             List<BookingDO> completedBookings = baseMapper.selectList(queryWrapper);
-            
+
             // 提取课件ID列表并去重
             List<Long> completedLessonIds = completedBookings.stream()
                 .map(BookingDO::getLessonId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
-            
+
             log.info("查询到已完成的课件数量: {}", completedLessonIds.size());
             return completedLessonIds;
-            
+
         } catch (Exception e) {
-            log.error("查询学生已完成课件列表失败: studentId={}, materialId={}, error={}", 
-                studentId, materialId, e.getMessage(), e);
+            log.error("查询学生已完成课件列表失败: studentId={}, materialId={}, error={}", studentId, materialId, e.getMessage(), e);
             return new ArrayList<>();
         }
     }
+
+    @Override
+    public List<MyBookingResp> getMyBookings() {
+        try {
+            // 获取当前登录学生ID
+            Long currentStudentId = getCurrentStudentId();
+            if (currentStudentId == null) {
+                log.warn("用户未登录，无法获取预约列表");
+                return new ArrayList<>();
+            }
+
+            log.info("获取学生预约列表: studentId={}", currentStudentId);
+
+            // 查询学生的所有预约记录（包括已取消的），按时间倒序排列
+            LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(BookingDO::getStudentId, currentStudentId)
+                .orderByDesc(BookingDO::getSlotDate, BookingDO::getSlotTime);
+
+            log.info("查询学生预约记录: studentId={}, 查询所有状态的记录", currentStudentId);
+            List<BookingDO> bookings = baseMapper.selectList(queryWrapper);
+            log.info("查询到预约记录数量: {}", bookings.size());
+
+            // 详细打印每条预约记录
+            for (int i = 0; i < bookings.size(); i++) {
+                BookingDO booking = bookings.get(i);
+                log.info("预约记录 {}: id={}, slotDate={}, slotTime={}, status={}, lessonName={}", i + 1, booking
+                    .getId(), booking.getSlotDate(), booking.getSlotTime(), booking.getStatus(), booking
+                        .getLessonName());
+            }
+
+            if (bookings.isEmpty()) {
+                log.info("学生暂无预约记录: studentId={}", currentStudentId);
+                return new ArrayList<>();
+            }
+
+            // 转换为响应DTO
+            List<MyBookingResp> result = new ArrayList<>();
+            for (BookingDO booking : bookings) {
+                MyBookingResp resp = new MyBookingResp();
+
+                // 基础信息
+                resp.setId(booking.getId());
+                resp.setSlotId(booking.getSlotId());
+                resp.setSlotDate(booking.getSlotDate());
+                resp.setSlotTime(booking.getSlotTime());
+
+                // 教师信息
+                resp.setTeacherId(booking.getTeacherId());
+                resp.setTeacherName(booking.getTeacherName());
+
+                // 查询教师头像
+                if (booking.getTeacherId() != null) {
+                    try {
+                        TeacherDetailResp teacher = teacherService.get(booking.getTeacherId());
+                        if (teacher != null && teacher.getAvatar() != null) {
+                            resp.setTeacherAvatar(teacher.getAvatar());
+                        }
+                    } catch (Exception e) {
+                        log.warn("查询教师头像失败: teacherId={}, error={}", booking.getTeacherId(), e.getMessage());
+                    }
+                }
+
+                // 会员卡信息
+                resp.setCardId(booking.getStuCardId());
+                resp.setCardName(booking.getCardName());
+
+                // 教材和课节信息
+                resp.setMaterialId(booking.getMaterialId());
+                resp.setMaterialName(booking.getMaterialName());
+
+                // 查询教材级别
+                if (booking.getMaterialId() != null) {
+                    try {
+                        MaterialDetailResp material = materialService.get(booking.getMaterialId());
+                        if (material != null && material.getLevel() != null) {
+                            resp.setMaterialLevel(material.getLevel());
+                        }
+                    } catch (Exception e) {
+                        log.warn("查询教材级别失败: materialId={}, error={}", booking.getMaterialId(), e.getMessage());
+                    }
+                }
+
+                resp.setLessonId(booking.getLessonId());
+                resp.setLessonName(booking.getLessonName());
+
+                // 备注
+                resp.setRemark(booking.getRemark());
+
+                // 判断预约状态
+                String bookingStatus = determineBookingStatus(booking);
+                resp.setBookingStatus(bookingStatus);
+
+                // 格式化日期时间用于前端显示
+                String formattedDateTime = formatDateTime(booking.getSlotDate(), booking.getSlotTime());
+                resp.setFormattedDateTime(formattedDateTime);
+
+                // 创建时间
+                resp.setCreateTime(booking.getCreateTime());
+
+                result.add(resp);
+            }
+
+            log.info("返回预约列表: studentId={}, count={}", currentStudentId, result.size());
+            return result;
+
+        } catch (Exception e) {
+            log.error("获取学生预约列表失败: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 判断预约状态
+     */
+    private String determineBookingStatus(BookingDO booking) {
+        try {
+            // 优先判断status字段：0=已取消，1=有效
+            if (booking.getStatus() != null && booking.getStatus() == 0) {
+                return "已取消";
+            }
+
+            // 将slot_date和slot_time组合成完整的日期时间
+            String dateTimeStr = booking.getSlotDate() + " " + booking.getSlotTime();
+            LocalDateTime bookingDateTime = LocalDateTime.parse(dateTimeStr, DateTimeFormatter
+                .ofPattern("yyyyMMdd HH:mm"));
+
+            LocalDateTime now = LocalDateTime.now();
+
+            if (bookingDateTime.isBefore(now)) {
+                return "已完成";
+            } else {
+                return "未开课";
+            }
+        } catch (Exception e) {
+            log.warn("判断预约状态失败: {}", e.getMessage());
+            return "未开课"; // 默认状态
+        }
+    }
+
+    /**
+     * 格式化日期时间用于前端显示
+     */
+    private String formatDateTime(String slotDate, String slotTime) {
+        try {
+            // 将YYYYMMDD格式转换为YYYY-MM-DD
+            String formattedDate = slotDate.substring(0, 4) + "-" + slotDate.substring(4, 6) + "-" + slotDate
+                .substring(6, 8);
+
+            // 解析日期获取星期
+            LocalDate date = LocalDate.parse(formattedDate);
+            String weekDay = getWeekDay(date.getDayOfWeek().getValue());
+
+            // 格式化为：MM/DD(周X) HH:MM
+            return String.format("%s/%s(%s) %s", slotDate.substring(4, 6), slotDate.substring(6, 8), weekDay, slotTime);
+        } catch (Exception e) {
+            log.warn("格式化日期时间失败: slotDate={}, slotTime={}, error={}", slotDate, slotTime, e.getMessage());
+            return slotDate + " " + slotTime; // 返回原始格式
+        }
+    }
+
+    /**
+     * 获取星期显示文本
+     */
+    private String getWeekDay(int dayOfWeek) {
+        switch (dayOfWeek) {
+            case 1:
+                return "周一";
+            case 2:
+                return "周二";
+            case 3:
+                return "周三";
+            case 4:
+                return "周四";
+            case 5:
+                return "周五";
+            case 6:
+                return "周六";
+            case 7:
+                return "周日";
+            default:
+                return "";
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelBooking(Long bookingId) {
+        log.info("开始取消预约，预约ID: {}", bookingId);
+
+        // 1. 查询预约记录
+        BookingDO booking = baseMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new RuntimeException("预约记录不存在");
+        }
+
+        // 2. 验证预约状态 (status: 1=启用/已预约, 0=禁用/已取消)
+        if (booking.getStatus() == null || booking.getStatus() != 1) {
+            throw new RuntimeException("只能取消未开课状态的课程");
+        }
+
+        // 3. 验证预约是否属于当前学生
+        Long currentStudentId = UserContextHolder.getUserId();
+        if (!booking.getStudentId().equals(currentStudentId)) {
+            throw new RuntimeException("无权限取消此预约");
+        }
+
+        // 4. 验证时间条件：距离开课时间必须超过2小时
+        LocalDateTime bookingTime = parseSlotDateTime(booking.getSlotDate(), booking.getSlotTime());
+        if (bookingTime == null) {
+            throw new RuntimeException("预约时间格式错误，无法取消");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        long hoursDiff = java.time.Duration.between(now, bookingTime).toHours();
+
+        if (hoursDiff <= 2) {
+            throw new RuntimeException("距离开课时间不足2小时，无法取消预约");
+        }
+
+        // 5. 更新预约状态为已取消 (status: 0=禁用/已取消)
+        log.info("开始更新预约状态: 预约ID={}, 原状态={}, 新状态=0", bookingId, booking.getStatus());
+        booking.setStatus(0);
+        booking.setUpdateTime(LocalDateTime.now());
+        int updateResult = baseMapper.updateById(booking);
+        log.info("预约状态更新结果: updateResult={}, 预约ID={}", updateResult, bookingId);
+
+        // 验证更新是否成功
+        BookingDO updatedBooking = baseMapper.selectById(bookingId);
+        log.info("验证预约状态: 预约ID={}, 当前状态={}", bookingId, updatedBooking != null ? updatedBooking.getStatus() : "null");
+
+        // 6. 创建退款交易记录和退还会员卡余额
+        createRefundTransaction(booking);
+
+        log.info("预约取消成功，预约ID: {}", bookingId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelBookingByTeacher(Long bookingId) {
+        log.info("教师开始取消预约，预约ID: {}", bookingId);
+
+        // 1. 查询预约记录
+        BookingDO booking = baseMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new RuntimeException("预约记录不存在");
+        }
+
+        // 2. 验证预约状态 (status: 1=启用/已预约, 0=禁用/已取消)
+        if (booking.getStatus() == null || booking.getStatus() != 1) {
+            throw new RuntimeException("只能取消未开课状态的课程");
+        }
+
+        // 教师取消预约不需要验证学生权限和时间限制
+
+        // 3. 更新预约状态为已取消 (status: 0=禁用/已取消)
+        log.info("教师取消预约，开始更新预约状态: 预约ID={}, 原状态={}, 新状态=0", bookingId, booking.getStatus());
+        booking.setStatus(0);
+        booking.setUpdateTime(LocalDateTime.now());
+        int updateResult = baseMapper.updateById(booking);
+        log.info("教师取消预约状态更新结果: updateResult={}, 预约ID={}", updateResult, bookingId);
+
+        // 验证更新是否成功
+        BookingDO updatedBooking = baseMapper.selectById(bookingId);
+        log.info("验证教师取消预约状态: 预约ID={}, 当前状态={}", bookingId, updatedBooking != null
+            ? updatedBooking.getStatus()
+            : "null");
+
+        // 4. 创建退款交易记录和退还会员卡余额
+        createRefundTransaction(booking);
+
+        log.info("教师取消预约成功，预约ID: {}", bookingId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelBookingBySlotAndStudent(Long slotId, Long studentId) {
+        log.info("教师开始通过时间段和学生取消预约，时间段ID: {}, 学生ID: {}", slotId, studentId);
+
+        // 1. 查询预约记录
+        LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(BookingDO::getSlotId, slotId)
+            .eq(BookingDO::getStudentId, studentId)
+            .eq(BookingDO::getStatus, 1); // 只查询启用状态的预约
+
+        BookingDO booking = baseMapper.selectOne(queryWrapper);
+        if (booking == null) {
+            throw new RuntimeException("未找到该时间段的预约记录");
+        }
+
+        log.info("找到预约记录: ID={}, 时间段ID={}, 学生ID={}", booking.getId(), slotId, studentId);
+
+        // 2. 直接调用已有的教师取消方法
+        this.cancelBookingByTeacher(booking.getId());
+
+        log.info("教师通过时间段取消预约成功，时间段ID: {}, 学生ID: {}", slotId, studentId);
+    }
+
+    /**
+     * 创建退款交易记录和退还会员卡余额
+     */
+    private void createRefundTransaction(BookingDO booking) {
+        try {
+            log.info("开始处理预约取消退款，预约ID: {}, 学生卡ID: {}", booking.getId(), booking.getStuCardId());
+
+            // 1. 查询学生会员卡信息
+            StuCardDO stuCard = stuCardMapper.selectById(booking.getStuCardId());
+            if (stuCard == null) {
+                log.warn("未找到学生会员卡信息，卡ID: {}", booking.getStuCardId());
+                return;
+            }
+
+            // 2. 查询原始扣费交易记录，获取扣费金额
+            LambdaQueryWrapper<TransactionDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TransactionDO::getStuCardId, booking.getStuCardId())
+                .eq(TransactionDO::getTransType, TransactionType.BOOK_DEBIT)
+                .orderBy(true, false, TransactionDO::getCreateTime)
+                .last("LIMIT 1");
+
+            TransactionDO originalTransaction = transactionMapper.selectOne(queryWrapper);
+            BigDecimal refundAmount = BigDecimal.ONE; // 默认退还1个课时
+
+            if (originalTransaction != null) {
+                refundAmount = originalTransaction.getAmount().abs(); // 取绝对值作为退款金额
+                log.info("找到原始扣费记录，退款金额: {}", refundAmount);
+            } else {
+                log.warn("未找到原始扣费记录，使用默认退款金额: {}", refundAmount);
+            }
+
+            // 3. 更新会员卡余额（增加退款金额）
+            BigDecimal beforeBalance = stuCard.getBalance();
+            BigDecimal afterBalance = beforeBalance.add(refundAmount);
+
+            stuCard.setBalance(afterBalance);
+            stuCard.setUpdateTime(LocalDateTime.now());
+            stuCardMapper.updateById(stuCard);
+
+            log.info("会员卡余额已更新，卡ID: {}, 退款前余额: {}, 退款后余额: {}", stuCard.getId(), beforeBalance, afterBalance);
+
+            // 4. 创建退款交易记录
+            TransactionDO refundTransaction = new TransactionDO();
+            refundTransaction.setStuCardId(booking.getStuCardId());
+            refundTransaction.setStuId(booking.getStudentId());
+            refundTransaction.setStuName(booking.getStudentName());
+            refundTransaction.setCardTitle(booking.getCardName());
+            refundTransaction.setTransType(TransactionType.CANCEL);
+            refundTransaction.setAmount(refundAmount);
+            refundTransaction.setBeforeAmt(beforeBalance);
+            refundTransaction.setAfterAmt(afterBalance);
+            refundTransaction.setRemark(String.format("取消预约退款 - 课程: %s, 时间: %s %s", booking.getLessonName(), booking
+                .getSlotDate(), booking.getSlotTime()));
+            refundTransaction.setCreateTime(LocalDateTime.now());
+            refundTransaction.setUpdateTime(LocalDateTime.now());
+
+            transactionMapper.insert(refundTransaction);
+
+            log.info("退款交易记录创建成功，交易ID: {}, 退款金额: {}", refundTransaction.getId(), refundAmount);
+
+        } catch (Exception e) {
+            log.error("处理预约取消退款失败，预约ID: {}", booking.getId(), e);
+            throw new RuntimeException("退款处理失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 解析课时日期和时间为LocalDateTime
+     */
+    private LocalDateTime parseSlotDateTime(String slotDate, String slotTime) {
+        try {
+            // slotDate格式: 20250110, slotTime格式: 18:30
+            int year = Integer.parseInt(slotDate.substring(0, 4));
+            int month = Integer.parseInt(slotDate.substring(4, 6));
+            int day = Integer.parseInt(slotDate.substring(6, 8));
+
+            String[] timeParts = slotTime.split(":");
+            int hour = Integer.parseInt(timeParts[0]);
+            int minute = Integer.parseInt(timeParts[1]);
+
+            return LocalDateTime.of(year, month, day, hour, minute);
+        } catch (Exception e) {
+            log.error("解析课时时间失败: slotDate={}, slotTime={}", slotDate, slotTime, e);
+            return null;
+        }
+    }
+
+    @Override
+    public List<BookingDO> getBySlotId(Long slotId) {
+        if (slotId == null) {
+            return new ArrayList<>();
+        }
+
+        LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStatus, 1); // 只查询已预约状态的记录
+
+        return baseMapper.selectList(queryWrapper);
+    }
+
 }
