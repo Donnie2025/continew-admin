@@ -48,6 +48,8 @@ import top.continew.admin.education.service.MiniAuthService;
 import top.continew.admin.education.service.CredentialService;
 import top.continew.admin.education.service.StudentService;
 import top.continew.admin.education.service.TeacherService;
+import top.continew.admin.education.service.InstitutionService;
+import top.continew.admin.education.util.InstitutionUtil;
 import top.continew.admin.education.enums.UserType;
 import top.continew.starter.core.exception.BadRequestException;
 import top.continew.starter.core.validation.ValidationUtils;
@@ -73,6 +75,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
     private final StudentService studentService;
     private final TeacherService teacherService;
     private final CredentialService credentialService;
+    private final InstitutionService institutionService;
     private final StringRedisTemplate stringRedisTemplate;
 
     @Value("${wechat.miniprogram.app-id:}")
@@ -333,7 +336,9 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             student.setRegisterTime(LocalDateTime.now());
             student.setLastLoginTime(LocalDateTime.now());
             student.setLastLoginIp(ServletUtils.getClientIP(request));
-            student.setInstitutionId(1L); // 默认机构ID，需要根据实际情况调整
+            // 使用统一的机构ID获取逻辑
+            Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "为微信登录学生设置");
+            student.setInstitutionId(institutionId);
             student.setCreateUser(1L); // 系统创建用户，使用默认管理员ID
             student.setCreateTime(LocalDateTime.now());
 

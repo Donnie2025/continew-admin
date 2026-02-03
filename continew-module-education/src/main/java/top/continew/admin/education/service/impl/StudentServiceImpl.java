@@ -17,6 +17,7 @@
 package top.continew.admin.education.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.service.StudentService;
 import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.InstitutionService;
+import top.continew.admin.education.util.InstitutionUtil;
 import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.constant.ClassinConstants;
@@ -64,6 +66,17 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         this.classinClient = classinClient;
         this.classinUserService = classinUserService;
         this.institutionService = institutionService;
+    }
+
+    @Override
+    protected QueryWrapper<StudentDO> buildQueryWrapper(StudentQuery query) {
+        QueryWrapper<StudentDO> queryWrapper = super.buildQueryWrapper(query);
+        
+        // 默认只显示启用状态的学生
+        queryWrapper.eq("status", 1);
+        
+        log.debug("学生查询条件: {}", queryWrapper.getTargetSql());
+        return queryWrapper;
     }
 
     @Override
@@ -156,8 +169,9 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
                     // 注意：密码管理已迁移到 CredentialService，不再在此处设置密码
                     newStudent.setStatus(1); // 启用状态
 
-                    // 设置默认机构ID（可根据实际情况调整）
-                    newStudent.setInstitutionId(1L);
+                    // 使用统一的机构ID获取逻辑
+                    Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "为导入学生设置");
+                    newStudent.setInstitutionId(institutionId);
 
                     baseMapper.insert(newStudent);
                     log.debug("成功导入学生[{}]，手机号：{}", studentName, phone);

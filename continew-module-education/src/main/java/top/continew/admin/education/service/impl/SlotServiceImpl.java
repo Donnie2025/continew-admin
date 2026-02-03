@@ -40,7 +40,10 @@ import top.continew.admin.education.model.entity.BookingDO;
 import top.continew.admin.education.service.BookingService;
 import top.continew.admin.education.service.SlotService;
 import top.continew.admin.education.service.TeacherService;
+import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.model.entity.TeacherDO;
+import top.continew.admin.education.model.resp.InstitutionResp;
+import top.continew.admin.education.util.InstitutionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +64,7 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
 
     private final BookingService bookingService;
     private final TeacherService teacherService;
+    private final InstitutionService institutionService;
 
     /**
      * 批量创建课程时间
@@ -134,8 +138,13 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
                     slotReq.setStudentCount(1); // 默认为1
                 }
 
+                // 设置机构ID - 如果请求中没有指定，使用默认机构ID
                 if (req.getInstitutionId() != null) {
                     slotReq.setInstitutionId(req.getInstitutionId());
+                } else {
+                    // 使用统一的机构ID获取逻辑
+                    Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "批量创建课时设置");
+                    slotReq.setInstitutionId(institutionId);
                 }
 
                 // 调用单个创建接口
@@ -180,6 +189,13 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
             log.info("跳过创建课时：老师[{}]在日期[{}]的时间[{}]已存在记录，ID为[{}]", req.getTeacherId(), req.getStartDate(), req
                 .getStartTime(), existingSlot.getId());
             return existingSlot.getId();
+        }
+
+        // 确保机构ID不为空
+        if (req.getInstitutionId() == null) {
+            // 使用统一的机构ID获取逻辑
+            Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "为课时设置");
+            req.setInstitutionId(institutionId);
         }
 
         // 不存在记录，调用父类方法创建新记录

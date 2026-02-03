@@ -59,7 +59,6 @@ public class ClassinUtils {
         params.set("SID", appId);
         params.set("safeKey", safeKey);
         params.set("timeStamp", timeStamp);
-        params.set("allowAddFriend", 0);
         return params;
     }
 
@@ -164,10 +163,12 @@ public class ClassinUtils {
             // 如果是中国大陆手机号，直接使用
             if (telephone.startsWith("1") && telephone.length() == 11) {
                 // 符合要求
+            } else if (telephone.startsWith("0063")) {
+                // 菲律宾手机号（0063开头），符合要求
             } else {
                 // 其他国家手机号，需要添加国家代码前缀
                 // 这里需要根据实际需求处理其他国家的手机号格式
-                throw new BusinessException("暂不支持非中国大陆手机号注册");
+                throw new BusinessException("暂不支持非中国大陆手机号注册，除菲律宾手机号外");
             }
         } else if (StrUtil.isNotBlank(req.getEmail())) {
             // 符合要求

@@ -65,6 +65,13 @@ public class BookingReq implements Serializable {
     private Long teacherId;
 
     /**
+     * 教师姓名
+     */
+    @Schema(description = "教师姓名")
+    @Length(max = 50, message = "教师姓名长度不能超过 {max} 个字符")
+    private String teacherName;
+
+    /**
      * 开课日期（格式：YYYYMMDD）
      */
     @Schema(description = "开课日期（格式：YYYYMMDD）")

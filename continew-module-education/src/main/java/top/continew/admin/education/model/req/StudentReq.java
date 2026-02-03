@@ -101,6 +101,12 @@ public class StudentReq implements Serializable {
     private String remark;
 
     /**
+     * 是否允许录课（0：不允许；1：允许）
+     */
+    @Schema(description = "是否允许录课（0：不允许；1：允许）")
+    private Integer enableRecording;
+
+    /**
      * 所属机构ID
      */
     @Schema(description = "所属机构ID")

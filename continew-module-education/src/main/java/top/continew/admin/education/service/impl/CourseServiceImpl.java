@@ -150,7 +150,15 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 ClassinCourseAddReq classinReq = new ClassinCourseAddReq();
                 classinReq.setCourseName(req.getName());
                 classinReq.setMainTeacherUid(mainTeacherUid);
-                classinReq.setClassroomSettingId(req.getCourseSettingId());
+                
+                // 只有当courseSettingId不为null时才设置，避免传入不属于机构的设置ID
+                if (req.getCourseSettingId() != null) {
+                    classinReq.setClassroomSettingId(req.getCourseSettingId());
+                    log.info("设置教室设置ID: {}", req.getCourseSettingId());
+                } else {
+                    log.info("课程无教室设置ID，跳过设置");
+                }
+                
                 classinClient.editCourse(classinReq, oldCourse.getCourseUid());
                 log.info("同步课程信息到ClassIn成功，课程ID：{}", id);
             } catch (Exception e) {

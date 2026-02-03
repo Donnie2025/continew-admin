@@ -36,12 +36,8 @@ import top.continew.admin.education.mapper.TransactionMapper;
 import top.continew.admin.education.mapper.LessonMapper;
 import top.continew.admin.education.mapper.StuCardMapper;
 import top.continew.admin.education.mapper.CourseMapper;
-import top.continew.admin.education.model.entity.BookingDO;
-import top.continew.admin.education.model.entity.ClassinUserDO;
+import top.continew.admin.education.model.entity.*;
 import top.continew.admin.education.model.req.BatchBookingReq;
-import top.continew.admin.education.model.entity.TransactionDO;
-import top.continew.admin.education.model.entity.LessonDO;
-import top.continew.admin.education.model.entity.StuCardDO;
 import top.continew.admin.education.model.query.BookingQuery;
 import top.continew.admin.education.model.req.BookingReq;
 import top.continew.admin.education.model.resp.BookingResp;
@@ -52,6 +48,9 @@ import top.continew.admin.education.model.req.CourseTeacherReq;
 import top.continew.admin.education.model.req.CourseStudentReq;
 import top.continew.admin.education.model.resp.*;
 import top.continew.admin.education.service.*;
+import top.continew.admin.education.client.ClassinClient;
+import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
+import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 
 import java.math.BigDecimal;
@@ -107,6 +106,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     private ClassinHelper classinHelper;
 
     @Autowired
+    private ClassinClient classinClient;
+
+    @Autowired
     private CourseService courseService;
 
     @Autowired
@@ -123,95 +125,6 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
     @Autowired
     private MaterialLessonService materialLessonService;
-
-    /**
-     * 创建预约前处理
-     * 根据前端提交的 memberId 和 cardId 自动获取会员姓名和会员卡名称
-     *
-     * @param req 创建信息
-     */
-    @Override
-    protected void beforeCreate(BookingReq req) {
-        // 获取请求参数
-        Long studentId = req.getStudentId();
-        Long cardId = req.getStuCardId();
-        Long slotId = req.getSlotId();
-
-        log.info("预约参数: studentId={}, cardId={}, materialId={}, slotId={}, createUser={}", studentId, cardId, req
-            .getMaterialId(), slotId, req.getCreateUser());
-
-        // 检查该学生是否已经预约过该课时（只检查已预约状态的记录）
-        if (studentId != null && slotId != null) {
-            LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(BookingDO::getSlotId, slotId)
-                .eq(BookingDO::getStudentId, studentId)
-                .eq(BookingDO::getStatus, 1); // 只检查已预约状态的记录
-            long count = baseMapper.selectCount(queryWrapper);
-            if (count > 0) {
-                throw new RuntimeException("您已经预约过该课时，不能重复预约");
-            }
-            log.info("检查重复预约通过");
-
-            // 新增：校验课时预约人数不能超过studentCount
-            // 查询该课时已预约人数（只统计已预约状态的记录）
-            LambdaQueryWrapper<BookingDO> slotCountWrapper = new LambdaQueryWrapper<>();
-            slotCountWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStatus, 1); // 只统计已预约状态的记录
-            long bookedCount = baseMapper.selectCount(slotCountWrapper);
-            // 获取课时最大可预约人数
-            SlotDetailResp slot = slotService.get(slotId);
-            if (slot != null && slot.getStudentCount() != null) {
-                int maxCount = slot.getStudentCount();
-                if (bookedCount >= maxCount) {
-                    throw new RuntimeException("该课时预约人数已满，无法继续预约");
-                }
-            }
-        }
-
-        // 根据 slotId 获取课时信息
-        if (slotId != null) {
-            SlotDetailResp slot = slotService.get(slotId);
-            if (slot != null) {
-                req.setSlotDate(slot.getStartDate());
-                req.setSlotTime(slot.getStartTime());
-                log.info("设置课时信息: slotDate={}, slotTime={}", slot.getStartDate(), slot.getStartTime());
-            }
-        }
-
-        // 根据 studentId 获取学生信息
-        if (studentId != null) {
-            StudentDetailResp student = studentService.get(studentId);
-            if (student != null) {
-                req.setStudentName(student.getName());
-                log.info("设置学生姓名: {}", student.getName());
-
-                // 设置学生手机号
-                req.setPhone(student.getPhone());
-                log.info("设置学生手机号: {}", student.getPhone());
-
-                // 设置操作人名字
-                req.setOperatorName(student.getName());
-                log.info("设置操作人名字: {}", req.getOperatorName());
-            }
-        }
-
-        // 设置操作时间为当前时间
-        req.setOperateTime(LocalDateTime.now());
-        log.info("设置操作时间: {}", req.getOperateTime());
-
-        // 根据 cardId 获取会员卡信息
-        if (cardId != null) {
-            StuCardDetailResp stuCard = stuCardService.get(cardId);
-            if (stuCard != null) {
-                req.setCardTitle(stuCard.getCardTitle());
-                log.info("设置会员卡标题: {}", stuCard.getCardTitle());
-            }
-        }
-
-        // 如果没有设置创建人，则设置默认值
-        if (req.getCreateUser() == null) {
-            req.setCreateUser(1L); // 默认系统管理员
-        }
-    }
 
     /**
      * 根据课时ID列表查询对应的预约信息
@@ -252,62 +165,6 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         return bookings.stream().collect(Collectors.groupingBy(BookingDO::getSlotId));
     }
 
-    /**
-     * 创建预约后处理
-     * 同步预约信息到 ClassIn 系统
-     *
-     * @param req    创建信息
-     * @param entity 创建的预约实体
-     */
-    @Override
-    protected void afterCreate(BookingReq req, BookingDO entity) {
-        try {
-            log.info("开始同步预约信息到 ClassIn 系统: bookingId={}", entity.getId());
-
-            // 获取课时信息
-            SlotDetailResp slot = slotService.get(entity.getSlotId());
-            if (slot == null) {
-                log.error("课时信息不存在: slotId={}", entity.getSlotId());
-                return;
-            }
-
-            TeacherDetailResp teacherDetailResp = teacherService.get(slot.getTeacherId());
-            if (teacherDetailResp == null) {
-                log.error("老师信息不存在: teacherId={}", slot.getTeacherId());
-                return;
-            }
-            ClassinUserDO teacherClassinUser = classinHelper.getClassinUser(teacherDetailResp
-                .getId(), ClassinConstants.USER_TYPE_TEACHER, teacherDetailResp.getName(), teacherDetailResp
-                    .getPhone(), teacherDetailResp.getEmail());
-
-            // 获取学生信息
-            StudentDetailResp student = studentService.get(entity.getStudentId());
-            if (student == null) {
-                log.error("学生信息不存在: studentId={}", entity.getStudentId());
-                return;
-            }
-            ClassinUserDO stuClassinUserDO = classinHelper.getClassinUser(student
-                .getId(), ClassinConstants.USER_TYPE_STUDENT, student.getName(), student.getPhone(), student
-                    .getEmail());
-
-            // 构建 ClassIn 预约请求参数
-            Map<String, Object> classInParams = new HashMap<>();
-            classInParams.put("studentId", stuClassinUserDO.getClassinUid());
-            classInParams.put("startTime", entity.getSlotDate() + " " + entity.getSlotTime());
-            classInParams.put("duration", slot.getDuration());
-            classInParams.put("teacherId", teacherClassinUser.getClassinUid());
-
-            // TODO: 调用 ClassIn API 进行预约同步
-            // classInService.createBooking(classInParams);
-
-            log.info("预约信息同步到 ClassIn 系统成功: bookingId={}", entity.getId());
-        } catch (Exception e) {
-            log.error("同步预约信息到 ClassIn 系统失败: bookingId={}, error={}", entity.getId(), e.getMessage(), e);
-            // 这里可以选择是否抛出异常，取决于业务需求
-            // throw new RuntimeException("同步预约信息到 ClassIn 系统失败", e);
-        }
-    }
-
     @Override
     public List<BookingDO> listByStudentId(Long studentId) {
         LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
@@ -324,19 +181,6 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         return baseMapper.selectList(queryWrapper);
     }
 
-    @Override
-    public Long add(BookingDO booking) {
-        // 设置审计字段
-        if (booking.getCreateUser() == null) {
-            booking.setCreateUser(booking.getStudentId()); // 使用学生ID作为创建用户
-        }
-        if (booking.getCreateTime() == null) {
-            booking.setCreateTime(LocalDateTime.now());
-        }
-
-        baseMapper.insert(booking);
-        return booking.getId();
-    }
 
     @Override
     public void update(BookingDO booking, Long id) {
@@ -357,33 +201,41 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     @Transactional(rollbackFor = Exception.class)
     public Long createBookingWithTransaction(BookingDO booking) {
         try {
-            // 0. 检查时间段是否已被预约
-            log.info("检查时间段是否可预约: slotId={}, teacherId={}, slotDate={}, slotTime={}", booking.getSlotId(), booking
-                .getTeacherId(), booking.getSlotDate(), booking.getSlotTime());
-            checkSlotAvailability(booking);
+            // 0. 预约前验证和数据准备
+            log.info("开始预约验证: studentId={}, slotId={}, cardId={}", booking.getStudentId(), booking.getSlotId(), booking.getStuCardId());
+            validateAndPrepareBooking(booking);
 
             // 1. 创建预约记录
             log.info("开始创建预约记录: studentId={}, slotId={}", booking.getStudentId(), booking.getSlotId());
 
-            // 设置审计字段
-            booking.setCreateUser(booking.getStudentId()); // 使用学生ID作为创建用户
-            booking.setCreateTime(LocalDateTime.now());
+            // 设置审计字段（createUser和createTime会由MyBatisPlusMetaObjectHandler自动填充）
+            // 系统会自动通过UserContextHolder.getUserId()获取当前登录的管理员ID
+            
+            // 最终数据完整性验证
+            if (booking.getSlotDate() == null || booking.getSlotDate().trim().isEmpty()) {
+                log.error("预约记录插入前发现slot_date为空! booking详情: studentId={}, slotId={}, slotDate={}", 
+                    booking.getStudentId(), booking.getSlotId(), booking.getSlotDate());
+                throw new RuntimeException("数据异常：slot_date字段为空，无法创建预约记录");
+            }
+            
+            log.info("预约数据验证完成: slotDate={}, slotTime={}, teacherId={}, studentName={}", 
+                booking.getSlotDate(), booking.getSlotTime(), booking.getTeacherId(), booking.getStudentName());
 
             baseMapper.insert(booking);
             Long bookingId = booking.getId();
             log.info("预约记录创建成功: bookingId={}", bookingId);
 
-            // 2. 创建交易记录（扣款）
+            // 3. 创建交易记录（扣款）
             log.info("开始创建交易记录: bookingId={}, cardId={}", bookingId, booking.getStuCardId());
             createTransactionRecord(booking);
             log.info("交易记录创建成功: bookingId={}", bookingId);
 
-            // 3. 创建课程记录并对接ClassIn
+            // 4. 创建课程记录
             log.info("开始创建课程记录: bookingId={}", bookingId);
             createLessonRecord(booking);
             log.info("课程记录创建成功: bookingId={}", bookingId);
 
-            // 4. 扣减学生卡余额
+            // 5. 扣减学生卡余额
             log.info("开始扣减学生卡余额: bookingId={}, cardId={}", bookingId, booking.getStuCardId());
             deductStuCardBalance(booking.getStuCardId());
             log.info("学生卡余额扣减成功: bookingId={}", bookingId);
@@ -395,6 +247,134 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             log.error("创建预约失败，事务回滚: {}", e.getMessage(), e);
             throw new RuntimeException("创建预约失败，请重试: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    protected void beforeCreate(BookingReq req) {
+        // 转换为BookingDO进行验证和数据准备
+        BookingDO booking = new BookingDO();
+        booking.setStudentId(req.getStudentId());
+        booking.setSlotId(req.getSlotId());
+        booking.setStuCardId(req.getStuCardId());
+        
+        // 调用验证和数据准备逻辑
+        validateAndPrepareBooking(booking);
+        
+        // 将准备好的数据设置回请求对象
+        req.setSlotDate(booking.getSlotDate());
+        req.setSlotTime(booking.getSlotTime());
+        req.setTeacherId(booking.getTeacherId());
+        req.setTeacherName(booking.getTeacherName());
+        req.setStudentName(booking.getStudentName());
+        req.setPhone(booking.getStudentPhone());
+        req.setCardTitle(booking.getCardName());
+        
+        log.info("beforeCreate执行完成: slotDate={}, teacherId={}, teacherName={}, studentName={}, cardTitle={}", 
+            req.getSlotDate(), req.getTeacherId(), req.getTeacherName(), req.getStudentName(), req.getCardTitle());
+    }
+
+    /**
+     * 预约前验证和数据准备
+     * 整合原beforeCreate中的验证逻辑
+     */
+    private void validateAndPrepareBooking(BookingDO booking) {
+        Long studentId = booking.getStudentId();
+        Long slotId = booking.getSlotId();
+        Long cardId = booking.getStuCardId();
+
+        log.info("预约参数验证: studentId={}, cardId={}, slotId={}", studentId, cardId, slotId);
+        
+        // 基础参数验证
+        if (slotId == null) {
+            throw new RuntimeException("课时ID不能为空");
+        }
+        if (studentId == null) {
+            throw new RuntimeException("学生ID不能为空");
+        }
+
+        // 1. 检查该学生是否已经预约过该课时
+        if (studentId != null && slotId != null) {
+            LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(BookingDO::getSlotId, slotId)
+                .eq(BookingDO::getStudentId, studentId)
+                .eq(BookingDO::getStatus, 1); // 只检查已预约状态的记录
+            long count = baseMapper.selectCount(queryWrapper);
+            if (count > 0) {
+                throw new RuntimeException("您已经预约过该课时，不能重复预约");
+            }
+            log.info("检查重复预约通过");
+
+            // 2. 校验课时预约人数不能超过studentCount
+            LambdaQueryWrapper<BookingDO> slotCountWrapper = new LambdaQueryWrapper<>();
+            slotCountWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStatus, 1);
+            long bookedCount = baseMapper.selectCount(slotCountWrapper);
+            
+            SlotDetailResp slot = slotService.get(slotId);
+            if (slot != null && slot.getStudentCount() != null) {
+                int maxCount = slot.getStudentCount();
+                if (bookedCount >= maxCount) {
+                    throw new RuntimeException("该课时预约人数已满，无法继续预约");
+                }
+                log.info("课时预约人数检查通过: {}/{}", bookedCount, maxCount);
+            }
+
+            // 3. 设置课时相关信息
+            if (slot != null) {
+                String slotDate = slot.getStartDate();
+                log.info("课时详细信息: id={}, startDate={}, startTime={}, teacherId={}, studentCount={}", 
+                    slot.getId(), slotDate, slot.getStartTime(), slot.getTeacherId(), slot.getStudentCount());
+                
+                if (slotDate == null || slotDate.trim().isEmpty()) {
+                    log.error("课时startDate为空! slotId={}, slot详情: {}", slotId, slot);
+                    throw new RuntimeException("课时数据异常：startDate为空，slotId=" + slotId);
+                }
+                
+                booking.setSlotDate(slotDate);
+                booking.setSlotTime(slot.getStartTime());
+                booking.setTeacherId(slot.getTeacherId());
+                
+                // 设置教师姓名
+                if (slot.getTeacherId() != null) {
+                    TeacherDetailResp teacher = teacherService.get(slot.getTeacherId());
+                    if (teacher != null) {
+                        booking.setTeacherName(teacher.getName());
+                        log.info("设置教师信息: teacherId={}, teacherName={}", 
+                            slot.getTeacherId(), teacher.getName());
+                    }
+                }
+                
+                log.info("设置课时信息: slotDate={}, slotTime={}, teacherId={}", 
+                    slotDate, slot.getStartTime(), slot.getTeacherId());
+            } else {
+                log.error("获取课时信息失败! slotId={}", slotId);
+                throw new RuntimeException("课时信息获取失败，slotId=" + slotId);
+            }
+        }
+
+        // 4. 设置学生相关信息
+        if (studentId != null) {
+            StudentDetailResp student = studentService.get(studentId);
+            if (student != null) {
+                booking.setStudentName(student.getName());
+                booking.setStudentPhone(student.getPhone());
+                log.info("设置学生信息: name={}, phone={}", student.getName(), student.getPhone());
+            }
+        }
+
+        // 5. 设置会员卡相关信息
+        if (cardId != null) {
+            StuCardDetailResp stuCard = stuCardService.get(cardId);
+            if (stuCard != null) {
+                booking.setCardName(stuCard.getCardTitle());
+                log.info("设置会员卡标题: {}", stuCard.getCardTitle());
+            }
+        }
+
+        // 6. 设置默认字段
+        if (booking.getCreateUser() == null) {
+            booking.setCreateUser(studentId != null ? studentId : 1L);
+        }
+        log.info("预约验证和数据准备完成");
     }
 
     /**
@@ -437,9 +417,8 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             log.info("交易记录创建: stuCardId={}, cardType={}, 余额: {} -> {}", booking
                 .getStuCardId(), cardType, balance, balance.subtract(BigDecimal.ONE));
 
-            // 设置审计字段
-            transaction.setCreateUser(booking.getStudentId());
-            transaction.setCreateTime(LocalDateTime.now());
+            // 设置审计字段（createUser和createTime会由MyBatisPlusMetaObjectHandler自动填充）
+            // 系统会自动记录当前登录的管理员ID作为交易创建者
 
             transactionMapper.insert(transaction);
 
@@ -493,38 +472,6 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         }
     }
 
-    /**
-     * 检查时间段是否可预约
-     */
-    private void checkSlotAvailability(BookingDO booking) {
-        try {
-            // 根据教师ID、日期、时间查询是否已有预约
-            LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(BookingDO::getTeacherId, booking.getTeacherId())
-                .eq(BookingDO::getSlotDate, booking.getSlotDate())
-                .eq(BookingDO::getSlotTime, booking.getSlotTime())
-                .eq(BookingDO::getStatus, 1); // 只查询已预约状态的记录
-
-            List<BookingDO> existingBookings = baseMapper.selectList(queryWrapper);
-
-            if (!existingBookings.isEmpty()) {
-                BookingDO existingBooking = existingBookings.get(0);
-                String errorMsg = String.format("该时间段已被预约，教师：%s，日期：%s，时间：%s，预约学生：%s", booking.getTeacherName(), booking
-                    .getSlotDate(), booking.getSlotTime(), existingBooking.getStudentName());
-                log.warn("时间段冲突: {}", errorMsg);
-                throw new RuntimeException(errorMsg);
-            }
-
-            log.info("时间段检查通过，可以预约");
-
-        } catch (Exception e) {
-            if (e instanceof RuntimeException) {
-                throw e; // 重新抛出业务异常
-            }
-            log.error("检查时间段可用性失败: {}", e.getMessage(), e);
-            throw new RuntimeException("检查时间段可用性失败，请重试", e);
-        }
-    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -596,7 +543,15 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
                 BookingDO booking = new BookingDO();
                 booking.setSlotId(slotId);
-                booking.setSlotDate(slotInfo.getDate().replace("-", ""));
+                
+                // 验证并设置slot_date字段
+                String slotDate = slotInfo.getDate();
+                if (slotDate == null || slotDate.trim().isEmpty()) {
+                    log.error("批量预约中slotInfo.getDate()为空! slotId={}, slotInfo: {}", slotId, slotInfo);
+                    throw new RuntimeException("课时数据异常：日期为空，slotId=" + slotId);
+                }
+                booking.setSlotDate(slotDate.replace("-", ""));
+                
                 booking.setSlotTime(slotInfo.getStartTime());
                 booking.setStudentId(studentId);
                 booking.setStudentName(student.getName());
@@ -695,17 +650,24 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
      * 创建新的一对一课程
      */
     private Long createNewCourse(BookingDO booking) {
+        // 获取课时信息以获取机构ID
+        SlotDetailResp slot = slotService.get(booking.getSlotId());
+        if (slot == null) {
+            throw new RuntimeException("课时信息不存在: slotId=" + booking.getSlotId());
+        }
+
         // 为一对一课程创建唯一的课程名称
         String courseName = booking.getTeacherName() + "-" + booking.getStudentName() + "的一对一课程";
 
         CourseReq courseReq = new CourseReq();
         courseReq.setName(courseName);
         courseReq.setMainTeacherId(booking.getTeacherId());
-        // 设置默认机构ID，可以从配置或其他地方获取
-        courseReq.setInstitutionId(1L); // TODO: 从配置获取默认机构ID
+        // 从课时信息中获取机构ID
+        courseReq.setInstitutionId(slot.getInstitutionId());
 
         Long courseId = courseService.create(courseReq);
-        log.info("创建新课程成功: courseId={}, courseName={}", courseId, courseName);
+        log.info("创建新课程成功: courseId={}, courseName={}, institutionId={}", 
+            courseId, courseName, slot.getInstitutionId());
         return courseId;
     }
 
@@ -744,7 +706,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     }
 
     /**
-     * 创建课节记录
+     * 创建课节记录并同步到ClassIn
      */
     private void createLesson(Long courseId, BookingDO booking) {
         LessonDO lesson = new LessonDO();
@@ -769,6 +731,157 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         // 创建课节记录
         lessonMapper.insert(lesson);
         log.info("课节创建成功: lessonId={}, courseId={}", lesson.getId(), courseId);
+
+        // 同步课节到ClassIn（创建课堂活动）
+        try {
+            syncLessonToClassIn(lesson, booking);
+        } catch (Exception e) {
+            log.error("课节ClassIn同步失败: lessonId={}, error={}", lesson.getId(), e.getMessage(), e);
+            // 不抛出异常，允许课节创建成功，但记录同步失败日志
+        }
+    }
+
+    /**
+     * 同步课节到ClassIn系统，创建课堂活动
+     */
+    private void syncLessonToClassIn(LessonDO lesson, BookingDO booking) {
+        log.info("开始同步课节到ClassIn: lessonId={}, courseId={}", lesson.getId(), lesson.getCourseId());
+
+        try {
+            // 1. 获取课时信息以获取机构ID
+            SlotDetailResp slot = slotService.get(booking.getSlotId());
+            if (slot == null || slot.getInstitutionId() == null) {
+                log.warn("无法获取课时机构信息，跳过ClassIn同步: slotId={}", booking.getSlotId());
+                return;
+            }
+            Long institutionId = slot.getInstitutionId();
+
+            // 2. 获取学生信息并确保ClassIn账号存在
+            StudentDetailResp student = studentService.get(booking.getStudentId());
+            if (student == null) {
+                log.warn("学生信息不存在，跳过ClassIn同步: studentId={}", booking.getStudentId());
+                return;
+            }
+            
+            ClassinUserDO studentClassinUser = classinHelper.registerStudentIfAbsent(
+                booking.getStudentId(), 
+                convertStudentRespToEntity(student), 
+                institutionId
+            );
+
+            // 3. 获取教师信息并确保ClassIn账号存在
+            TeacherDetailResp teacher = teacherService.get(booking.getTeacherId());
+            if (teacher == null) {
+                log.warn("教师信息不存在，跳过ClassIn同步: teacherId={}", booking.getTeacherId());
+                return;
+            }
+
+            ClassinUserDO teacherClassinUser = classinHelper.registerTeacherIfAbsent(
+                booking.getTeacherId(), 
+                convertTeacherRespToEntity(teacher), 
+                institutionId
+            );
+
+            if (studentClassinUser == null || teacherClassinUser == null) {
+                log.warn("ClassIn用户创建失败，跳过课节同步: studentClassinUser={}, teacherClassinUser={}", 
+                    studentClassinUser != null, teacherClassinUser != null);
+                return;
+            }
+
+            // 4. 创建ClassIn课堂活动
+            ClassinCreateClassReq classReq = buildClassinClassRequest(lesson, booking, teacherClassinUser.getClassinUid(), student);
+            ClassinCreateClassResp classResp = classinClient.createClass(classReq);
+
+            // 5. 更新课节记录，保存ClassIn活动ID
+            if (classResp != null && classResp.getActivityId() != null) {
+                lesson.setActivityUid(classResp.getActivityId());
+                lesson.setClassUid(classResp.getClassId());
+                lessonMapper.updateById(lesson);
+                log.info("课节ClassIn同步成功: lessonId={}, activityId={}, classId={}", 
+                    lesson.getId(), classResp.getActivityId(), classResp.getClassId());
+            }
+
+        } catch (Exception e) {
+            log.error("课节ClassIn同步过程中发生异常: lessonId={}, error={}", lesson.getId(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * 构建ClassIn课堂活动创建请求
+     */
+    private ClassinCreateClassReq buildClassinClassRequest(LessonDO lesson, BookingDO booking, String teacherUid, StudentDetailResp student) {
+        ClassinCreateClassReq req = new ClassinCreateClassReq();
+        
+        // 基本信息
+        req.setCourseId(lesson.getCourseId());
+        req.setUnitId(ClassinConstants.DEFAULT_UNIT_ID); // 使用常量配置默认单元ID
+        req.setName(lesson.getName());
+        
+        // 教师UID转换为Long类型
+        try {
+            req.setTeacherUid(Long.parseLong(teacherUid));
+        } catch (NumberFormatException e) {
+            log.error("教师UID格式错误，无法转换为Long: teacherUid={}", teacherUid);
+            throw new RuntimeException("教师UID格式错误: " + teacherUid, e);
+        }
+        
+        // 时间设置（转换为Unix时间戳）
+        LocalDateTime startTime = lesson.getStartTime();
+        LocalDateTime endTime = startTime.plusMinutes(lesson.getDuration());
+        
+        // 转换为Unix时间戳（秒）
+        long startTimestamp = startTime.toEpochSecond(java.time.ZoneOffset.of("+8")); // 使用东八区时区
+        long endTimestamp = endTime.toEpochSecond(java.time.ZoneOffset.of("+8"));
+        
+        req.setStartTime(startTimestamp);
+        req.setEndTime(endTimestamp);
+        
+        // 课堂设置 - 使用常量配置
+        req.setRecordType(ClassinConstants.RECORD_TYPE_CLASSROOM); // 录制教室（默认值）
+        
+        // 根据学生的录课标志设置录制状态
+        if (student != null && student.getEnableRecording() != null && student.getEnableRecording() == 1) {
+            req.setRecordState(ClassinConstants.RECORD_STATE_ENABLED); // 学生开通录课权限，开启录制
+            log.info("学生{}开通了录课权限，课节将开启录制: lessonId={}", student.getName(), lesson.getId());
+        } else {
+            req.setRecordState(ClassinConstants.RECORD_STATE_DISABLED); // 学生未开通录课权限，不录制
+            log.info("学生{}未开通录课权限，课节不录制: lessonId={}", 
+                student != null ? student.getName() : "unknown", lesson.getId());
+        }
+        req.setLiveState(ClassinConstants.LIVE_STATE_DISABLED); // 不开启直播
+        req.setOpenState(ClassinConstants.OPEN_STATE_PRIVATE); // 不公开
+        req.setCameraHide(ClassinConstants.CAMERA_SHOW); // 不隐藏摄像头
+        
+        // 座位数设置（一对一课程优化）
+        int seatNum = lesson.getSeatNum() != null ? lesson.getSeatNum() : 2; // 一对一默认2个座位（老师+学生）
+        req.setSeatNum(seatNum);
+        
+        return req;
+    }
+
+    /**
+     * 将StudentDetailResp转换为StudentDO（用于ClassIn Helper）
+     */
+    private StudentDO convertStudentRespToEntity(StudentDetailResp resp) {
+        StudentDO entity = new StudentDO();
+        entity.setId(resp.getId());
+        entity.setName(resp.getName());
+        entity.setPhone(resp.getPhone());
+        entity.setEmail(resp.getEmail());
+        return entity;
+    }
+
+    /**
+     * 将TeacherDetailResp转换为TeacherDO（用于ClassIn Helper）
+     */
+    private TeacherDO convertTeacherRespToEntity(TeacherDetailResp resp) {
+        TeacherDO entity = new TeacherDO();
+        entity.setId(resp.getId());
+        entity.setName(resp.getName());
+        entity.setPhone(resp.getPhone());
+        entity.setEmail(resp.getEmail());
+        return entity;
     }
 
     /**

@@ -38,10 +38,12 @@ import top.continew.admin.education.model.req.LessonReq;
 import top.continew.admin.education.model.req.BatchLessonReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateClassReq;
 import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
+import top.continew.admin.education.model.req.classin.ClassinUpdateClassReq;
 import top.continew.admin.education.model.resp.LessonDetailResp;
 import top.continew.admin.education.model.resp.LessonResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateClassResp;
 import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
+import top.continew.admin.education.model.resp.classin.ClassinUpdateClassResp;
 import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.LessonService;
 import top.continew.starter.core.exception.BusinessException;
@@ -150,6 +152,90 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         return entity.getId();
     }
 
+    /**
+     * 重写更新方法，增加对接ClassIn更新课堂活动功能
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void update(LessonReq req, Long id) {
+        log.info("开始更新课堂，ID：{}，请求参数：{}", id, req);
+
+        // 1. 查询原课堂信息
+        LessonDO oldLesson = baseMapper.selectById(id);
+        if (oldLesson == null) {
+            throw new BusinessException("课堂不存在，ID：" + id);
+        }
+
+        // 2. 获取课程信息以获取机构ID
+        CourseDO course = courseMapper.selectById(req.getCourseId());
+        if (course == null) {
+            throw new BusinessException("课程不存在，课程ID：" + req.getCourseId());
+        }
+        Long institutionId = course.getInstitutionId();
+        if (institutionId == null) {
+            throw new BusinessException("课程未关联机构，课程ID：" + req.getCourseId());
+        }
+
+        // 3. 获取教师信息
+        TeacherDO teacher = teacherMapper.selectById(req.getTeacherId());
+        if (teacher == null) {
+            throw new BusinessException("教师不存在，教师ID：" + req.getTeacherId());
+        }
+
+        // 4. 获取或自动创建教师的ClassIn用户信息
+        ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserTypeAndInstitution(req
+            .getTeacherId(), ClassinConstants.USER_TYPE_TEACHER, institutionId);
+        
+        // 如果教师在该机构下没有ClassIn账号，自动创建
+        if (classinUser == null || classinUser.getClassinUid() == null) {
+            log.info("教师[{}]在机构[{}]下没有ClassIn账号，开始自动创建", teacher.getName(), institutionId);
+            classinUser = classinHelper.registerTeacherIfAbsent(req.getTeacherId(), teacher, institutionId);
+            
+            // 如果自动创建失败，抛出异常
+            if (classinUser == null || classinUser.getClassinUid() == null) {
+                throw new BusinessException("教师[" + teacher.getName() + "]的ClassIn账号自动创建失败，请检查教师的手机号或邮箱是否填写");
+            }
+            log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUser.getClassinUid());
+        }
+        
+        Long teacherClassinUid = Long.parseLong(classinUser.getClassinUid());
+
+        // 5. 同步更新到ClassIn（如果课堂已关联ClassIn活动）
+        if (oldLesson.getActivityUid() != null && oldLesson.getCourseUid() != null) {
+            try {
+                ClassinUpdateClassResp updateResp = updateClassinClass(req, oldLesson, teacherClassinUid);
+                log.info("ClassIn课堂活动更新成功，课堂ID：{}，活动ID：{}", id, oldLesson.getActivityUid());
+            } catch (Exception e) {
+                log.error("更新ClassIn课堂活动失败，课堂ID：{}，活动ID：{}，错误信息：{}", id, oldLesson.getActivityUid(), e.getMessage(), e);
+                // 不抛出异常，允许本地更新继续进行，但记录错误日志
+            }
+        } else {
+            log.info("课堂未关联ClassIn活动，跳过ClassIn同步，课堂ID：{}", id);
+        }
+
+        // 6. 更新本地数据库记录
+        LessonDO entity = BeanUtil.copyProperties(req, LessonDO.class);
+        entity.setId(id);
+
+        // 设置教师信息
+        entity.setTeacherId(req.getTeacherId());
+        entity.setTeacherUid(teacherClassinUid);
+        entity.setTeacherName(teacher.getName());
+
+        // 保留原有的ClassIn活动信息（不覆盖）
+        entity.setActivityUid(oldLesson.getActivityUid());
+        entity.setClassUid(oldLesson.getClassUid());
+        entity.setUnitUid(oldLesson.getUnitUid());
+        entity.setLiveUrl(oldLesson.getLiveUrl());
+        entity.setRtmpUrl(oldLesson.getRtmpUrl());
+        entity.setHlsUrl(oldLesson.getHlsUrl());
+        entity.setFlvUrl(oldLesson.getFlvUrl());
+
+        // 更新数据库记录
+        baseMapper.updateById(entity);
+        log.info("课堂更新成功，ID：{}", id);
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(List<Long> ids) {
@@ -230,11 +316,11 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .teacherUid(teacherClassinUid)  // 使用从ClassinUser获取的ClassIn用户ID
             .startTime(startTimeSeconds)
             .endTime(endTimeSeconds)
-            .recordType(0) // 0-云端录制
-            .recordState(req.getRecordState() != null ? req.getRecordState() : 0)
-            .liveState(req.getLiveState() != null ? req.getLiveState() : 0)
-            .openState(req.getOpenState() != null ? req.getOpenState() : 0)
-            .cameraHide(0) // 0-显示坐席区
+            .recordType(ClassinConstants.RECORD_TYPE_CLASSROOM) // 录制教室
+            .recordState(req.getRecordState() != null ? req.getRecordState() : ClassinConstants.RECORD_STATE_DISABLED)
+            .liveState(req.getLiveState() != null ? req.getLiveState() : ClassinConstants.LIVE_STATE_DISABLED)
+            .openState(req.getOpenState() != null ? req.getOpenState() : ClassinConstants.OPEN_STATE_PRIVATE)
+            .cameraHide(ClassinConstants.CAMERA_SHOW) // 显示坐席区
             .seatNum(req.getSeatNum() != null ? req.getSeatNum() : 0) // 设置上台人数，默认不限制（ClassinClient会自动+1包含老师）
             .build();
 
@@ -245,6 +331,45 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         } catch (Exception e) {
             log.error("创建ClassIn课堂活动失败", e);
             throw new BusinessException("创建ClassIn课堂活动失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新ClassIn课堂活动
+     */
+    private ClassinUpdateClassResp updateClassinClass(LessonReq req, LessonDO oldLesson, Long teacherClassinUid) {
+        // 转换时间格式（LocalDateTime -> Unix timestamp in seconds）
+        // 使用东八区时区（Asia/Shanghai），因为前端传入的是本地时间
+        ZoneId zoneId = ZoneId.of("Asia/Shanghai");
+        long startTimeSeconds = req.getStartTime().atZone(zoneId).toEpochSecond();
+        // 根据 startTime 和 duration 计算 endTime
+        long endTimeSeconds = req.getStartTime().plusMinutes(req.getDuration()).atZone(zoneId).toEpochSecond();
+
+        // 记录调试信息
+        log.info("准备更新ClassIn课堂活动 - courseId: {}, activityId: {}, name: {}, teacherUid: {}, startTime: {}, endTime: {}", 
+            oldLesson.getCourseUid(), oldLesson.getActivityUid(), req.getName(), teacherClassinUid, startTimeSeconds, endTimeSeconds);
+
+        ClassinUpdateClassReq updateReq = ClassinUpdateClassReq.builder()
+            .courseId(oldLesson.getCourseUid())           // 课程ID（必填）
+            .activityId(oldLesson.getActivityUid())       // 活动ID（必填）
+            .name(req.getName())                          // 课堂名称
+            .teacherUid(teacherClassinUid)                // 教师UID
+            .startTime(startTimeSeconds)                  // 开始时间
+            .endTime(endTimeSeconds)                      // 结束时间
+            .seatNum(req.getSeatNum())                    // 座位数（教学形式）
+            .recordState(req.getRecordState())            // 录制状态
+            .liveState(oldLesson.getLiveState())                // 直播状态
+            .openState(oldLesson.getOpenState())                // 开放状态
+            .recordType(ClassinConstants.RECORD_TYPE_CLASSROOM) // 录制类型：云端录制
+            .build();
+
+        try {
+            ClassinUpdateClassResp updateResp = classinClient.updateClass(updateReq);
+            log.info("ClassIn课堂活动更新成功，活动ID：{}，课堂名称：{}", updateResp.getActivityId(), updateResp.getName());
+            return updateResp;
+        } catch (Exception e) {
+            log.error("更新ClassIn课堂活动失败", e);
+            throw new BusinessException("更新ClassIn课堂活动失败：" + e.getMessage());
         }
     }
 

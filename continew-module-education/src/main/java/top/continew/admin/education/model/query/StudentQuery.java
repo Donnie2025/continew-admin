@@ -43,13 +43,13 @@ public class StudentQuery implements Serializable {
      * 学生姓名
      */
     @Schema(description = "学生姓名")
-    @Query(type = QueryType.EQ)
+    @Query(type = QueryType.LIKE)
     private String name;
 
     /**
      * 手机号码
      */
     @Schema(description = "手机号码")
-    @Query(type = QueryType.EQ)
+    @Query(type = QueryType.LIKE)
     private String phone;
 }

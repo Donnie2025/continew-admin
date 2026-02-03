@@ -117,5 +117,10 @@ public class ClassinProperties {
          * 添加课程学生接口（批量）
          */
         private String addCourseStudentMultiple;
+
+        /**
+         * 删除课程学生接口
+         */
+        private String removeCourseStudent;
     }
 }

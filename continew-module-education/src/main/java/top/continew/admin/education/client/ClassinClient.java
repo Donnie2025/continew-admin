@@ -101,6 +101,9 @@ public class ClassinClient {
         if (StrUtil.isBlank(api.getDeleteActivity())) {
             throw new IllegalStateException("ClassIn删除活动接口路径不能为空，请检查配置文件中的classin.api.deleteActivity配置项");
         }
+        if (StrUtil.isBlank(api.getRemoveCourseStudent())) {
+            throw new IllegalStateException("ClassIn删除课程学生接口路径不能为空，请检查配置文件中的classin.api.removeCourseStudent配置项");
+        }
 
         log.info("ClassIn客户端初始化完成");
     }
@@ -273,6 +276,7 @@ public class ClassinClient {
         // 1. 构建请求参数
         JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
         params.set("courseName", req.getCourseName());
+        params.set("allowAddFriend", 0);
         if (StrUtil.isNotBlank(req.getMainTeacherUid())) {
             params.set("mainTeacherUid", req.getMainTeacherUid());
         }
@@ -596,7 +600,66 @@ public class ClassinClient {
     }
 
     /**
-     * 调用 ClassIn 编辑课堂活动接口
+     * 从课程中删除学生（单个）
+     * 
+     * 根据官方API文档: https://root_url/partner/api/course.api.php?action=delCourseStudent
+     * 
+     * @param courseId      课程ID
+     * @param studentUid    需要删除的学生UID
+     * @param institutionId 机构ID
+     */
+    public void removeCourseStudent(Long courseId, String studentUid, Long institutionId) {
+        // 参数校验
+        if (courseId == null) {
+            throw new BusinessException("课程ID不能为空");
+        }
+        if (StrUtil.isBlank(studentUid)) {
+            throw new BusinessException("学生UID不能为空");
+        }
+        if (institutionId == null) {
+            throw new BusinessException("机构ID不能为空");
+        }
+
+        // 根据机构ID获取机构配置
+        InstitutionResp institution = institutionService.getById(institutionId);
+        if (institution == null) {
+            throw new BusinessException("机构不存在，ID: " + institutionId);
+        }
+
+        if (StrUtil.isBlank(institution.getSid()) || StrUtil.isBlank(institution.getSecret())) {
+            throw new BusinessException("机构[" + institution.getName() + "]的 SID 或 SECRET 配置不全");
+        }
+
+        String appId = institution.getSid();
+        String appSecret = institution.getSecret();
+
+        log.info("开始从ClassIn课程删除学生: courseId={}, studentUid={}, institutionId={}", courseId, studentUid, institutionId);
+
+        // 根据官方API文档构建请求参数
+        JSONObject params = ClassinUtils.buildCommonParams(appId, appSecret);
+        params.set("courseId", courseId);           // 课程ID
+        params.set("identity", 1);                  // 学生身份（1为学生，2为旁听）
+        params.set("studentUid", studentUid);       // 需要删除的学生UID
+
+        // 调用ClassIn删除课程学生接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getRemoveCourseStudent();
+        
+        try {
+            ClassinUtils.executePostRequest(apiUrl, params, "删除课程学生");
+            log.info("成功从ClassIn课程删除学生: courseId={}, studentUid={}", courseId, studentUid);
+        } catch (Exception e) {
+            // 根据官方错误码进行特殊处理
+            String errorMsg = e.getMessage();
+            if (errorMsg.contains("162")) {
+                log.warn("课程下无此成员，可能已被删除: courseId={}, studentUid={}", courseId, studentUid);
+                return; // 学生不存在视为删除成功
+            }
+            throw new BusinessException("从ClassIn课程删除学生失败: " + errorMsg);
+        }
+    }
+
+    /**
+     * 调用 ClassIn 编辑课堂活动接口（API v2）
      */
     public ClassinUpdateClassResp updateClass(ClassinUpdateClassReq req) {
         // 1. 验证必填参数
@@ -607,34 +670,31 @@ public class ClassinClient {
             throw new BusinessException("课堂活动ID不能为空");
         }
 
-        // 获取激活机构配置
-        String[] appConfig = getActiveAppConfig();
-
-        // 2. 构建请求参数
-        JSONObject params = ClassinUtils.buildCommonParams(appConfig[0], appConfig[1]);
-
+        // 2. 构建请求体参数
+        JSONObject bodyParams = new JSONObject();
+        
         // 添加必填参数
-        params.set("courseId", req.getCourseId());
-        params.set("activityId", req.getActivityId());
+        bodyParams.set("courseId", req.getCourseId());
+        bodyParams.set("activityId", req.getActivityId());
 
         // 添加非必填参数，只传递需要修改的参数
         if (req.getUnitId() != null) {
-            params.set("unitId", req.getUnitId());
+            bodyParams.set("unitId", req.getUnitId());
         }
         if (StrUtil.isNotBlank(req.getName())) {
-            params.set("name", req.getName());
+            bodyParams.set("name", req.getName());
         }
         if (req.getTeacherUid() != null) {
-            params.set("teacherUid", req.getTeacherUid());
+            bodyParams.set("teacherUid", req.getTeacherUid());
         }
         if (req.getStartTime() != null) {
-            params.set("startTime", req.getStartTime());
+            bodyParams.set("startTime", req.getStartTime());
         }
         if (req.getEndTime() != null) {
-            params.set("endTime", req.getEndTime());
+            bodyParams.set("endTime", req.getEndTime());
         }
         if (req.getPublishFlag() != null) {
-            params.set("publishFlag", req.getPublishFlag());
+            bodyParams.set("publishFlag", req.getPublishFlag());
         }
 
         // 录制、直播等相关设置，这些参数必须一起设置
@@ -648,46 +708,52 @@ public class ClassinClient {
                 throw new BusinessException("recordType、recordState、liveState、openState必须同时设置");
             }
 
-            params.set("recordType", req.getRecordType());
-            params.set("recordState", req.getRecordState());
-            params.set("liveState", req.getLiveState());
-            params.set("openState", req.getOpenState());
+            bodyParams.set("recordType", req.getRecordType());
+            bodyParams.set("recordState", req.getRecordState());
+            bodyParams.set("liveState", req.getLiveState());
+            bodyParams.set("openState", req.getOpenState());
         }
 
         if (req.getCameraHide() != null) {
-            params.set("cameraHide", req.getCameraHide());
+            bodyParams.set("cameraHide", req.getCameraHide());
         }
         if (StrUtil.isNotBlank(req.getRecordCover())) {
-            params.set("recordCover", req.getRecordCover());
+            bodyParams.set("recordCover", req.getRecordCover());
         }
         if (StrUtil.isNotBlank(req.getLiveCover())) {
-            params.set("liveCover", req.getLiveCover());
+            bodyParams.set("liveCover", req.getLiveCover());
         }
         if (StrUtil.isNotBlank(req.getLiveIntro())) {
-            params.set("liveIntro", req.getLiveIntro());
+            bodyParams.set("liveIntro", req.getLiveIntro());
         }
         if (StrUtil.isNotBlank(req.getTeacherAssistantUids())) {
-            params.set("teacherAssistantUids", req.getTeacherAssistantUids());
+            bodyParams.set("teacherAssistantUids", req.getTeacherAssistantUids());
         }
         if (req.getStageNum() != null) {
-            params.set("stageNum", req.getStageNum());
+            bodyParams.set("stageNum", req.getStageNum());
         }
         if (req.getSeatNum() != null) {
             // ClassIn的seatNum是总上台人数（包括老师），所以需要+1
-            params.set("seatNum", req.getSeatNum() + 1);
+            bodyParams.set("seatNum", req.getSeatNum() + 1);
         }
         if (req.getSubject() != null) {
-            params.set("subject", req.getSubject());
+            bodyParams.set("subject", req.getSubject());
         }
         if (req.getEnableTwoCamera() != null) {
-            params.set("enableTwoCamera", req.getEnableTwoCamera());
+            bodyParams.set("enableTwoCamera", req.getEnableTwoCamera());
         }
 
-        // 3. 调用接口
-        String apiUrl = properties.getApi().getUrl() + properties.getApi().getUpdateClass();
-        JSONObject result = ClassinUtils.executePostRequest(apiUrl, params, "编辑课堂活动");
+        // 获取激活机构配置
+        String[] appConfig = getActiveAppConfig();
 
-        // 4. 解析响应数据
+        // 3. 构建Header参数（API v2方式）
+        Map<String, String> headers = ClassinUtils.buildHeaderParams(appConfig[0], appConfig[1], bodyParams);
+
+        // 4. 调用接口
+        String apiUrl = properties.getApi().getUrl() + properties.getApi().getUpdateClass();
+        JSONObject result = ClassinUtils.executePostRequestV2(apiUrl, headers, bodyParams, "编辑课堂活动");
+
+        // 5. 解析响应数据
         JSONObject data = result.getJSONObject("data");
         ClassinUpdateClassResp resp = new ClassinUpdateClassResp();
         resp.setActivityId(data.getLong("activityId"));

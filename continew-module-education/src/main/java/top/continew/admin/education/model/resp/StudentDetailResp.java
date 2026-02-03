@@ -105,6 +105,13 @@ public class StudentDetailResp extends BaseDetailResp {
     private String remark;
 
     /**
+     * 是否允许录课（0：不允许；1：允许）
+     */
+    @Schema(description = "是否允许录课（0：不允许；1：允许）")
+    @ExcelProperty(value = "是否允许录课（0：不允许；1：允许）")
+    private Integer enableRecording;
+
+    /**
      * 状态（1：启用；2：禁用）
      */
     @Schema(description = "状态（1：启用；2：禁用）")

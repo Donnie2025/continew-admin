@@ -16,6 +16,7 @@ CREATE TABLE `edu_student` (
   `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
   `last_login_ip` varchar(50) DEFAULT NULL COMMENT '最后登录IP',
   `remark` varchar(1024) DEFAULT NULL COMMENT '备注',
+  `enable_recording` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否允许录课（0：不允许；1：允许）',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

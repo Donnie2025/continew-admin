@@ -69,13 +69,6 @@ public interface BookingService extends BaseService<BookingResp, BookingDetailRe
      */
     List<BookingDO> listByStudentIdAndMaterialId(Long studentId, Long materialId);
 
-    /**
-     * 添加预约记录
-     *
-     * @param booking 预约信息
-     * @return 记录ID
-     */
-    Long add(BookingDO booking);
 
     /**
      * 更新预约记录

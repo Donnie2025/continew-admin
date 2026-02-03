@@ -119,6 +119,11 @@ public class StudentDO extends BaseDO {
     private String remark;
 
     /**
+     * 是否允许录课（0：不允许；1：允许）
+     */
+    private Integer enableRecording;
+
+    /**
      * 状态（1：启用；2：禁用）
      */
     private Integer status;
