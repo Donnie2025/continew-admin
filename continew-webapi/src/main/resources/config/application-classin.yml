@@ -16,6 +16,7 @@ classin:
     removeCourseTeacher: /partner/api/course.api.php?action=removeCourseTeacher
     addCourseStudent: /partner/api/course.api.php?action=addCourseStudent
     addCourseStudentMultiple: /partner/api/course.api.php?action=addCourseStudentMultiple
+    removeCourseStudent: /partner/api/course.api.php?action=delCourseStudent
   
   # ========================================
   # 注意：AppId 和 AppSecret 已迁移至数据库 edu_institution 表
