@@ -34,8 +34,8 @@ import top.continew.admin.education.helper.ClassinHelper;
 import top.continew.admin.education.mapper.BookingMapper;
 import top.continew.admin.education.mapper.TransactionMapper;
 import top.continew.admin.education.mapper.LessonMapper;
-import top.continew.admin.education.mapper.StuCardMapper;
 import top.continew.admin.education.mapper.CourseMapper;
+import top.continew.admin.education.mapper.StuCardMapper;
 import top.continew.admin.education.model.entity.*;
 import top.continew.admin.education.model.req.BatchBookingReq;
 import top.continew.admin.education.model.query.BookingQuery;
@@ -46,6 +46,9 @@ import top.continew.admin.education.model.resp.MyBookingResp;
 import top.continew.admin.education.model.req.CourseReq;
 import top.continew.admin.education.model.req.CourseTeacherReq;
 import top.continew.admin.education.model.req.CourseStudentReq;
+import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
+import top.continew.admin.education.model.req.classin.ClassinCreateUnitReq;
+import top.continew.admin.education.model.resp.classin.ClassinCreateUnitResp;
 import top.continew.admin.education.model.resp.*;
 import top.continew.admin.education.service.*;
 import top.continew.admin.education.client.ClassinClient;
@@ -97,6 +100,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     private LessonMapper lessonMapper;
 
     @Autowired
+    private CourseMapper courseMapper;
+
+    @Autowired
     private StuCardMapper stuCardMapper;
 
     @Autowired
@@ -116,9 +122,6 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
     @Autowired
     private CourseStudentService courseStudentService;
-
-    @Autowired
-    private CourseMapper courseMapper;
 
     @Autowired
     private MaterialService materialService;
@@ -187,7 +190,13 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         booking.setId(id);
         // 设置更新审计字段
         booking.setUpdateTime(LocalDateTime.now());
-        // TODO: 设置更新用户ID，需要从认证上下文获取
+        try {
+            // 从认证上下文获取当前用户ID
+            Long currentUserId = StpUtil.getLoginIdAsLong();
+            booking.setUpdateBy(currentUserId);
+        } catch (Exception e) {
+            log.warn("获取当前用户ID失败，跳过设置更新用户: {}", e.getMessage());
+        }
 
         baseMapper.updateById(booking);
     }
@@ -788,8 +797,22 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 return;
             }
 
-            // 4. 创建ClassIn课堂活动
-            ClassinCreateClassReq classReq = buildClassinClassRequest(lesson, booking, teacherClassinUser.getClassinUid(), student);
+            // 4. 先创建或获取ClassIn课程
+            Long courseUid = createOrGetClassinCourse(lesson, booking, teacherClassinUser, studentClassinUser, institutionId);
+            if (courseUid == null) {
+                log.warn("无法获取ClassIn课程ID，跳过课节同步: lessonId={}", lesson.getId());
+                return;
+            }
+
+            // 5. 创建ClassIn单元
+            Long unitId = createOrGetClassinUnit(courseUid, lesson);
+            if (unitId == null) {
+                log.warn("无法获取ClassIn单元ID，跳过课节同步: lessonId={}, courseUid={}", lesson.getId(), courseUid);
+                return;
+            }
+
+            // 6. 创建ClassIn课堂活动
+            ClassinCreateClassReq classReq = buildClassinClassRequest(lesson, booking, teacherClassinUser.getClassinUid(), student, courseUid, unitId);
             ClassinCreateClassResp classResp = classinClient.createClass(classReq);
 
             // 5. 更新课节记录，保存ClassIn活动ID
@@ -808,14 +831,149 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     }
 
     /**
+     * 同步取消预约到ClassIn系统（删除课堂活动）
+     */
+    private void syncCancelBookingToClassIn(BookingDO booking) {
+        log.info("开始同步取消预约到ClassIn系统: bookingId={}", booking.getId());
+
+        try {
+            // 1. 查找相关的课程记录（使用现有的findCommonCourse方法）
+            Long courseId = courseMapper.findCommonCourse(booking.getTeacherId(), booking.getStudentId());
+            if (courseId == null) {
+                log.warn("未找到对应的课程记录，跳过ClassIn删除: studentId={}, teacherId={}", 
+                    booking.getStudentId(), booking.getTeacherId());
+                return;
+            }
+
+            CourseDO course = courseMapper.selectById(courseId);
+            if (course == null) {
+                log.warn("课程记录不存在，跳过ClassIn删除: courseId={}", courseId);
+                return;
+            }
+
+            // 2. 查找该课程下的课节记录
+            LambdaQueryWrapper<LessonDO> lessonQuery = new LambdaQueryWrapper<>();
+            lessonQuery.eq(LessonDO::getCourseId, course.getId())
+                      .eq(LessonDO::getTeacherId, booking.getTeacherId())
+                      .orderByDesc(LessonDO::getCreateTime)
+                      .last("LIMIT 1"); // 获取最新的课节
+            
+            LessonDO lesson = lessonMapper.selectOne(lessonQuery);
+            if (lesson == null) {
+                log.warn("未找到对应的课节记录，跳过ClassIn删除: courseId={}", course.getId());
+                return;
+            }
+
+            // 3. 检查是否有ClassIn活动ID
+            if (lesson.getActivityUid() == null || lesson.getCourseUid() == null) {
+                log.warn("课节未关联ClassIn活动，跳过删除: lessonId={}, activityUid={}, courseUid={}", 
+                    lesson.getId(), lesson.getActivityUid(), lesson.getCourseUid());
+                return;
+            }
+
+            // 4. 获取课时信息以获取机构ID
+            SlotDetailResp slot = slotService.get(booking.getSlotId());
+            if (slot == null || slot.getInstitutionId() == null) {
+                log.warn("无法获取课时机构信息，跳过ClassIn删除: slotId={}", booking.getSlotId());
+                return;
+            }
+
+            // 5. 调用ClassIn删除活动接口
+            Long courseUid = lesson.getCourseUid();  // 使用ClassIn的courseUid
+            Long activityUid = lesson.getActivityUid();
+            Long institutionId = slot.getInstitutionId();
+
+            classinClient.deleteActivity(courseUid, activityUid, institutionId);
+
+            // 6. 清除本地课节的ClassIn关联信息
+            lesson.setActivityUid(null);
+            lesson.setClassUid(null);
+            lessonMapper.updateById(lesson);
+
+            log.info("成功同步取消预约到ClassIn: bookingId={}, lessonId={}, courseUid={}, activityUid={}", 
+                booking.getId(), lesson.getId(), courseUid, activityUid);
+
+        } catch (Exception e) {
+            log.error("同步取消预约到ClassIn失败: bookingId={}, error={}", booking.getId(), e.getMessage(), e);
+            throw e; // 重新抛出异常供调用方处理
+        }
+    }
+
+    /**
+     * 创建或获取ClassIn课程
+     */
+    private Long createOrGetClassinCourse(LessonDO lesson, BookingDO booking, ClassinUserDO teacherClassinUser, ClassinUserDO studentClassinUser, Long institutionId) {
+        try {
+            // 1. 检查本地课程记录是否已有ClassIn courseUid
+            CourseDO course = courseMapper.selectById(lesson.getCourseId());
+            if (course != null && course.getCourseUid() != null) {
+                log.info("复用已存在的ClassIn课程: courseUid={}", course.getCourseUid());
+                return course.getCourseUid();
+            }
+
+            // 2. 创建新的ClassIn课程
+            String courseName = booking.getTeacherName() + "-" + booking.getStudentName() + "的一对一课程";
+            ClassinCourseAddReq courseReq = new ClassinCourseAddReq();
+            courseReq.setCourseName(courseName);
+            courseReq.setMainTeacherUid(teacherClassinUser.getClassinUid());
+
+            Long courseUid = classinClient.addCourse(courseReq);
+            if (courseUid == null) {
+                log.error("创建ClassIn课程失败: courseName={}", courseName);
+                return null;
+            }
+
+            log.info("创建ClassIn课程成功: courseUid={}, courseName={}", courseUid, courseName);
+
+            // 3. 更新本地课程记录，保存ClassIn courseUid
+            if (course != null) {
+                course.setCourseUid(courseUid);
+                courseMapper.updateById(course);
+                log.info("更新本地课程记录，保存ClassIn courseUid: localCourseId={}, courseUid={}", course.getId(), courseUid);
+            }
+
+            return courseUid;
+
+        } catch (Exception e) {
+            log.error("创建或获取ClassIn课程失败: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 创建或获取ClassIn单元
+     */
+    private Long createOrGetClassinUnit(Long courseUid, LessonDO lesson) {
+        try {
+            // 创建ClassIn单元
+            ClassinCreateUnitReq unitReq = ClassinCreateUnitReq.builder()
+                .courseId(courseUid)
+                .name(lesson.getName() + "单元")
+                .publishFlag(2) // 2-已发布
+                .sortNum(1)
+                .build();
+
+            ClassinCreateUnitResp unitResp = classinClient.createUnit(unitReq);
+            Long unitId = unitResp.getUnitId();
+            
+            log.info("创建ClassIn单元成功: unitId={}, courseName={}", unitId, unitReq.getName());
+            return unitId;
+
+        } catch (Exception e) {
+            log.error("创建ClassIn单元失败: courseUid={}, error={}", courseUid, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * 构建ClassIn课堂活动创建请求
      */
-    private ClassinCreateClassReq buildClassinClassRequest(LessonDO lesson, BookingDO booking, String teacherUid, StudentDetailResp student) {
+    private ClassinCreateClassReq buildClassinClassRequest(LessonDO lesson, BookingDO booking, String teacherUid, StudentDetailResp student, Long courseUid, Long unitId) {
         ClassinCreateClassReq req = new ClassinCreateClassReq();
         
-        // 基本信息
-        req.setCourseId(lesson.getCourseId());
-        req.setUnitId(ClassinConstants.DEFAULT_UNIT_ID); // 使用常量配置默认单元ID
+        // 基本信息 - 使用ClassIn的courseUid和unitId
+        req.setCourseId(courseUid);
+        req.setUnitId(unitId); // 使用创建的单元ID
         req.setName(lesson.getName());
         
         // 教师UID转换为Long类型
@@ -1222,6 +1380,14 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         // 6. 创建退款交易记录和退还会员卡余额
         createRefundTransaction(booking);
 
+        // 7. 同步取消ClassIn课堂活动
+        try {
+            syncCancelBookingToClassIn(booking);
+        } catch (Exception e) {
+            log.error("ClassIn课堂取消同步失败: bookingId={}, error={}", bookingId, e.getMessage(), e);
+            // 不抛出异常，允许本地取消成功，但记录ClassIn同步失败
+        }
+
         log.info("预约取消成功，预约ID: {}", bookingId);
     }
 
@@ -1258,6 +1424,14 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
         // 4. 创建退款交易记录和退还会员卡余额
         createRefundTransaction(booking);
+
+        // 5. 同步取消ClassIn课堂活动
+        try {
+            syncCancelBookingToClassIn(booking);
+        } catch (Exception e) {
+            log.error("ClassIn课堂取消同步失败: bookingId={}, error={}", bookingId, e.getMessage(), e);
+            // 不抛出异常，允许本地取消成功，但记录ClassIn同步失败
+        }
 
         log.info("教师取消预约成功，预约ID: {}", bookingId);
     }

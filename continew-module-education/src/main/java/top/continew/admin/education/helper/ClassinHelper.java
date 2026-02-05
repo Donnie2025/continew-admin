@@ -29,6 +29,8 @@ import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.req.ClassinUserReq;
 import top.continew.admin.education.service.ClassinUserService;
+import top.continew.admin.education.service.InstitutionService;
+import top.continew.admin.education.util.InstitutionUtil;
 
 import java.util.UUID;
 
@@ -39,6 +41,7 @@ public class ClassinHelper {
 
     private final ClassinUserService classinUserService;
     private final ClassinClient classinClient;
+    private final InstitutionService institutionService;
 
     public ClassinUserDO getClassinUser(Long memberId, String userType, String name, String phone, String email) {
         // 查询学生的 Classin 用户信息
@@ -58,8 +61,9 @@ public class ClassinHelper {
             registerReq.setMemberId(memberId);
             // 设置用户类型为学生
             registerReq.setUserType(userType);
-            // 设置机构ID（需要从配置或上下文中获取）
-            registerReq.setClassinInstitutionId(1L); // TODO: 从配置中获取
+            // 设置机构ID - 使用InstitutionUtil获取有效的机构ID
+            Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "为用户注册ClassIn设置");
+            registerReq.setClassinInstitutionId(institutionId);
             try {
                 // 调用注册接口
                 Long classinUserId = classinUserService.create(registerReq);

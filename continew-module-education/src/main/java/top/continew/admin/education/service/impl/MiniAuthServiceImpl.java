@@ -48,6 +48,7 @@ import top.continew.admin.education.service.MiniAuthService;
 import top.continew.admin.education.service.CredentialService;
 import top.continew.admin.education.service.StudentService;
 import top.continew.admin.education.service.TeacherService;
+import top.continew.admin.education.service.SmsService;
 import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.util.InstitutionUtil;
 import top.continew.admin.education.enums.UserType;
@@ -77,6 +78,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
     private final CredentialService credentialService;
     private final InstitutionService institutionService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final SmsService smsService;
 
     @Value("${wechat.miniprogram.app-id:}")
     private String appId;
@@ -461,11 +463,15 @@ public class MiniAuthServiceImpl implements MiniAuthService {
 
         log.info("验证码已生成并保存到Redis: phone={}, code={}", phone, code);
 
-        // TODO: 这里应该调用短信服务发送验证码
-        // smsService.send(phone, code);
+        // 调用短信服务发送验证码
+        boolean sendSuccess = smsService.sendVerifyCode(phone, code);
+        if (!sendSuccess) {
+            log.error("验证码短信发送失败: phone={}", phone);
+            // 注意：即使短信发送失败，验证码仍然有效（已保存到Redis）
+            // 这样可以避免因短信服务问题导致用户无法获取验证码
+        }
 
-        // 开发环境下，将验证码打印到日志中（生产环境应删除）
-        log.warn("[开发环境] 验证码: {}", code);
+        log.info("验证码处理完成: phone={}, 短信发送={}", phone, sendSuccess ? "成功" : "失败");
     }
 
     @Override

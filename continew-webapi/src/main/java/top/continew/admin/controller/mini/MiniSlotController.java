@@ -375,6 +375,17 @@ public class MiniSlotController {
         detailInfo.setStuCardId(booking.getStuCardId());
         detailInfo.setCardName(booking.getCardName());
         detailInfo.setRemark(booking.getRemark());
+        
+        // 设置操作人信息（从BaseDO继承的审计字段）
+        if (booking.getCreateUser() != null) {
+            // 可以根据需要查询用户名，这里先使用用户ID
+            detailInfo.setOperatorName("用户ID: " + booking.getCreateUser());
+        }
+        
+        // 设置操作时间（格式化创建时间）
+        if (booking.getCreateTime() != null) {
+            detailInfo.setOperateTime(booking.getCreateTime().toString());
+        }
 
         return detailInfo;
     }

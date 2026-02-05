@@ -63,7 +63,7 @@ public class SalaryCalculationUtil {
                     .equalsIgnoreCase(teacherName) || "Ainie".equalsIgnoreCase(teacherName) || "Daisy"
                         .equalsIgnoreCase(teacherName) || "Mira".equalsIgnoreCase(teacherName) || "Lina"
                             .equalsIgnoreCase(teacherName) || "Yham".equalsIgnoreCase(teacherName) || "Jenalyn"
-                                .equalsIgnoreCase(teacherName)) {
+                                .equalsIgnoreCase(teacherName) || "Gistel".equalsIgnoreCase(teacherName)) {
             return BigDecimal.ZERO;
         }
 

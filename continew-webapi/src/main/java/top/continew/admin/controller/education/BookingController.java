@@ -30,6 +30,7 @@ import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.entity.BookingDO;
 import top.continew.admin.education.model.query.BookingQuery;
 import top.continew.admin.education.model.req.BookingReq;
+import top.continew.admin.education.model.req.CancelBookingBySlotReq;
 import top.continew.admin.education.model.resp.BookingDetailResp;
 import top.continew.admin.education.model.resp.BookingResp;
 import top.continew.admin.education.service.BookingService;
@@ -62,5 +63,41 @@ public class BookingController extends BaseController<BookingService, BookingRes
         
         // 直接调用createBookingWithTransaction方法
         return baseService.createBookingWithTransaction(booking);
+    }
+
+    /**
+     * 取消预约
+     *
+     * @param bookingId 预约ID
+     * @return 操作结果
+     */
+    @Operation(summary = "取消预约", description = "取消指定的预约记录")
+    @PostMapping("/{bookingId}/cancel")
+    public void cancelBooking(@PathVariable Long bookingId) {
+        baseService.cancelBooking(bookingId);
+    }
+
+    /**
+     * 教师取消预约
+     *
+     * @param bookingId 预约ID
+     * @return 操作结果
+     */
+    @Operation(summary = "教师取消预约", description = "教师取消指定的预约记录（无时间限制）")
+    @PostMapping("/{bookingId}/cancel-by-teacher")
+    public void cancelBookingByTeacher(@PathVariable Long bookingId) {
+        baseService.cancelBookingByTeacher(bookingId);
+    }
+
+    /**
+     * 通过时间段和学生取消预约
+     *
+     * @param req 取消预约请求
+     * @return 操作结果
+     */
+    @Operation(summary = "通过时间段和学生取消预约", description = "教师通过时间段和学生取消预约（无时间限制）")
+    @PostMapping("/cancel-by-slot")
+    public void cancelBookingBySlotAndStudent(@Validated @RequestBody CancelBookingBySlotReq req) {
+        baseService.cancelBookingBySlotAndStudent(req.getSlotId(), req.getStudentId());
     }
 }

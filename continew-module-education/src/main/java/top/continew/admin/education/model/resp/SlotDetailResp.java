@@ -110,4 +110,10 @@ public class SlotDetailResp extends BaseDetailResp {
     @Schema(description = "所属机构ID")
     @ExcelProperty(value = "所属机构ID")
     private Long institutionId;
+
+    /**
+     * 预约详情列表
+     */
+    @Schema(description = "预约详情列表")
+    private java.util.List<top.continew.admin.education.model.resp.SlotResp.BookingDetailInfo> bookingDetails;
 }

@@ -112,8 +112,67 @@ public class SalaryJobServiceImpl implements SalaryJobService {
 
         log.info("开始统计{}至{}期间的薪资数据", monthStart, monthEnd);
 
-        // TODO: 实现实际的统计逻辑
-        // 例如：按教师统计课程数、总金额等
+        try {
+            // 1. 查询当月所有已结算的薪资记录
+            LambdaQueryWrapper<SalaryDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.ge(SalaryDO::getWorkDate, monthStart)
+                       .le(SalaryDO::getWorkDate, monthEnd)
+                       .eq(SalaryDO::getStatus, 1); // 已结算状态
+            
+            List<SalaryDO> monthlySalaries = salaryMapper.selectList(queryWrapper);
+            
+            if (monthlySalaries.isEmpty()) {
+                log.info("当月暂无已结算的薪资记录");
+                return;
+            }
+
+            // 2. 按教师分组统计薪资数据
+            Map<Long, List<SalaryDO>> salaryByTeacher = monthlySalaries.stream()
+                .collect(Collectors.groupingBy(SalaryDO::getTeacherId));
+
+            // 3. 统计各教师的薪资情况
+            int totalTeacherCount = salaryByTeacher.size();
+            int totalClassCount = monthlySalaries.size();
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            
+            log.info("=== {}月薪资统计报表 ===", firstDayOfMonth.format(DateTimeFormatter.ofPattern("yyyy年MM")));
+            log.info("统计时间范围: {} 至 {}", monthStart, monthEnd);
+            log.info("参与教师数量: {} 人", totalTeacherCount);
+            log.info("总课节数量: {} 节", totalClassCount);
+
+            for (Map.Entry<Long, List<SalaryDO>> entry : salaryByTeacher.entrySet()) {
+                Long teacherId = entry.getKey();
+                List<SalaryDO> teacherSalaries = entry.getValue();
+                
+                // 统计该教师的数据
+                int classCount = teacherSalaries.size();
+                BigDecimal teacherTotalAmount = teacherSalaries.stream()
+                    .map(SalaryDO::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+                totalAmount = totalAmount.add(teacherTotalAmount);
+                
+                // 获取教师姓名（简化处理，实际可能需要关联查询）
+                String teacherName = teacherSalaries.get(0).getTeacherName();
+                
+                log.info("教师[{}] - 课节数: {}节, 薪资总额: ¥{}", 
+                    teacherName, classCount, teacherTotalAmount);
+            }
+            
+            log.info("=== 汇总统计 ===");
+            log.info("薪资总金额: ¥{}", totalAmount);
+            log.info("平均每课节薪资: ¥{}", 
+                totalClassCount > 0 ? totalAmount.divide(BigDecimal.valueOf(totalClassCount), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+            log.info("平均每位教师薪资: ¥{}", 
+                totalTeacherCount > 0 ? totalAmount.divide(BigDecimal.valueOf(totalTeacherCount), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+
+            // 4. 可选：将统计结果保存到数据库或导出为文件
+            // saveReportToDatabase(firstDayOfMonth, totalTeacherCount, totalClassCount, totalAmount);
+            
+        } catch (Exception e) {
+            log.error("生成月度薪资报表失败: {}", e.getMessage(), e);
+            throw e;
+        }
 
         log.info("薪资报表生成完成");
     }

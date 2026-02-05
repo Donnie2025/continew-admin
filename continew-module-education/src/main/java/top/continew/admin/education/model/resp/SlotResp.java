@@ -193,6 +193,18 @@ public class SlotResp extends BaseResp {
         @Schema(description = "预约备注")
         private String remark;
 
+        /**
+         * 操作人名称
+         */
+        @Schema(description = "操作人名称")
+        private String operatorName;
+
+        /**
+         * 操作时间
+         */
+        @Schema(description = "操作时间")
+        private String operateTime;
+
         // Getters and Setters
         public Long getStudentId() {
             return studentId;
@@ -296,6 +308,22 @@ public class SlotResp extends BaseResp {
 
         public void setRemark(String remark) {
             this.remark = remark;
+        }
+
+        public String getOperatorName() {
+            return operatorName;
+        }
+
+        public void setOperatorName(String operatorName) {
+            this.operatorName = operatorName;
+        }
+
+        public String getOperateTime() {
+            return operateTime;
+        }
+
+        public void setOperateTime(String operateTime) {
+            this.operateTime = operateTime;
         }
     }
 
