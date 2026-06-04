@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
 import top.continew.admin.common.context.UserContext;
 import top.continew.admin.common.context.UserContextHolder;
+import top.continew.starter.core.exception.BusinessException;
 
 /**
  * Sa-Token 扩展拦截器
@@ -74,11 +75,11 @@ public class SaExtensionInterceptor extends SaInterceptor {
                     return true;
                 } else {
                     // token无效，抛出未登录异常
-                    throw new RuntimeException("小程序token无效");
+                    throw new BusinessException("小程序token无效，请重新登录");
                 }
             } else {
                 // 没有Authorization头，抛出未登录异常
-                throw new RuntimeException("小程序请求缺少Authorization头");
+                throw new BusinessException("小程序token无效，请重新登录");
             }
         } else {
             // 普通请求，使用父类的检查逻辑

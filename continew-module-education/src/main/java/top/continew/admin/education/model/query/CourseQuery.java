@@ -47,6 +47,13 @@ public class CourseQuery implements Serializable {
     private String name;
 
     /**
+     * 所属代理机构编码
+     */
+    @Schema(description = "所属代理机构编码")
+    @Query(type = QueryType.EQ)
+    private String agentCode;
+
+    /**
      * 班主任ID
      */
     @Schema(description = "班主任ID")

@@ -16,6 +16,7 @@
 
 package top.continew.admin.controller.mini;
 
+import cn.dev33.satoken.SaManager;
 import cn.dev33.satoken.annotation.SaIgnore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.education.model.entity.BookingDO;
 import top.continew.admin.education.model.query.SlotQuery;
 import top.continew.admin.education.model.req.BatchSlotReq;
@@ -55,6 +57,67 @@ public class MiniSlotController {
 
     private final SlotService slotService;
     private final BookingService bookingService;
+
+    /**
+     * 查询当前登录教师指定日期的时间段（token认证，无需传teacherId）
+     *
+     * @param date 日期（格式：YYYYMMDD）
+     * @return 时间段列表
+     */
+    @GetMapping("/my-schedule")
+    @Operation(summary = "查询我的时间段", description = "根据token获取当前教师指定日期的所有时间段，包含预约信息")
+    public R<List<SlotResp>> getMySchedule(@RequestParam("date") String date) {
+        try {
+            String authHeader = SaManager.getSaTokenContext().getRequest().getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return R.fail("401", "请先登录");
+            }
+            String token = authHeader.substring(7);
+            Object loginId = StpMiniUtil.getStpLogic().getLoginIdByToken(token);
+            if (loginId == null) {
+                return R.fail("401", "登录已过期，请重新登录");
+            }
+            Long teacherId = Long.valueOf(loginId.toString());
+            log.info("查询我的时间段, 教师ID: {}, 日期: {}", teacherId, date);
+
+            SlotQuery query = new SlotQuery();
+            query.setTeacherId(teacherId);
+            query.setStartDate(date);
+            query.setStatus(1);
+
+            List<SlotResp> result = slotService.list(query, null);
+            if (result == null)
+                result = new ArrayList<>();
+
+            if (!result.isEmpty()) {
+                List<Long> slotIds = result.stream().map(SlotResp::getId).collect(Collectors.toList());
+                Map<Long, List<BookingDO>> detailedBookingsMap = bookingService.findDetailedBookingsBySlotIds(slotIds);
+                Map<Long, List<String>> studentNamesMap = bookingService.findStudentNamesBySlotIds(slotIds);
+                result.forEach(slot -> {
+                    List<String> names = studentNamesMap.get(slot.getId());
+                    if (names != null && !names.isEmpty())
+                        slot.setStudentNameList(names);
+                    List<BookingDO> bookings = detailedBookingsMap.get(slot.getId());
+                    if (bookings != null && !bookings.isEmpty()) {
+                        slot.setBookingDetails(bookings.stream()
+                            .map(this::convertToBookingDetailInfo)
+                            .collect(Collectors.toList()));
+                    }
+                });
+            }
+            result.sort((a, b) -> {
+                if (a.getStartTime() == null)
+                    return 1;
+                if (b.getStartTime() == null)
+                    return -1;
+                return a.getStartTime().compareTo(b.getStartTime());
+            });
+            return R.ok(result);
+        } catch (Exception e) {
+            log.error("查询我的时间段失败", e);
+            return R.fail("500", e.getMessage());
+        }
+    }
 
     /**
      * 根据日期和教师ID查询时间段
@@ -240,23 +303,31 @@ public class MiniSlotController {
      * @param batchSlotReq 批量时间段请求
      * @return 创建结果
      */
-    @SaIgnore
     @PostMapping("/batch")
-    @Operation(summary = "批量创建时间段", description = "批量创建多个日期和时间的时间段")
+    @Operation(summary = "批量创建时间段", description = "批量创建多个日期和时间的时间段，teacherId自动从 token 获取")
     public R<List<SlotResp>> batchCreateSlot(@RequestBody BatchSlotReq batchSlotReq) {
-        log.info("批量创建时间段, 教师ID: {}, 日期数量: {}, 时间数量: {}, 时长: {}分钟", batchSlotReq.getTeacherId(), batchSlotReq
-            .getDates() != null ? batchSlotReq.getDates().size() : 0, batchSlotReq.getTimes() != null
-                ? batchSlotReq.getTimes().size()
-                : 0, batchSlotReq.getDuration());
-
         try {
-            List<SlotResp> result = slotService.batchCreateSlot(batchSlotReq);
+            String authHeader = SaManager.getSaTokenContext().getRequest().getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return R.fail("401", "请先登录");
+            }
+            String token = authHeader.substring(7);
+            Object loginId = StpMiniUtil.getStpLogic().getLoginIdByToken(token);
+            if (loginId == null) {
+                return R.fail("401", "登录已过期，请重新登录");
+            }
+            Long teacherId = Long.valueOf(loginId.toString());
+            batchSlotReq.setTeacherId(teacherId);
 
+            log.info("批量创建时间段, 教师ID: {}, 日期数量: {}, 时间数量: {}, 时长: {}分钟", teacherId, batchSlotReq.getDates() != null
+                ? batchSlotReq.getDates().size()
+                : 0, batchSlotReq.getTimes() != null ? batchSlotReq.getTimes().size() : 0, batchSlotReq.getDuration());
+
+            List<SlotResp> result = slotService.batchCreateSlot(batchSlotReq);
             log.info("批量创建时间段完成, 成功创建{}个时间段", result.size());
             return R.ok(result);
-
         } catch (Exception e) {
-            log.error("批量创建时间段失败, 教师ID: {}", batchSlotReq.getTeacherId(), e);
+            log.error("批量创建时间段失败", e);
             return R.fail("500", "创建失败: " + e.getMessage());
         }
     }
@@ -372,16 +443,15 @@ public class MiniSlotController {
         detailInfo.setLessonId(booking.getLessonId());
         detailInfo.setLessonName(booking.getLessonName());
         detailInfo.setLessonUrl(booking.getLessonUrl());
-        detailInfo.setStuCardId(booking.getStuCardId());
-        detailInfo.setCardName(booking.getCardName());
+        detailInfo.setAccountId(booking.getAccountId());
         detailInfo.setRemark(booking.getRemark());
-        
+
         // 设置操作人信息（从BaseDO继承的审计字段）
         if (booking.getCreateUser() != null) {
             // 可以根据需要查询用户名，这里先使用用户ID
             detailInfo.setOperatorName("用户ID: " + booking.getCreateUser());
         }
-        
+
         // 设置操作时间（格式化创建时间）
         if (booking.getCreateTime() != null) {
             detailInfo.setOperateTime(booking.getCreateTime().toString());

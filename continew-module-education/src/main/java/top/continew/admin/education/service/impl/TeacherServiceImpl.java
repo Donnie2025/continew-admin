@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.TeacherMapper;
+import top.continew.admin.education.mapper.SlotMapper;
+import top.continew.admin.education.model.entity.SlotDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.query.TeacherQuery;
 import top.continew.admin.education.model.req.TeacherReq;
@@ -35,7 +37,12 @@ import top.continew.admin.common.enums.DisEnableStatusEnum;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import cn.hutool.core.util.StrUtil;
 
@@ -49,6 +56,8 @@ import cn.hutool.core.util.StrUtil;
 @Service
 @RequiredArgsConstructor
 public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> implements TeacherService {
+
+    private final SlotMapper slotMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -66,11 +75,60 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
     public List<TeacherResp> listActiveTeachers(String name) {
         LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
             .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name)
-            .orderByAsc(TeacherDO::getSort)
+            .orderByDesc(TeacherDO::getSort)
             .orderByDesc(TeacherDO::getCreateTime);
-
-        // 不限制返回数量，让前端能够显示所有符合条件的老师
         return this.baseMapper.selectList(queryWrapper).stream().map(this::convert).collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<String, Object> listActiveTeachersPage(String name,
+                                                      String startDate,
+                                                      String startTimeFrom,
+                                                      String startTimeTo,
+                                                      int page,
+                                                      int pageSize) {
+        LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>().eq(TeacherDO::getStatus, 1)
+            .eq(TeacherDO::getIsShow, 1)
+            .like(name != null && !name.trim().isEmpty(), TeacherDO::getName, name);
+
+        // 按指定日期+时间范围筛选有可约课时的教师
+        if (StrUtil.isNotBlank(startDate) && StrUtil.isNotBlank(startTimeFrom)) {
+            LambdaQueryWrapper<SlotDO> slotWrapper = new LambdaQueryWrapper<SlotDO>()
+                .eq(SlotDO::getStartDate, startDate)
+                .ge(SlotDO::getStartTime, startTimeFrom)
+                .le(SlotDO::getStartTime, StrUtil.isNotBlank(startTimeTo) ? startTimeTo : startTimeFrom)
+                .eq(SlotDO::getStatus, 1);
+            List<Long> teacherIds = slotMapper.selectList(slotWrapper)
+                .stream()
+                .map(SlotDO::getTeacherId)
+                .distinct()
+                .collect(Collectors.toList());
+            if (teacherIds.isEmpty()) {
+                Map<String, Object> emptyMap = new HashMap<>();
+                emptyMap.put("list", Collections.emptyList());
+                emptyMap.put("total", 0L);
+                emptyMap.put("page", page);
+                emptyMap.put("pageSize", pageSize);
+                emptyMap.put("hasMore", false);
+                return emptyMap;
+            }
+            queryWrapper.in(TeacherDO::getId, teacherIds);
+        }
+
+        queryWrapper.orderByDesc(TeacherDO::getSort).orderByDesc(TeacherDO::getCreateTime);
+
+        Page<TeacherDO> pageObj = new Page<>(page, pageSize);
+        IPage<TeacherDO> result = this.baseMapper.selectPage(pageObj, queryWrapper);
+
+        List<TeacherResp> list = result.getRecords().stream().map(this::convert).collect(Collectors.toList());
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("list", list);
+        map.put("total", result.getTotal());
+        map.put("page", page);
+        map.put("pageSize", pageSize);
+        map.put("hasMore", (long)page * pageSize < result.getTotal());
+        return map;
     }
 
     @Override
@@ -86,8 +144,9 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
 
         LambdaQueryWrapper<TeacherDO> queryWrapper = new LambdaQueryWrapper<TeacherDO>()
             .eq(TeacherDO::getStatus, DisEnableStatusEnum.ENABLE.getValue())
+            .eq(TeacherDO::getIsShow, 1)
             .and(wrapper -> wrapper.like(TeacherDO::getName, keyword).or().like(TeacherDO::getPhone, keyword))
-            .orderByAsc(TeacherDO::getSort)
+            .orderByDesc(TeacherDO::getSort)
             .orderByDesc(TeacherDO::getCreateTime)
             .last("LIMIT 20"); // 限制返回数量
 
@@ -97,8 +156,8 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
     @Override
     protected QueryWrapper<TeacherDO> buildQueryWrapper(TeacherQuery query) {
         QueryWrapper<TeacherDO> queryWrapper = super.buildQueryWrapper(query);
-        // 添加默认排序：按sort字段升序排列，如果sort相同则按create_time倒序
-        queryWrapper.orderByAsc("sort").orderByDesc("create_time");
+        // 添加默认排序：按sort字段降序排列（数字越大越靠前），如果sort相同则按create_time倒序
+        queryWrapper.orderByDesc("sort").orderByDesc("create_time");
         return queryWrapper;
     }
 
@@ -109,8 +168,6 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         if (teacher == null) {
             throw new RuntimeException("教师不存在");
         }
-
-        // 将sort字段设置为1实现置顶
         teacher.setSort(1);
         this.baseMapper.updateById(teacher);
     }

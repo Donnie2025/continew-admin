@@ -43,7 +43,6 @@ import top.continew.admin.education.service.SlotService;
 import top.continew.admin.education.service.TeacherService;
 import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.model.entity.TeacherDO;
-import top.continew.admin.education.model.resp.InstitutionResp;
 import top.continew.admin.education.util.InstitutionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -360,12 +359,12 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
     public SlotDetailResp get(Long id) {
         // 调用父类方法获取基本信息
         SlotDetailResp detail = super.get(id);
-        
+
         if (detail != null) {
             // 查询预约详情信息
             Map<Long, List<BookingDO>> bookingMap = bookingService.findDetailedBookingsBySlotIds(List.of(id));
             List<BookingDO> bookings = bookingMap.get(id);
-            
+
             if (bookings != null && !bookings.isEmpty()) {
                 // 转换为BookingDetailInfo列表
                 List<SlotResp.BookingDetailInfo> bookingDetails = bookings.stream()
@@ -374,7 +373,7 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
                 detail.setBookingDetails(bookingDetails);
             }
         }
-        
+
         return detail;
     }
 
@@ -394,16 +393,15 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
         detailInfo.setLessonId(booking.getLessonId());
         detailInfo.setLessonName(booking.getLessonName());
         detailInfo.setLessonUrl(booking.getLessonUrl());
-        detailInfo.setStuCardId(booking.getStuCardId());
-        detailInfo.setCardName(booking.getCardName());
+        detailInfo.setAccountId(booking.getAccountId());
         detailInfo.setRemark(booking.getRemark());
-        
+
         // 设置操作人信息（从BaseDO继承的审计字段）
         if (booking.getCreateUser() != null) {
             // 可以根据需要查询用户名，这里先使用用户ID
             detailInfo.setOperatorName("用户ID: " + booking.getCreateUser());
         }
-        
+
         // 设置操作时间（格式化创建时间）
         if (booking.getCreateTime() != null) {
             detailInfo.setOperateTime(booking.getCreateTime().toString());

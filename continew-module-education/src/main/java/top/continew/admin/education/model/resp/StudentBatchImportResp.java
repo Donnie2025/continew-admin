@@ -61,6 +61,50 @@ public class StudentBatchImportResp implements Serializable {
     private List<ImportFailureDetail> failures;
 
     /**
+     * 警告数量
+     */
+    @Schema(description = "警告数量")
+    private Integer warningCount;
+
+    /**
+     * 警告详情列表
+     */
+    @Schema(description = "警告详情列表")
+    private List<ImportWarningDetail> warnings;
+
+    /**
+     * 导入警告详情
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "导入警告详情")
+    public static class ImportWarningDetail implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 学生姓名
+         */
+        @Schema(description = "学生姓名")
+        private String studentName;
+
+        /**
+         * 手机号码
+         */
+        @Schema(description = "手机号码")
+        private String phone;
+
+        /**
+         * 警告信息
+         */
+        @Schema(description = "警告信息")
+        private String message;
+    }
+
+    /**
      * 导入失败详情
      */
     @Data

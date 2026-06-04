@@ -60,9 +60,14 @@ public class MiniTeacherController {
 
     @SaIgnore
     @GetMapping("/active")
-    @Operation(summary = "查询活跃教师列表", description = "查询所有状态为活跃的教师列表，按照排序字段升序排列，可选择按教师姓名进行模糊查询")
-    public List<TeacherResp> listActiveTeachers(@RequestParam(required = false) String name) {
-        return teacherService.listActiveTeachers(name);
+    @Operation(summary = "分页查询活跃教师列表", description = "查询 status=1 且 is_show=1 的教师，支持姓名模糊查询、按指定日期时间范围筛选和分页")
+    public R<Map<String, Object>> listActiveTeachers(@RequestParam(required = false) String name,
+                                                     @RequestParam(required = false) String startDate,
+                                                     @RequestParam(required = false) String startTimeFrom,
+                                                     @RequestParam(required = false) String startTimeTo,
+                                                     @RequestParam(defaultValue = "1") int page,
+                                                     @RequestParam(defaultValue = "10") int pageSize) {
+        return R.ok(teacherService.listActiveTeachersPage(name, startDate, startTimeFrom, startTimeTo, page, pageSize));
     }
 
     @SaIgnore

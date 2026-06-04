@@ -23,7 +23,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
+import top.continew.admin.education.mapper.FixedBookingMapper;
 import top.continew.admin.education.mapper.FixedMapper;
+import top.continew.admin.education.model.entity.FixedBookingDO;
 import top.continew.admin.education.model.entity.FixedDO;
 import top.continew.admin.education.model.query.FixedQuery;
 import top.continew.admin.education.model.req.FixedBatchReq;
@@ -34,8 +36,8 @@ import top.continew.admin.education.service.FixedBookingService;
 import top.continew.admin.education.service.FixedService;
 import top.continew.admin.education.service.TeacherService;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +51,7 @@ import java.util.stream.Collectors;
 public class FixedServiceImpl extends BaseServiceImpl<FixedMapper, FixedDO, FixedResp, FixedResp, FixedQuery, FixedReq> implements FixedService {
 
     private final FixedBookingService fixedBookingService;
+    private final FixedBookingMapper fixedBookingMapper;
     private final TeacherService teacherService;
 
     @Override
@@ -88,7 +91,55 @@ public class FixedServiceImpl extends BaseServiceImpl<FixedMapper, FixedDO, Fixe
         }
 
         List<FixedDO> fixedList = ((FixedMapper)baseMapper).selectByTeacherId(teacherId);
-        return fixedList.stream().map(this::toResp).collect(Collectors.toList());
+        if (fixedList.isEmpty()) {
+            return List.of();
+        }
+
+        // 批量加载：一次性获取该教师的所有预约数据，避免 N+1 查询
+        List<FixedBookingDO> allBookings = fixedBookingMapper.selectByTeacherId(teacherId);
+        Map<Long, List<FixedBookingDO>> bookingMap = allBookings.stream()
+            .collect(Collectors.groupingBy(FixedBookingDO::getFixedId));
+
+        // 一次性获取教师信息（头像、标签）
+        String teacherAvatar = null;
+        String teacherTags = null;
+        try {
+            top.continew.admin.education.model.entity.TeacherDO teacher = teacherService.getById(teacherId);
+            if (teacher != null) {
+                teacherAvatar = teacher.getAvatar();
+                teacherTags = teacher.getTags();
+            }
+        } catch (Exception ignored) {
+        }
+
+        final String finalAvatar = teacherAvatar;
+        final String finalTags = teacherTags;
+
+        return fixedList.stream().map(fixedDO -> {
+            FixedResp resp = new FixedResp();
+            resp.setId(fixedDO.getId());
+            resp.setTeacherId(fixedDO.getTeacherId());
+            resp.setTeacherName(fixedDO.getTeacherName());
+            resp.setTeacherAvatar(finalAvatar);
+            resp.setTeacherTags(finalTags);
+            resp.setWeekDay(fixedDO.getWeekDay());
+            resp.setStartTime(fixedDO.getStartTime());
+            resp.setDurationMinutes(fixedDO.getDurationMinutes());
+            resp.setMaxStudents(fixedDO.getMaxStudents());
+            resp.setStatus(fixedDO.getStatus());
+            resp.setCreateTime(fixedDO.getCreateTime());
+            resp.setUpdateTime(fixedDO.getUpdateTime());
+
+            List<FixedBookingDO> bookings = bookingMap.getOrDefault(fixedDO.getId(), List.of());
+            resp.setBookedCount(bookings.size());
+            resp.setStudentNames(bookings.stream()
+                .map(b -> b.getStudentName() != null ? b.getStudentName() : "未知学生")
+                .collect(Collectors.toList()));
+            resp.setStudentPhones(bookings.stream()
+                .map(b -> b.getStudentPhone() != null ? b.getStudentPhone() : "")
+                .collect(Collectors.toList()));
+            return resp;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -147,29 +198,73 @@ public class FixedServiceImpl extends BaseServiceImpl<FixedMapper, FixedDO, Fixe
     }
 
     @Override
-    public List<FixedResp> listForStudent(Long studentId) {
+    public List<FixedResp> listForStudent(Long studentId, Long teacherId) {
         if (studentId == null) {
             throw new RuntimeException("学生ID不能为空");
         }
+        if (teacherId == null) {
+            throw new RuntimeException("教师ID不能为空");
+        }
 
-        // 1. 获取所有固定课
-        List<FixedDO> allFixed = baseMapper.selectList(new LambdaQueryWrapper<FixedDO>().eq(FixedDO::getStatus, 1) // 只查询启用的固定课
+        // 1. 获取指定教师的启用固定课
+        List<FixedDO> allFixed = baseMapper.selectList(new LambdaQueryWrapper<FixedDO>()
+            .eq(FixedDO::getTeacherId, teacherId)
+            .eq(FixedDO::getStatus, 1)
             .orderBy(true, true, FixedDO::getWeekDay, FixedDO::getStartTime));
 
-        // 2. 获取该学生已预约的固定课ID列表
+        if (allFixed.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. 批量加载该教师所有预约数据（1次查询）
+        List<FixedBookingDO> allBookings = fixedBookingMapper.selectByTeacherId(teacherId);
+        Map<Long, List<FixedBookingDO>> bookingMap = allBookings.stream()
+            .collect(Collectors.groupingBy(FixedBookingDO::getFixedId));
+
+        // 3. 获取该学生已预约的固定课ID列表（1次查询）
         List<Long> bookedFixedIds = fixedBookingService.listByStudentId(studentId);
 
-        // 3. 转换为FixedResp并设置预约状态
+        // 4. 一次性获取教师扩展信息（1次查询）
+        String teacherAvatar = null;
+        String teacherTags = null;
+        try {
+            top.continew.admin.education.model.entity.TeacherDO teacher = teacherService.getById(teacherId);
+            if (teacher != null) {
+                teacherAvatar = teacher.getAvatar();
+                teacherTags = teacher.getTags();
+            }
+        } catch (Exception ignored) {
+        }
+        final String finalAvatar = teacherAvatar;
+        final String finalTags = teacherTags;
+
+        // 5. 内存映射，无额外DB查询
         return allFixed.stream().map(fixedDO -> {
-            FixedResp resp = toResp(fixedDO);
+            FixedResp resp = new FixedResp();
+            resp.setId(fixedDO.getId());
+            resp.setTeacherId(fixedDO.getTeacherId());
+            resp.setTeacherName(fixedDO.getTeacherName());
+            resp.setTeacherAvatar(finalAvatar);
+            resp.setTeacherTags(finalTags);
+            resp.setWeekDay(fixedDO.getWeekDay());
+            resp.setStartTime(fixedDO.getStartTime());
+            resp.setDurationMinutes(fixedDO.getDurationMinutes());
+            resp.setMaxStudents(fixedDO.getMaxStudents());
+            resp.setStatus(fixedDO.getStatus());
+            resp.setCreateTime(fixedDO.getCreateTime());
+            resp.setUpdateTime(fixedDO.getUpdateTime());
 
-            // 判断该固定课是否已被预约
-            boolean isBooked = resp.getBookedCount() > 0;
-            resp.setIsBooked(isBooked);
+            List<FixedBookingDO> bookings = bookingMap.getOrDefault(fixedDO.getId(), List.of());
+            resp.setBookedCount(bookings.size());
+            resp.setStudentNames(bookings.stream()
+                .map(b -> b.getStudentName() != null ? b.getStudentName() : "未知学生")
+                .collect(Collectors.toList()));
+            resp.setStudentPhones(bookings.stream()
+                .map(b -> b.getStudentPhone() != null ? b.getStudentPhone() : "")
+                .collect(Collectors.toList()));
 
-            // 判断是否是当前学生的预约
-            boolean isMyBooking = bookedFixedIds.contains(fixedDO.getId());
-            resp.setIsMyBooking(isMyBooking);
+            resp.setIsBooked(resp.getBookedCount() > 0);
+            resp.setIsMyBooking(bookedFixedIds.contains(fixedDO.getId()));
 
             return resp;
         }).collect(Collectors.toList());
@@ -187,6 +282,18 @@ public class FixedServiceImpl extends BaseServiceImpl<FixedMapper, FixedDO, Fixe
         resp.setId(fixedDO.getId());
         resp.setTeacherId(fixedDO.getTeacherId());
         resp.setTeacherName(fixedDO.getTeacherName());
+        // 补充教师扩展信息（头像、简介、标签）
+        if (fixedDO.getTeacherId() != null) {
+            try {
+                top.continew.admin.education.model.entity.TeacherDO teacher = teacherService.getById(fixedDO
+                    .getTeacherId());
+                if (teacher != null) {
+                    resp.setTeacherAvatar(teacher.getAvatar());
+                    resp.setTeacherTags(teacher.getTags());
+                }
+            } catch (Exception ignored) {
+            }
+        }
         resp.setWeekDay(fixedDO.getWeekDay());
         resp.setStartTime(fixedDO.getStartTime());
         resp.setDurationMinutes(fixedDO.getDurationMinutes());
@@ -252,7 +359,7 @@ public class FixedServiceImpl extends BaseServiceImpl<FixedMapper, FixedDO, Fixe
                     // 已有课程，跳过
                     continue;
                 }
-                
+
                 // 创建新的固定课
                 FixedDO fixed = new FixedDO();
                 fixed.setTeacherId(req.getTeacherId());
@@ -262,12 +369,12 @@ public class FixedServiceImpl extends BaseServiceImpl<FixedMapper, FixedDO, Fixe
                 fixed.setDurationMinutes(req.getDurationMinutes());
                 fixed.setMaxStudents(req.getMaxStudents());
                 fixed.setStatus(1);
-                
+
                 baseMapper.insert(fixed);
                 createdCount++;
             }
         }
-        
+
         return createdCount;
     }
 }

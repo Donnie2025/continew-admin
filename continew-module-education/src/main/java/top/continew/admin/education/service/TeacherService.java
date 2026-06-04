@@ -24,6 +24,7 @@ import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.model.entity.TeacherDO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 教师业务接口
@@ -40,6 +41,24 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @return 教师列表
      */
     List<TeacherResp> listActiveTeachers(String name);
+
+    /**
+     * 分页查询活跃教师列表（status=1 且 is_show=1）
+     *
+     * @param name          教师姓名（模糊查询，可选）
+     * @param startDate     指定日期筛选（格式YYYYMMDD，可选）
+     * @param startTimeFrom 时间范围起始（格式HH:mm，可选）
+     * @param startTimeTo   时间范围结束（格式HH:mm，可选）
+     * @param page          页码
+     * @param pageSize      每页条数
+     * @return 分页结果
+     */
+    Map<String, Object> listActiveTeachersPage(String name,
+                                               String startDate,
+                                               String startTimeFrom,
+                                               String startTimeTo,
+                                               int page,
+                                               int pageSize);
 
     /**
      * 根据手机号查询教师

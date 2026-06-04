@@ -56,6 +56,11 @@ public class UserContext implements Serializable {
     private Long deptId;
 
     /**
+     * 所属代理商编码
+     */
+    private String agentCode;
+
+    /**
      * 最后一次修改密码时间
      */
     private LocalDateTime pwdResetTime;

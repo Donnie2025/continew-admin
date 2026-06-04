@@ -1,6 +1,7 @@
 CREATE TABLE `edu_student` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(50) NOT NULL COMMENT '学生姓名',
+  `agent_code` varchar(50) DEFAULT NULL COMMENT '所属代理商编码（关联 edu_agent.code）',
   `gender` varchar(10) DEFAULT 'male' COMMENT '性别（male-男 female-女）',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号码',
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
@@ -90,8 +91,8 @@ CREATE TABLE `edu_booking` (
   `student_phone` varchar(20) NOT NULL COMMENT '学生手机号',
   `teacher_id` bigint(20) DEFAULT NULL COMMENT '教师ID',
   `teacher_name` varchar(50) DEFAULT NULL COMMENT '教师姓名',
-  `card_id` bigint(20) DEFAULT NULL COMMENT '预约会员卡ID',
-  `card_name` varchar(100) DEFAULT NULL COMMENT '预约会员卡名称',
+  `account_id` bigint(20) DEFAULT NULL COMMENT '扣费课时账户ID',
+  `card_id` bigint(20) DEFAULT NULL COMMENT '预约课包ID（快照）',
   `material_id` bigint(20) DEFAULT NULL COMMENT '预约教材ID',
   `material_name` varchar(100) DEFAULT NULL COMMENT '预约教材名字',
   `material_code` varchar(50) DEFAULT NULL COMMENT '预约教材编码',
@@ -108,8 +109,9 @@ CREATE TABLE `edu_booking` (
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_booking_slot` FOREIGN KEY (`slot_id`) REFERENCES `edu_slot` (`id`),
   CONSTRAINT `fk_booking_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
+  CONSTRAINT `fk_booking_account` FOREIGN KEY (`account_id`) REFERENCES `edu_account` (`id`),
   CONSTRAINT `fk_booking_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`),
-  CONSTRAINT `fk_booking_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `edu_material_lesson` (`id`),
+  CONSTRAINT `fk_booking_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `edu_material` (`id`),
   CONSTRAINT `fk_booking_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='预约表';
 
@@ -149,21 +151,45 @@ CREATE TABLE `edu_institution` (
    PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机构表';
 
+CREATE TABLE `edu_agent` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `code` varchar(50) NOT NULL COMMENT '机构编码（全表唯一）',
+  `name` varchar(100) NOT NULL COMMENT '机构名称',
+  `alias` varchar(100) DEFAULT NULL COMMENT '别名（内部系统标识）',
+  `invite_code` varchar(50) DEFAULT NULL COMMENT '邀请码',
+  `remark` varchar(1024) DEFAULT NULL COMMENT '备注',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) NOT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code` (`code`) COMMENT '机构编码唯一索引',
+  UNIQUE KEY `uk_invite_code` (`invite_code`) COMMENT '邀请码唯一索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='销售代理机构表';
+
 CREATE TABLE `edu_course` (
   `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `name` varchar(100) NOT NULL COMMENT '教室名称',
+  `agent_code` varchar(50) DEFAULT NULL COMMENT '所属代理机构编码',
   `main_teacher_id` bigint(20) DEFAULT NULL COMMENT '班主任ID',
   `main_teacher_uid` varchar(50) DEFAULT NULL COMMENT 'Classin班主任ID',
   `course_unique` varchar(32) NOT NULL COMMENT '机构课程唯一标识',
   `course_uid` bigint(20) DEFAULT NULL     COMMENT 'classin教室ID',
   `course_setting_id` bigint(20) DEFAULT NULL  COMMENT '教室设置ID',
   `status`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `is_show`        tinyint(1)   NOT NULL DEFAULT 1 COMMENT '是否展示（1：展示；0：不展示）',
   `institution_id` bigint(20) COMMENT '所属机构ID',
+  `material_id` bigint(20) DEFAULT NULL COMMENT '关联教材ID',
+  `material_name` varchar(200) DEFAULT NULL COMMENT '关联教材名称',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `create_user` bigint(20)   DEFAULT NULL                    COMMENT '创建人',
   `update_user` bigint(20)   DEFAULT NULL                COMMENT '修改人',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_agent_code` (`agent_code`),
+  CONSTRAINT `fk_course_agent` FOREIGN KEY (`agent_code`) REFERENCES `edu_agent` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='班级表';
 
 -- ----------------------------
@@ -177,6 +203,7 @@ CREATE TABLE `edu_lesson` (
   `class_uid` bigint COMMENT 'ClassIn 课堂ID',
   `unit_uid` bigint COMMENT '单元ID',
   `name` varchar(50) NOT NULL COMMENT '课堂活动名称',
+  `agent_code` varchar(50) DEFAULT NULL COMMENT '所属代理机构编码',
   `teacher_id` bigint NOT NULL COMMENT '主讲教师ID',
   `teacher_uid` bigint NOT NULL COMMENT '主讲教师UID',
   `teacher_name` varchar(100) NOT NULL COMMENT '主讲教师名称',
@@ -196,10 +223,13 @@ CREATE TABLE `edu_lesson` (
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_user` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `material_id` bigint(20) DEFAULT NULL COMMENT '关联教材ID',
+  `material_name` varchar(200) DEFAULT NULL COMMENT '关联教材名称',
+  `folder_id` varchar(100) DEFAULT NULL COMMENT '云盘目录ID',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
   KEY `idx_course_id` (`course_id`) COMMENT '课程ID索引',
-  KEY `idx_activity_id` (`activity_id`) COMMENT '活动ID索引',
+  KEY `idx_activity_uid` (`activity_uid`) COMMENT '活动ID索引',
   KEY `idx_start_time` (`start_time`) COMMENT '开始时间索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='ClassIn课堂表';
 
@@ -225,49 +255,38 @@ CREATE TABLE `classin_user` (
     CONSTRAINT `fk_classin_user_institution` FOREIGN KEY (`classin_institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Classin用户表';
 
--- 学生会员卡绑定表（学生持卡实例）
-CREATE TABLE `edu_stu_card` (
+-- 学生课时账户表
+CREATE TABLE `edu_account` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  `stu_id` bigint(20) NOT NULL COMMENT '学生ID',
-  `stu_name` varchar(50) COMMENT '学生姓名',
-  `card_id` bigint(20) NOT NULL COMMENT '会员卡ID',
-  `card_title` varchar(100) NOT NULL COMMENT '会员卡标题',
-  `card_type` varchar(10) NOT NULL COMMENT '会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）',
-  `remain_times` int DEFAULT 0 COMMENT '剩余次数（用于次卡）',
-  `remain_balance` decimal(10,2) DEFAULT 0 COMMENT '剩余余额（用于储蓄卡）',
-  `activate_date` date DEFAULT NULL COMMENT '激活日期',
-  `expire_date` date DEFAULT NULL COMMENT '到期日期',
-  `purchase_price` decimal(10,2) DEFAULT NULL COMMENT '购买价格',
-  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
-  `card_status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '卡状态（1：启用，学生端可见；0：禁用，学生端不可见，后台管理系统可见）',
+  `student_id` bigint(20) NOT NULL COMMENT '学生ID',
+  `student_name` varchar(50) DEFAULT NULL COMMENT '学生姓名（快照）',
+  `account_type` varchar(10) NOT NULL DEFAULT 'PAID'
+    COMMENT '账户类型（PAID:正常购买 GIFT:赠送课时 LEAVE:请假课时 FREEZE:冻结账户）',
+  `balance` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '当前课时余额',
+  `expire_date` date DEFAULT NULL COMMENT '到期日期（null 表示无限期）',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：正常；0：禁用）',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `create_user` bigint(20) NOT NULL COMMENT '创建人',
   `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
-  INDEX `idx_stu_id` (`stu_id`),
-  INDEX `idx_card_id` (`card_id`),
+  UNIQUE KEY `uk_student_account_type` (`student_id`, `account_type`),
   INDEX `idx_expire_date` (`expire_date`),
-  CONSTRAINT `fk_stu_card_student` FOREIGN KEY (`stu_id`) REFERENCES `edu_student` (`id`),
-  CONSTRAINT `fk_stu_card_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生会员卡绑定表（学生持卡实例）';
+  CONSTRAINT `fk_account_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='学生课时账户表';
 
 CREATE TABLE `edu_transaction` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  `stu_card_id` bigint(20) NOT NULL COMMENT '学生会员卡ID',
-  `stu_id` bigint(20) NOT NULL COMMENT '学生ID',
-  `stu_name` varchar(50) COMMENT '学生姓名',
-  `card_id` bigint(20) NOT NULL COMMENT '会员卡ID',
-  `card_title` varchar(100) COMMENT '会员卡标题',
-  `trans_type` varchar(32) NOT NULL COMMENT '交易类型（bind:首次绑卡, recharge:充值, consume:消费, refund:退款, expire:过期, activate:激活）',
-  `times_change` int DEFAULT 0 COMMENT '次数变动（正数为增加，负数为减少）',
-  `balance_change` decimal(10,2) DEFAULT 0 COMMENT '余额变动（正数为增加，负数为减少）',
-  `before_times` int DEFAULT 0 COMMENT '变动前次数',
-  `after_times` int DEFAULT 0 COMMENT '变动后次数',
-  `before_balance` decimal(10,2) DEFAULT 0 COMMENT '变动前余额',
-  `after_balance` decimal(10,2) DEFAULT 0 COMMENT '变动后余额',
-  `amount` decimal(10,2) DEFAULT 0 COMMENT '交易金额（实际收支金额）',
+  `account_id` bigint(20) NOT NULL COMMENT '学生课时账户ID',
+  `student_id` bigint(20) NOT NULL COMMENT '学生ID',
+  `student_name` varchar(50) DEFAULT NULL COMMENT '学生姓名（快照）',
+  `card_title` varchar(100) DEFAULT NULL COMMENT '购买的课包名称（快照）',
+  `trans_type` varchar(32) NOT NULL COMMENT '交易类型（bind:首次购买 recharge:续费充值 consume:消费扣课时 refund:退款 expire:到期清零 adjust:人工调整）',
+  `direction` char(1) NOT NULL DEFAULT 'C' COMMENT '借贷方向（C=Credit入账/增加余额, D=Debit出账/减少余额）',
+  `amount` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '课时变动数量（始终为正数，direction 标明方向）',
+  `balance` decimal(10,2) NOT NULL DEFAULT 0 COMMENT '交易后课时余额快照',
+  `cash_amount` decimal(10,2) DEFAULT NULL COMMENT '实际现金金额（购买/退款时）',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -276,25 +295,24 @@ CREATE TABLE `edu_transaction` (
   `operator_id` bigint(20) DEFAULT NULL COMMENT '操作人ID',
   `operator_name` varchar(50) DEFAULT NULL COMMENT '操作人姓名',
   PRIMARY KEY (`id`),
-  INDEX `idx_stu_card_id` (`stu_card_id`),
-  INDEX `idx_stu_id` (`stu_id`),
+  INDEX `idx_account_id` (`account_id`),
+  INDEX `idx_student_id` (`student_id`),
   INDEX `idx_create_time` (`create_time`),
-  CONSTRAINT `fk_transaction_stu_card` FOREIGN KEY (`stu_card_id`) REFERENCES `edu_stu_card` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='会员卡交易流水表';
+  CONSTRAINT `fk_transaction_account` FOREIGN KEY (`account_id`) REFERENCES `edu_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='课时账户交易流水表';
 
 -- 订单表
 CREATE TABLE `edu_order` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `order_no` varchar(64) NOT NULL COMMENT '订单编号',
-  `stu_id` bigint(20) NOT NULL COMMENT '学生ID',
-  `stu_name` varchar(50) COMMENT '学生姓名',
-  `card_id` bigint(20) NOT NULL COMMENT '会员卡ID',
-  `card_title` varchar(100) NOT NULL COMMENT '会员卡标题',
-  `card_type` varchar(10) NOT NULL COMMENT '会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）',
+  `student_id` bigint(20) NOT NULL COMMENT '学生ID',
+  `student_name` varchar(50) DEFAULT NULL COMMENT '学生姓名（快照）',
+  `card_id` bigint(20) NOT NULL COMMENT '课包ID',
+  `card_title` varchar(100) NOT NULL COMMENT '课包名称（快照）',
   `order_price` decimal(10,2) NOT NULL COMMENT '订单金额',
   `payment_type` varchar(20) NOT NULL COMMENT '支付方式（wechat:微信支付, alipay:支付宝）',
   `order_status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT '订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）',
-  `stu_card_id` bigint(20) DEFAULT NULL COMMENT '关联的学生会员卡ID（下单时创建空白卡）',
+  `account_id` bigint(20) DEFAULT NULL COMMENT '关联的课时账户ID（完成后充入余额）',
   `payment_time` datetime DEFAULT NULL COMMENT '支付时间',
   `confirm_time` datetime DEFAULT NULL COMMENT '确认时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
@@ -305,15 +323,15 @@ CREATE TABLE `edu_order` (
   `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_no` (`order_no`),
-  INDEX `idx_stu_id` (`stu_id`),
+  INDEX `idx_student_id` (`student_id`),
   INDEX `idx_card_id` (`card_id`),
-  INDEX `idx_stu_card_id` (`stu_card_id`),
+  INDEX `idx_account_id` (`account_id`),
   INDEX `idx_order_status` (`order_status`),
   INDEX `idx_create_time` (`create_time`),
-  CONSTRAINT `fk_order_student` FOREIGN KEY (`stu_id`) REFERENCES `edu_student` (`id`),
+  CONSTRAINT `fk_order_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`),
   CONSTRAINT `fk_order_card` FOREIGN KEY (`card_id`) REFERENCES `edu_card` (`id`),
-  CONSTRAINT `fk_order_stu_card` FOREIGN KEY (`stu_card_id`) REFERENCES `edu_stu_card` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='会员卡订单表';
+  CONSTRAINT `fk_order_account` FOREIGN KEY (`account_id`) REFERENCES `edu_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='课包订单表';
 
 CREATE TABLE `edu_salary` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',

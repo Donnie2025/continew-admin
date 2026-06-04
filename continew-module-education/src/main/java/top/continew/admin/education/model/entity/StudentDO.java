@@ -44,6 +44,11 @@ public class StudentDO extends BaseDO {
     private String name;
 
     /**
+     * 所属代理商编码
+     */
+    private String agentCode;
+
+    /**
      * 性别（male-男 female-女）
      */
     private String gender;
@@ -62,11 +67,6 @@ public class StudentDO extends BaseDO {
      * 注册时间
      */
     private LocalDateTime registerTime;
-
-    /**
-     * 所属代理的ID
-     */
-    private Long agentId;
 
     /**
      * 头像地址

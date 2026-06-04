@@ -47,6 +47,13 @@ public class StudentReq implements Serializable {
     private String name;
 
     /**
+     * 所属代理商编码
+     */
+    @Schema(description = "所属代理商编码")
+    @Length(max = 50, message = "代理商编码长度不能超过 {max} 个字符")
+    private String agentCode;
+
+    /**
      * 性别（male-男 female-女）
      */
     @Schema(description = "性别（male-男 female-女）")
@@ -66,12 +73,6 @@ public class StudentReq implements Serializable {
     @Schema(description = "邮箱")
     @Length(max = 100, message = "邮箱长度不能超过 {max} 个字符")
     private String email;
-
-    /**
-     * 所属代理的ID
-     */
-    @Schema(description = "所属代理的ID")
-    private Long agentId;
 
     /**
      * 头像文件

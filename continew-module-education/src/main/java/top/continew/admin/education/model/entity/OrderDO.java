@@ -47,12 +47,12 @@ public class OrderDO extends BaseDO {
     /**
      * 学生ID
      */
-    private Long stuId;
+    private Long studentId;
 
     /**
-     * 学生姓名
+     * 学生姓名（快照）
      */
-    private String stuName;
+    private String studentName;
 
     /**
      * 会员卡ID
@@ -63,11 +63,6 @@ public class OrderDO extends BaseDO {
      * 会员卡标题
      */
     private String cardTitle;
-
-    /**
-     * 会员卡类型（TL:次卡有限期 TU:次卡无限期 BL:储蓄卡有限期 BU:储蓄卡无限期）
-     */
-    private String cardType;
 
     /**
      * 订单金额
@@ -85,9 +80,9 @@ public class OrderDO extends BaseDO {
     private String orderStatus;
 
     /**
-     * 关联的学生会员卡ID（下单时创建空白卡）
+     * 关联的课时账户ID
      */
-    private Long stuCardId;
+    private Long accountId;
 
     /**
      * 支付时间

@@ -84,7 +84,7 @@ public class MaterialLessonServiceImpl extends BaseServiceImpl<MaterialLessonMap
         if (req.getMaterialName() == null && req.getMaterialId() != null) {
             MaterialDO material = materialMapper.selectById(req.getMaterialId());
             if (material != null) {
-                String materialName = material.getName() + " " + material.getLevel();
+                String materialName = material.getName();
                 req.setMaterialName(materialName);
             }
         }
@@ -154,7 +154,7 @@ public class MaterialLessonServiceImpl extends BaseServiceImpl<MaterialLessonMap
             List<FeishuService.FeishuFile> feishuFiles = feishuService.getFolderFiles(folderId);
             resp.setTotalCount(feishuFiles.size());
 
-            String materialName = material.getName() + " " + material.getLevel();
+            String materialName = material.getName();
 
             // 处理每个文件
             for (FeishuService.FeishuFile feishuFile : feishuFiles) {

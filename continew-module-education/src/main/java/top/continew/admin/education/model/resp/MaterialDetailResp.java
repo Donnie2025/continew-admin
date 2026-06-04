@@ -42,46 +42,67 @@ public class MaterialDetailResp extends BaseDetailResp {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 教材编码
+     * 父节点ID（0=根节点）
      */
-    @Schema(description = "教材编码")
-    @ExcelProperty(value = "教材编码")
-    private String code;
+    @Schema(description = "父节点ID（0=根节点）")
+    @ExcelProperty(value = "父节点ID")
+    private Long pid;
 
     /**
-     * 教材名字
+     * 节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）
      */
-    @Schema(description = "教材名字")
-    @ExcelProperty(value = "教材名字")
+    @Schema(description = "节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）")
+    @ExcelProperty(value = "节点类型")
+    private String type;
+
+    /**
+     * 节点名称
+     */
+    @Schema(description = "节点名称")
+    @ExcelProperty(value = "节点名称")
     private String name;
 
     /**
-     * 级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）
+     * 编码（BOOK/LEVEL层使用）
      */
-    @Schema(description = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）")
-    @ExcelProperty(value = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）")
-    private String level;
+    @Schema(description = "编码（BOOK/LEVEL层使用）")
+    @ExcelProperty(value = "编码")
+    private String code;
 
     /**
-     * 分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）
+     * 封面图片（BOOK层使用）
      */
-    @Schema(description = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）")
-    @ExcelProperty(value = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）")
-    private String category;
-
-    /**
-     * 封面图片
-     */
-    @Schema(description = "封面图片")
+    @Schema(description = "封面图片（BOOK层使用）")
     @ExcelProperty(value = "封面图片")
     private String coverImg;
 
     /**
-     * 教材描述
+     * 描述
      */
-    @Schema(description = "教材描述")
-    @ExcelProperty(value = "教材描述")
-    private String desc;
+    @Schema(description = "描述")
+    @ExcelProperty(value = "描述")
+    private String description;
+
+    /**
+     * 课节资源链接（LESSON层使用）
+     */
+    @Schema(description = "课节资源链接（LESSON层使用）")
+    @ExcelProperty(value = "课节链接")
+    private String lessonUrl;
+
+    /**
+     * ClassIn云盘ID
+     */
+    @Schema(description = "ClassIn云盘ID")
+    @ExcelProperty(value = "ClassIn云盘ID")
+    private String cloudId;
+
+    /**
+     * ClassIn云盘名称
+     */
+    @Schema(description = "ClassIn云盘名称")
+    @ExcelProperty(value = "ClassIn云盘名称")
+    private String cloudName;
 
     /**
      * 是否前端展示（1:展示 0:不展示）

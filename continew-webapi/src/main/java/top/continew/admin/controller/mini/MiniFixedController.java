@@ -102,9 +102,10 @@ public class MiniFixedController {
         return R.ok(isBooked);
     }
 
-    @Operation(summary = "学生查询所有固定课（含预约状态）", description = "学生查询所有可用的固定课，包含每个固定课的预约状态")
+    @Operation(summary = "学生查询指定教师的固定课（含预约状态）", description = "学生查询指定教师的可用固定课，包含预约状态")
     @GetMapping("/student/{studentId}")
-    public R<List<FixedResp>> listForStudent(@Parameter(description = "学生ID", example = "1") @PathVariable @NotNull Long studentId) {
-        return R.ok(fixedService.listForStudent(studentId));
+    public R<List<FixedResp>> listForStudent(@Parameter(description = "学生ID", example = "1") @PathVariable @NotNull Long studentId,
+                                             @Parameter(description = "教师ID", example = "1") @RequestParam @NotNull Long teacherId) {
+        return R.ok(fixedService.listForStudent(studentId, teacherId));
     }
 }

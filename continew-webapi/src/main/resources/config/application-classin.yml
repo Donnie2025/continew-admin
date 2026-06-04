@@ -17,6 +17,16 @@ classin:
     addCourseStudent: /partner/api/course.api.php?action=addCourseStudent
     addCourseStudentMultiple: /partner/api/course.api.php?action=addCourseStudentMultiple
     removeCourseStudent: /partner/api/course.api.php?action=delCourseStudent
+    # 云盘相关接口
+    cloudGetTopFolderId: /partner/api/cloud.api.php?action=getTopFolderId
+    cloudGetList: /partner/api/cloud.api.php?action=getCloudList
+    cloudCreateFolder: /partner/api/cloud.api.php?action=createFolder
+    cloudDelFolder: /partner/api/cloud.api.php?action=delFolder
+    cloudDelFile: /partner/api/cloud.api.php?action=delFile
+    cloudRenameFile: /partner/api/cloud.api.php?action=renameFile
+    cloudRenameFolder: /partner/api/cloud.api.php?action=renameFolder
+    cloudUploadFile: /partner/api/cloud.api.php?action=uploadFile
+    cloudGetFolderList: /partner/api/cloud.api.php?action=getFolderList
   
   # ========================================
   # 注意：AppId 和 AppSecret 已迁移至数据库 edu_institution 表

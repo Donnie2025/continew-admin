@@ -53,10 +53,10 @@ public class BookingReq implements Serializable {
     private Long studentId;
 
     /**
-     * 学生会员卡ID
+     * 课时账户ID
      */
-    @Schema(description = "学生会员卡ID")
-    private Long stuCardId;
+    @Schema(description = "课时账户ID")
+    private Long accountId;
 
     /**
      * 教师ID
@@ -124,6 +124,12 @@ public class BookingReq implements Serializable {
      */
     @Schema(description = "教材ID")
     private Long materialId;
+
+    /**
+     * 课节ID（关联edu_material_lesson表）
+     */
+    @Schema(description = "课节ID")
+    private Long lessonId;
 
     /**
      * 预约教材名字

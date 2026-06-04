@@ -16,6 +16,7 @@
 
 package top.continew.admin.education.service;
 
+import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.SalaryQuery;
 import top.continew.admin.education.model.req.SalaryBatchImportReq;
@@ -23,6 +24,7 @@ import top.continew.admin.education.model.req.SalaryBatchSettleReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
+import top.continew.admin.education.model.resp.SalaryPageResp;
 import top.continew.admin.education.model.resp.SalaryResp;
 
 /**
@@ -32,6 +34,15 @@ import top.continew.admin.education.model.resp.SalaryResp;
  * @since 2025/05/13 22:43
  */
 public interface SalaryService extends BaseService<SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> {
+
+    /**
+     * 分页查询（含汇总数据）
+     *
+     * @param query     查询条件
+     * @param pageQuery 分页条件
+     * @return 分页信息（含总金额和总课程数）
+     */
+    SalaryPageResp pageWithSummary(SalaryQuery query, PageQuery pageQuery);
 
     /**
      * 批量导入教师课程数量

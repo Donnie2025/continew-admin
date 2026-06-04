@@ -112,4 +112,14 @@ public enum LevelEnum implements BaseEnum<String> {
 
     private final String value;
     private final String description;
+
+    @Override
+    public String getValue() {
+        return value;
+    }
+
+    @Override
+    public String getDescription() {
+        return description;
+    }
 }

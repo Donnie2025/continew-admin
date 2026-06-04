@@ -25,31 +25,28 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.helper.ClassinHelper;
-import top.continew.admin.education.model.entity.ClassinUserDO;
-import top.continew.admin.education.model.entity.InstitutionDO;
-import top.continew.admin.education.model.entity.TeacherDO;
-import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
-import top.continew.admin.education.service.CourseTeacherService;
-import top.continew.admin.education.service.CourseStudentService;
-import top.continew.admin.education.service.TeacherService;
-import top.continew.starter.core.validation.CheckUtils;
-import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.CourseMapper;
 import top.continew.admin.education.mapper.InstitutionMapper;
+import top.continew.admin.education.mapper.TeacherMapper;
+import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.entity.CourseDO;
+import top.continew.admin.education.model.entity.InstitutionDO;
+import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.query.CourseQuery;
 import top.continew.admin.education.model.req.CourseReq;
+import top.continew.admin.education.model.req.classin.ClassinCourseAddReq;
 import top.continew.admin.education.model.resp.CourseDetailResp;
 import top.continew.admin.education.model.resp.CourseResp;
-import top.continew.admin.education.model.resp.CourseTeacherResp;
-import top.continew.admin.education.model.resp.CourseStudentResp;
 import top.continew.admin.education.service.CourseService;
+import top.continew.admin.education.service.CourseStudentService;
+import top.continew.admin.education.service.CourseTeacherService;
+import top.continew.admin.education.service.TeacherService;
+import top.continew.starter.core.validation.CheckUtils;
 import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
-import top.continew.admin.education.mapper.TeacherMapper;
-import java.util.ArrayList;
-import java.util.UUID;
-import java.util.List;
+import top.continew.starter.extension.crud.service.BaseServiceImpl;
+
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -150,7 +147,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 ClassinCourseAddReq classinReq = new ClassinCourseAddReq();
                 classinReq.setCourseName(req.getName());
                 classinReq.setMainTeacherUid(mainTeacherUid);
-                
+
                 // 只有当courseSettingId不为null时才设置，避免传入不属于机构的设置ID
                 if (req.getCourseSettingId() != null) {
                     classinReq.setClassroomSettingId(req.getCourseSettingId());
@@ -158,7 +155,7 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 } else {
                     log.info("课程无教室设置ID，跳过设置");
                 }
-                
+
                 classinClient.editCourse(classinReq, oldCourse.getCourseUid());
                 log.info("同步课程信息到ClassIn成功，课程ID：{}", id);
             } catch (Exception e) {
@@ -192,13 +189,13 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 .map(CourseResp::getId)
                 .collect(java.util.stream.Collectors.toList());
 
-            // 2.2 批量查询教师和学生列表
-            java.util.Map<Long, List<CourseTeacherResp>> teachersMap = new java.util.HashMap<>();
-            java.util.Map<Long, List<CourseStudentResp>> studentsMap = new java.util.HashMap<>();
-            for (Long courseId : courseIds) {
-                teachersMap.put(courseId, courseTeacherService.listTeachersByCourseId(courseId));
-                studentsMap.put(courseId, courseStudentService.listStudentsByCourseId(courseId));
-            }
+            // 2.2 批量查询教师和学生数量及列表（优化：避免N+1查询问题）
+            java.util.Map<Long, Integer> teacherCountMap = courseTeacherService.countTeachersByCourseIds(courseIds);
+            java.util.Map<Long, Integer> studentCountMap = courseStudentService.countStudentsByCourseIds(courseIds);
+            java.util.Map<Long, java.util.List<top.continew.admin.education.model.resp.CourseTeacherResp>> teacherListMap = courseTeacherService
+                .listTeachersByCourseIds(courseIds);
+            java.util.Map<Long, java.util.List<top.continew.admin.education.model.resp.CourseStudentResp>> studentListMap = courseStudentService
+                .listStudentsByCourseIds(courseIds);
 
             // 2.3 收集所有班主任ID
             List<Long> mainTeacherIds = records.stream()
@@ -238,13 +235,13 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
 
             // 2.7 填充所有信息
             for (CourseResp record : records) {
+                // 填充数量统计（使用批量查询结果）
+                record.setTeacherCount(teacherCountMap.getOrDefault(record.getId(), 0));
+                record.setStudentCount(studentCountMap.getOrDefault(record.getId(), 0));
+
                 // 填充教师和学生列表
-                List<CourseTeacherResp> teachers = teachersMap.getOrDefault(record.getId(), java.util.Collections.emptyList());
-                List<CourseStudentResp> students = studentsMap.getOrDefault(record.getId(), java.util.Collections.emptyList());
-                record.setTeachers(teachers);
-                record.setStudents(students);
-                record.setTeacherCount(teachers.size());
-                record.setStudentCount(students.size());
+                record.setTeachers(teacherListMap.get(record.getId()));
+                record.setStudents(studentListMap.get(record.getId()));
 
                 // 填充班主任姓名
                 if (record.getMainTeacherId() != null) {
@@ -391,5 +388,86 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         }
 
         return resp;
+    }
+
+    @Override
+    public List<CourseResp> listVisibleCoursesByIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 查询符合条件的课程：status=1, is_show=1, 且在指定的课程列表中
+        LambdaQueryWrapper<CourseDO> wrapper = Wrappers.lambdaQuery(CourseDO.class)
+            .in(CourseDO::getId, courseIds)
+            .eq(CourseDO::getStatus, 1)        // 只查询启用状态的课程
+            .eq(CourseDO::getIsShow, true)     // 只查询显示的课程
+            .orderByDesc(CourseDO::getCreateTime); // 按创建时间倒序
+
+        List<CourseDO> courses = baseMapper.selectList(wrapper);
+        if (courses.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 转换为响应对象并填充相关信息
+        List<CourseResp> respList = courses.stream()
+            .map(course -> BeanUtil.copyProperties(course, CourseResp.class))
+            .collect(Collectors.toList());
+
+        // 批量填充相关信息（班主任姓名、机构名称、统计数据）
+        List<Long> visibleCourseIds = respList.stream().map(CourseResp::getId).collect(Collectors.toList());
+
+        // 批量统计教师和学生数量
+        Map<Long, Integer> teacherCountMap = courseTeacherService.countTeachersByCourseIds(visibleCourseIds);
+        Map<Long, Integer> studentCountMap = courseStudentService.countStudentsByCourseIds(visibleCourseIds);
+
+        // 收集所有班主任ID和机构ID
+        List<Long> teacherIds = respList.stream()
+            .map(CourseResp::getMainTeacherId)
+            .filter(id -> id != null)
+            .distinct()
+            .collect(Collectors.toList());
+
+        List<Long> institutionIds = respList.stream()
+            .map(CourseResp::getInstitutionId)
+            .filter(id -> id != null)
+            .distinct()
+            .collect(Collectors.toList());
+
+        // 批量查询教师和机构信息
+        Map<Long, String> teacherNameMap = new HashMap<>();
+        if (!teacherIds.isEmpty()) {
+            LambdaQueryWrapper<TeacherDO> teacherWrapper = Wrappers.lambdaQuery(TeacherDO.class)
+                .in(TeacherDO::getId, teacherIds);
+            List<TeacherDO> teachers = teacherMapper.selectList(teacherWrapper);
+            teacherNameMap = teachers.stream().collect(Collectors.toMap(TeacherDO::getId, TeacherDO::getName));
+        }
+
+        Map<Long, String> institutionNameMap = new HashMap<>();
+        if (!institutionIds.isEmpty()) {
+            LambdaQueryWrapper<InstitutionDO> institutionWrapper = Wrappers.lambdaQuery(InstitutionDO.class)
+                .in(InstitutionDO::getId, institutionIds);
+            List<InstitutionDO> institutions = institutionMapper.selectList(institutionWrapper);
+            institutionNameMap = institutions.stream()
+                .collect(Collectors.toMap(InstitutionDO::getId, InstitutionDO::getName));
+        }
+
+        // 填充所有信息
+        for (CourseResp resp : respList) {
+            // 填充数量统计
+            resp.setTeacherCount(teacherCountMap.getOrDefault(resp.getId(), 0));
+            resp.setStudentCount(studentCountMap.getOrDefault(resp.getId(), 0));
+
+            // 填充班主任姓名
+            if (resp.getMainTeacherId() != null) {
+                resp.setMainTeacherName(teacherNameMap.get(resp.getMainTeacherId()));
+            }
+
+            // 填充机构名称
+            if (resp.getInstitutionId() != null) {
+                resp.setInstitutionName(institutionNameMap.get(resp.getInstitutionId()));
+            }
+        }
+
+        return respList;
     }
 }

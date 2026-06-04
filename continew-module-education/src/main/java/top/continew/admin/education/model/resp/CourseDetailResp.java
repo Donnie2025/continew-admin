@@ -107,4 +107,11 @@ public class CourseDetailResp extends BaseDetailResp {
      */
     @Schema(description = "班级学生列表")
     private java.util.List<CourseStudentResp> students;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    @ExcelProperty(value = "备注")
+    private String remark;
 }

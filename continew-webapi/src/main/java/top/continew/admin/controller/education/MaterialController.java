@@ -32,6 +32,7 @@ import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.MaterialQuery;
 import top.continew.admin.education.model.req.MaterialReq;
 import top.continew.admin.education.model.req.MaterialSortReq;
+import top.continew.admin.education.model.req.SyncCloudFoldersReq;
 import top.continew.admin.education.model.resp.MaterialDetailResp;
 import top.continew.admin.education.model.resp.MaterialResp;
 import top.continew.admin.education.model.resp.MaterialStatisticsResp;
@@ -39,6 +40,7 @@ import top.continew.admin.education.service.MaterialService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 /**
@@ -54,6 +56,15 @@ import java.util.List;
 @CrudRequestMapping(value = "/education/material", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
 public class MaterialController extends BaseController<MaterialService, MaterialResp, MaterialDetailResp, MaterialQuery, MaterialReq> {
+
+    /**
+     * 获取全量教材列表（不分页，用于构建树结构）
+     */
+    @Operation(summary = "获取全量教材列表（不分页）", description = "获取全量教材数据，用于构建树形结构")
+    @GetMapping("/list-all")
+    public R<List<MaterialResp>> listAll() {
+        return R.ok(baseService.listAll());
+    }
 
     /**
      * 根据分类获取教材列表
@@ -85,5 +96,25 @@ public class MaterialController extends BaseController<MaterialService, Material
         }
         baseService.batchUpdateSort(sortList);
         return R.ok();
+    }
+
+    /**
+     * 同步云盘文件夹列表到教材表
+     */
+    @Operation(summary = "同步云盘文件夹到教材表", description = "将云盘文件夹列表批量写入edu_material，支持跳过已有cloud_id")
+    @PostMapping("/sync-cloud-folders")
+    public R<Integer> syncCloudFolders(@RequestBody @Valid SyncCloudFoldersReq req) {
+        int count = baseService.syncCloudFolders(req);
+        return R.ok(count);
+    }
+
+    /**
+     * 从ClassIn云盘同步数据到数据库
+     */
+    @Operation(summary = "从ClassIn云盘同步数据到数据库", description = "根据cloudId从ClassIn拉取最新名称，更新edu_material的cloudName字段")
+    @PostMapping("/sync-cloud-data")
+    public R<Integer> syncCloudData(@RequestBody @NotEmpty List<Long> ids) {
+        int count = baseService.syncCloudData(ids);
+        return R.ok(count);
     }
 }

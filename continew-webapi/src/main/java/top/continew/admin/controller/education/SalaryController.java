@@ -20,8 +20,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.SalaryQuery;
@@ -31,11 +33,14 @@ import top.continew.admin.education.model.req.SalaryInitializeReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
+import top.continew.admin.education.model.resp.SalaryPageResp;
 import top.continew.admin.education.model.resp.SalaryResp;
 import top.continew.admin.education.service.SalaryJobService;
 import top.continew.admin.education.service.SalaryService;
+import top.continew.starter.extension.crud.annotation.CrudApi;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
+import top.continew.starter.extension.crud.model.query.PageQuery;
 import top.continew.starter.web.model.R;
 
 /**
@@ -53,6 +58,14 @@ import top.continew.starter.web.model.R;
 public class SalaryController extends BaseController<SalaryService, SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> {
 
     private final SalaryJobService salaryJobService;
+
+    @CrudApi(Api.PAGE)
+    @Operation(summary = "分页查询列表", description = "分页查询列表（含汇总数据）")
+    @ResponseBody
+    @GetMapping
+    public SalaryPageResp page(@Validated SalaryQuery query, @Validated PageQuery pageQuery) {
+        return baseService.pageWithSummary(query, pageQuery);
+    }
 
     /**
      * 生成工资流水

@@ -241,6 +241,56 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         return countMap;
     }
 
+    @Override
+    public Map<Long, List<CourseTeacherResp>> listTeachersByCourseIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        LambdaQueryWrapper<CourseTeacherDO> wrapper = Wrappers.lambdaQuery(CourseTeacherDO.class)
+            .in(CourseTeacherDO::getCourseId, courseIds)
+            .orderByDesc(CourseTeacherDO::getCreateTime);
+        List<CourseTeacherDO> list = courseTeacherMapper.selectList(wrapper);
+
+        if (list.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> teacherIds = list.stream()
+            .map(CourseTeacherDO::getTeacherId)
+            .distinct()
+            .collect(Collectors.toList());
+        LambdaQueryWrapper<TeacherDO> teacherWrapper = Wrappers.lambdaQuery(TeacherDO.class)
+            .in(TeacherDO::getId, teacherIds);
+        Map<Long, TeacherDO> teacherMap = teacherMapper.selectList(teacherWrapper)
+            .stream()
+            .collect(Collectors.toMap(TeacherDO::getId, t -> t));
+
+        Map<Long, List<CourseTeacherResp>> resultMap = new java.util.HashMap<>();
+        for (CourseTeacherDO ct : list) {
+            CourseTeacherResp resp = BeanUtil.copyProperties(ct, CourseTeacherResp.class);
+            TeacherDO teacher = teacherMap.get(ct.getTeacherId());
+            if (teacher != null) {
+                resp.setTeacherName(teacher.getName());
+                resp.setTeacherPhone(teacher.getPhone());
+                resp.setTeacherEmail(teacher.getEmail());
+            }
+            resultMap.computeIfAbsent(ct.getCourseId(), k -> new ArrayList<>()).add(resp);
+        }
+        return resultMap;
+    }
+
+    @Override
+    public List<Long> listCourseIdsByTeacherId(Long teacherId) {
+        LambdaQueryWrapper<CourseTeacherDO> wrapper = Wrappers.lambdaQuery(CourseTeacherDO.class)
+            .eq(CourseTeacherDO::getTeacherId, teacherId)
+            .select(CourseTeacherDO::getCourseId); // 只查询courseId字段，提升性能
+
+        List<CourseTeacherDO> courseTeachers = courseTeacherMapper.selectList(wrapper);
+
+        return courseTeachers.stream().map(CourseTeacherDO::getCourseId).distinct().collect(Collectors.toList());
+    }
+
     /**
      * 将教师添加到ClassIn课程中
      *

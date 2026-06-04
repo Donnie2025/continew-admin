@@ -30,39 +30,39 @@ import lombok.RequiredArgsConstructor;
 public enum TransactionTypeEnum {
 
     /**
-     * 充值
+     * 首次购买（Credit）
      */
-    CREDIT("credit", "充值"),
+    BIND("bind", "首次购买"),
 
     /**
-     * 扣费
+     * 续费充値（Credit）
      */
-    DEBIT("debit", "扣费"),
+    RECHARGE("recharge", "续费充値"),
 
     /**
-     * 冻结
+     * 上课消费扣减课时（Debit）
      */
-    FREEZE("freeze", "冻结"),
+    CONSUME("consume", "上课消费"),
 
     /**
-     * 激活
+     * 退款退课时（Credit）
      */
-    ACTIVATE("activate", "激活"),
+    REFUND("refund", "退款退课时"),
 
     /**
-     * 取消约课
+     * 到期清零（Debit）
      */
-    CANCEL("cancel", "取消约课"),
+    EXPIRE("expire", "到期清零"),
 
     /**
-     * 首次绑卡
+     * 人工调整（Credit/Debit）
      */
-    BIND("bind", "首次绑卡"),
+    ADJUST("adjust", "人工调整"),
 
     /**
-     * 约课扣费
+     * 取消预约退还课时（Credit）
      */
-    BOOK_DEBIT("book_debit", "约课扣费");
+    CANCEL("cancel", "取消预约");
 
     /**
      * 类型编码

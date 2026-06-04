@@ -24,14 +24,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import top.continew.starter.core.exception.BusinessException;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+
 import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.constant.ClassinConstants;
 import top.continew.admin.education.mapper.CourseMapper;
 import top.continew.admin.education.mapper.LessonMapper;
+import top.continew.admin.education.mapper.MaterialMapper;
 import top.continew.admin.education.mapper.TeacherMapper;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.model.entity.CourseDO;
 import top.continew.admin.education.model.entity.LessonDO;
+import top.continew.admin.education.model.entity.MaterialDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.query.LessonQuery;
 import top.continew.admin.education.model.req.LessonReq;
@@ -68,11 +77,13 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     private final ClassinUserService classinUserService;
     private final CourseMapper courseMapper;
     private final TeacherMapper teacherMapper;
+    private final MaterialMapper materialMapper;
     private final top.continew.admin.education.helper.ClassinHelper classinHelper;
 
     /**
      * 重写创建方法，增加对接ClassIn创建教室功能
      */
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(LessonReq req) {
@@ -97,19 +108,20 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         // 3. 获取或自动创建教师的ClassIn用户信息
         ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserTypeAndInstitution(req
             .getTeacherId(), ClassinConstants.USER_TYPE_TEACHER, institutionId);
-        
+
         // 如果教师在该机构下没有ClassIn账号，自动创建
         if (classinUser == null || classinUser.getClassinUid() == null) {
             log.info("教师[{}]在机构[{}]下没有ClassIn账号，开始自动创建", teacher.getName(), institutionId);
             classinUser = classinHelper.registerTeacherIfAbsent(req.getTeacherId(), teacher, institutionId);
-            
+
             // 如果自动创建失败，抛出异常
             if (classinUser == null || classinUser.getClassinUid() == null) {
                 throw new BusinessException("教师[" + teacher.getName() + "]的ClassIn账号自动创建失败，请检查教师的手机号或邮箱是否填写");
             }
-            log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUser.getClassinUid());
+            log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUser
+                .getClassinUid());
         }
-        
+
         Long teacherClassinUid = Long.parseLong(classinUser.getClassinUid());
 
         // 4. 先创建ClassIn单元（如果不存在）
@@ -185,19 +197,20 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         // 4. 获取或自动创建教师的ClassIn用户信息
         ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserTypeAndInstitution(req
             .getTeacherId(), ClassinConstants.USER_TYPE_TEACHER, institutionId);
-        
+
         // 如果教师在该机构下没有ClassIn账号，自动创建
         if (classinUser == null || classinUser.getClassinUid() == null) {
             log.info("教师[{}]在机构[{}]下没有ClassIn账号，开始自动创建", teacher.getName(), institutionId);
             classinUser = classinHelper.registerTeacherIfAbsent(req.getTeacherId(), teacher, institutionId);
-            
+
             // 如果自动创建失败，抛出异常
             if (classinUser == null || classinUser.getClassinUid() == null) {
                 throw new BusinessException("教师[" + teacher.getName() + "]的ClassIn账号自动创建失败，请检查教师的手机号或邮箱是否填写");
             }
-            log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUser.getClassinUid());
+            log.info("教师[{}]在机构[{}]下ClassIn账号自动创建成功，ClassIn UID: {}", teacher.getName(), institutionId, classinUser
+                .getClassinUid());
         }
-        
+
         Long teacherClassinUid = Long.parseLong(classinUser.getClassinUid());
 
         // 5. 同步更新到ClassIn（如果课堂已关联ClassIn活动）
@@ -309,6 +322,19 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         // 根据 startTime 和 duration 计算 endTime
         long endTimeSeconds = req.getStartTime().plusMinutes(req.getDuration()).atZone(zoneId).toEpochSecond();
 
+        // 解析云盘文件夹ID：从 req.materialId → edu_material.pid → edu_material.cloud_id
+        String cloudFolderId = null;
+        if (req.getMaterialId() != null) {
+            MaterialDO material = materialMapper.selectById(req.getMaterialId());
+            if (material != null && material.getPid() != null && material.getPid() != 0) {
+                MaterialDO parentMaterial = materialMapper.selectById(material.getPid());
+                if (parentMaterial != null && cn.hutool.core.util.StrUtil.isNotBlank(parentMaterial.getCloudId())) {
+                    cloudFolderId = parentMaterial.getCloudId();
+                    log.info("创建课堂关联教材[{}]的父级云盘文件夹ID：{}", req.getMaterialId(), cloudFolderId);
+                }
+            }
+        }
+
         ClassinCreateClassReq classReq = ClassinCreateClassReq.builder()
             .courseId(req.getCourseUid())
             .unitId(unitId)
@@ -322,6 +348,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .openState(req.getOpenState() != null ? req.getOpenState() : ClassinConstants.OPEN_STATE_PRIVATE)
             .cameraHide(ClassinConstants.CAMERA_SHOW) // 显示坐席区
             .seatNum(req.getSeatNum() != null ? req.getSeatNum() : 0) // 设置上台人数，默认不限制（ClassinClient会自动+1包含老师）
+            .cloudFolderId(cloudFolderId) // 云盘文件夹ID（教材父节点的cloud_id）
             .build();
 
         try {
@@ -346,8 +373,23 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         long endTimeSeconds = req.getStartTime().plusMinutes(req.getDuration()).atZone(zoneId).toEpochSecond();
 
         // 记录调试信息
-        log.info("准备更新ClassIn课堂活动 - courseId: {}, activityId: {}, name: {}, teacherUid: {}, startTime: {}, endTime: {}", 
-            oldLesson.getCourseUid(), oldLesson.getActivityUid(), req.getName(), teacherClassinUid, startTimeSeconds, endTimeSeconds);
+        log.info("准备更新ClassIn课堂活动 - courseId: {}, activityId: {}, name: {}, teacherUid: {}, startTime: {}, endTime: {}", oldLesson
+            .getCourseUid(), oldLesson.getActivityUid(), req
+                .getName(), teacherClassinUid, startTimeSeconds, endTimeSeconds);
+
+        // 解析云盘文件夹ID：从 edu_lesson.material_id → edu_material.pid → edu_material.cloud_id
+        String cloudFolderId = null;
+        if (oldLesson.getMaterialId() != null) {
+            MaterialDO material = materialMapper.selectById(oldLesson.getMaterialId());
+            if (material != null && material.getPid() != null && material.getPid() != 0) {
+                MaterialDO parentMaterial = materialMapper.selectById(material.getPid());
+                if (parentMaterial != null && cn.hutool.core.util.StrUtil.isNotBlank(parentMaterial.getCloudId())) {
+                    cloudFolderId = parentMaterial.getCloudId();
+                    log.info("课堂[{}]关联教材[{}]的父级云盘文件夹ID：{}", oldLesson.getId(), oldLesson
+                        .getMaterialId(), cloudFolderId);
+                }
+            }
+        }
 
         ClassinUpdateClassReq updateReq = ClassinUpdateClassReq.builder()
             .courseId(oldLesson.getCourseUid())           // 课程ID（必填）
@@ -361,6 +403,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             .liveState(oldLesson.getLiveState())                // 直播状态
             .openState(oldLesson.getOpenState())                // 开放状态
             .recordType(ClassinConstants.RECORD_TYPE_CLASSROOM) // 录制类型：云端录制
+            .cloudFolderId(cloudFolderId)                 // 云盘文件夹ID（教材父节点的cloud_id）
             .build();
 
         try {
@@ -400,9 +443,35 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
      */
     @Override
     protected QueryWrapper<LessonDO> buildQueryWrapper(LessonQuery query) {
+        // 先保存courseStatus值，然后清空避免被父类处理
+        String courseStatus = query.getCourseStatus();
+        query.setCourseStatus(null);
+
         QueryWrapper<LessonDO> queryWrapper = super.buildQueryWrapper(query);
+
+        // 恢复courseStatus值
+        query.setCourseStatus(courseStatus);
+
         // 添加通用的状态过滤条件：排除已删除的课节（status=2）
         queryWrapper.ne("status", 2);
+
+        // 根据课程状态过滤
+        if (courseStatus != null && !courseStatus.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            if ("started".equals(courseStatus)) {
+                // 已开课：开始时间 <= 当前时间，按开课时间倒序（最近的在前）
+                queryWrapper.le("start_time", now);
+                queryWrapper.orderByDesc("start_time");
+            } else if ("not_started".equals(courseStatus)) {
+                // 未开课：开始时间 > 当前时间，按开课时间正序（最近的在前）
+                queryWrapper.gt("start_time", now);
+                queryWrapper.orderByAsc("start_time");
+            }
+        } else {
+            // 如果没有指定状态，保持默认排序
+            queryWrapper.orderByDesc("id");
+        }
+
         return queryWrapper;
     }
 

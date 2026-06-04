@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.education.model.req.StuCardBindReq;
 import top.continew.admin.education.model.resp.CardDetailResp;
+import top.continew.admin.education.model.resp.CardPurchaseRecordResp;
 import top.continew.admin.education.model.resp.CardResp;
 import top.continew.admin.education.model.resp.StuCardResp;
 import top.continew.admin.education.service.CardService;
@@ -91,6 +92,25 @@ public class MiniCardController {
     public R<CardDetailResp> getSaleCardDetail(@PathVariable Long id) {
         // 需要登录状态，由Sa-Token拦截器验证
         return R.ok(cardService.get(id));
+    }
+
+    @Operation(summary = "购买记录", description = "获取当前学生近1年的购买记录")
+    @GetMapping("/purchase-history")
+    public R<List<CardPurchaseRecordResp>> getPurchaseHistory(@RequestParam(defaultValue = "20") int limit) {
+        try {
+            String authHeader = cn.dev33.satoken.SaManager.getSaTokenContext().getRequest().getHeader("Authorization");
+            Long stuId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                Object loginId = StpMiniUtil.getStpLogic().getLoginIdByToken(authHeader.substring(7));
+                if (loginId != null)
+                    stuId = Long.valueOf(loginId.toString());
+            }
+            if (stuId == null)
+                return R.fail("500", "用户未登录");
+            return R.ok(stuCardService.getPurchaseHistory(stuId, limit));
+        } catch (Exception e) {
+            return R.fail("500", e.getMessage());
+        }
     }
 
     @Operation(summary = "购买会员卡", description = "小程序用户购买会员卡，需要登录")

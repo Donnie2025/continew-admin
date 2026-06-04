@@ -24,6 +24,7 @@ import top.continew.admin.education.model.req.StudentReq;
 import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
+import top.continew.admin.education.model.resp.StudentStatsResp;
 
 import java.util.List;
 
@@ -99,4 +100,12 @@ public interface StudentService extends BaseService<StudentResp, StudentDetailRe
      * @return 是否更新成功
      */
     boolean updateStudentNameAndSyncClassin(Long studentId, String newName);
+
+    /**
+     * 获取学生首页学习数据统计
+     *
+     * @param studentId 学生ID
+     * @return 剩余/待上/已完成课程数 + 固定课数量 + 余额预警
+     */
+    StudentStatsResp getStats(Long studentId);
 }

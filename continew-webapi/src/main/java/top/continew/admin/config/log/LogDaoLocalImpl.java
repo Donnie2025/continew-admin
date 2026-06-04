@@ -116,7 +116,7 @@ public class LogDaoLocalImpl implements LogDao {
         logDO.setResponseHeaders(JSONUtil.toJsonStr(responseHeaders));
         logDO.setTraceId(responseHeaders.get(traceProperties.getTraceIdName()));
         String responseBody = logResponse.getBody();
-        logDO.setResponseBody(responseBody);
+        logDO.setResponseBody(StrUtil.maxLength(responseBody, 1000));
         // 状态
         Integer statusCode = logResponse.getStatus();
         logDO.setStatusCode(statusCode);

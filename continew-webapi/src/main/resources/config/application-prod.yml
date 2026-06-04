@@ -1,23 +1,23 @@
 --- ### 项目配置
 project:
   # URL（跨域配置默认放行此 URL，第三方登录回调默认使用此 URL 为前缀，请注意更改为你实际的前端 URL）
-  url: https://admin.continew.top
+  url: http://152.136.228.124:5173
   # 是否为生产环境
   production: true
 
 --- ### 服务器配置
 server:
   # HTTP 端口（默认 8080）
-  port: 18000
+  port: 8000
 
 --- ### 数据源配置
 spring.datasource:
   type: com.zaxxer.hikari.HikariDataSource
   # 请务必提前创建好名为 continew_admin 的数据库，如果使用其他数据库名请注意同步修改 DB_NAME 配置
-  url: jdbc:p6spy:mysql://${DB_HOST:113.44.176.51}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+  url: jdbc:p6spy:mysql://${DB_HOST:152.136.228.124}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
   username: ${DB_USER:continew_admin}
   password: ${DB_PWD:nhy67ujm}
-  driver-class-name: com.mysql.cj.jdbc.Driver
+  driver-class-name: com.p6spy.engine.spy.P6SpyDriver
 #  # PostgreSQL 配置
 #  url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&stringtype=unspecified
 #  username: ${DB_USER:postgres}
@@ -105,8 +105,7 @@ knife4j:
 continew-starter.web.cors:
   enabled: true
   # 配置允许跨域的域名
-  allowed-origins:
-    - ${project.url}
+  allowed-origins: '*'
   # 配置允许跨域的请求方式
   allowed-methods: '*'
   # 配置允许跨域的请求头
@@ -212,8 +211,7 @@ continew-starter.messaging.websocket:
   enabled: true
   path: /websocket
   # 配置允许跨域的域名
-  allowed-origins:
-    - ${project.url}
+  allowed-origins: '*'
 
 --- ### Sa-Token 扩展配置
 sa-token.extension:
@@ -230,7 +228,7 @@ sa-token.extension:
     - /mini/**
     - /api/mini/**
     # 会员卡公开API
-    - /api/education/card/active/**
+    - /education/card/active/**
     # 教材相关公开API
     - /education/material/**
     - /education/materialLesson/**
@@ -254,6 +252,7 @@ justauth:
 
 --- ### Snail Job 配置
 snail-job:
+  enabled: false
   # 客户端地址（默认自动获取本机 IP）
   #host: 127.0.0.1
   # 客户端端口（默认：1789）
@@ -278,3 +277,16 @@ snail-job:
       username:  ${SCHEDULE_USERNAME:admin}
       # 密码
       password:  ${SCHEDULE_PASSWORD:admin}
+
+--- ### 微信配置
+wechat:
+  miniprogram:
+    # 小程序 AppId
+    app-id: ${WECHAT_MINIPROGRAM_APP_ID:wx4511980cf0d37c58}
+    # 小程序 AppSecret
+    app-secret: ${WECHAT_MINIPROGRAM_APP_SECRET:30b4963ce99ffc0a71bd6b828f40f65c}
+  mp:
+    # 公众号 AppId
+    app-id: ${WECHAT_MP_APP_ID:wx7225583c047bef96}
+    # 公众号 AppSecret
+    app-secret: ${WECHAT_MP_APP_SECRET:6774a2c73ccd7fdc89487c40800d62be}

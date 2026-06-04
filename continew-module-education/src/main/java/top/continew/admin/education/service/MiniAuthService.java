@@ -20,7 +20,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
 import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
+import top.continew.admin.education.model.req.MiniSmsLoginReq;
 import top.continew.admin.education.model.req.MiniWechatLoginReq;
+import top.continew.admin.education.model.req.MpOAuthLoginReq;
 import top.continew.admin.education.model.resp.MiniLoginResp;
 
 /**
@@ -62,4 +64,22 @@ public interface MiniAuthService {
      * @param req 请求参数
      */
     void bindPhone(MiniBindPhoneReq req);
+
+    /**
+     * 短信验证码登录
+     *
+     * @param req     请求参数
+     * @param request 请求对象
+     * @return 登录响应参数
+     */
+    MiniLoginResp loginBySms(MiniSmsLoginReq req, HttpServletRequest request);
+
+    /**
+     * 微信公众号 OAuth 登录
+     *
+     * @param req     请求参数
+     * @param request 请求对象
+     * @return 登录响应参数
+     */
+    MiniLoginResp mpOAuthLogin(MpOAuthLoginReq req, HttpServletRequest request);
 }

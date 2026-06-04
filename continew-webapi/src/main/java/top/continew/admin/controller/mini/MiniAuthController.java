@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.*;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
 import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
+import top.continew.admin.education.model.req.MiniSmsLoginReq;
+import top.continew.admin.education.model.req.MpOAuthLoginReq;
 import top.continew.admin.education.model.req.MiniWechatLoginReq;
 import top.continew.admin.education.model.resp.MiniLoginResp;
 import top.continew.admin.education.service.MiniAuthService;
@@ -61,6 +63,14 @@ public class MiniAuthController {
         return miniAuthService.loginByPassword(req, request);
     }
 
+    @SaIgnore
+    @Operation(summary = "短信验证码登录", description = "小程序手机号+短信验证码登录")
+    @PostMapping("/login/sms")
+    public MiniLoginResp loginBySms(@Validated @RequestBody MiniSmsLoginReq req, HttpServletRequest request) {
+        return miniAuthService.loginBySms(req, request);
+    }
+
+    @SaIgnore
     @Operation(summary = "发送验证码", description = "发送手机验证码")
     @PostMapping("/send-code")
     public void sendVerifyCode(@Validated @RequestBody MiniSendCodeReq req) {
@@ -71,5 +81,12 @@ public class MiniAuthController {
     @PostMapping("/bind-phone")
     public void bindPhone(@Validated @RequestBody MiniBindPhoneReq req) {
         miniAuthService.bindPhone(req);
+    }
+
+    @SaIgnore
+    @Operation(summary = "微信公众号OAuth登录", description = "微信公众号网页授权登录")
+    @PostMapping("/oauth/mp")
+    public MiniLoginResp mpOAuthLogin(@Validated @RequestBody MpOAuthLoginReq req, HttpServletRequest request) {
+        return miniAuthService.mpOAuthLogin(req, request);
     }
 }

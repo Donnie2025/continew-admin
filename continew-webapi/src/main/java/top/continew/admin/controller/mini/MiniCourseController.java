@@ -17,6 +17,7 @@
 package top.continew.admin.controller.mini;
 
 import cn.dev33.satoken.annotation.SaIgnore;
+import cn.dev33.satoken.stp.StpUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -188,5 +189,28 @@ public class MiniCourseController {
     @GetMapping("/lesson/{courseId}")
     public List<LessonResp> listLessonsByCourseId(@PathVariable Long courseId) {
         return lessonService.listByCourseId(courseId);
+    }
+
+    /**
+     * 获取老师的授课班级列表 (Group Class功能)
+     * 注意：此接口仅限老师用户访问，需要通过手机号+密码登录且userType为teacher
+     *
+     * @return 课程列表
+     */
+    @Operation(summary = "获取老师的授课班级列表", description = "Group Class功能：获取当前老师的授课班级列表（根据edu_course_teacher表匹配，status=1，is_show=1）。注意：仅限老师用户访问")
+    @GetMapping("/group-classes")
+    public List<CourseResp> getGroupClasses() {
+        // 获取当前登录用户ID（可能是学生ID或老师ID）
+        Long userId = StpUtil.getLoginIdAsLong();
+
+        // 注意：这里的userId可能是student ID或teacher ID
+        // 如果是学生登录（微信登录），userId是edu_student表的ID  
+        // 如果是老师登录（手机号+密码，userType=teacher），userId是edu_teacher表的ID
+        // 
+        // 1. 先根据teacher_id从edu_course_teacher表查询老师授课的课程ID列表
+        List<Long> courseIds = courseTeacherService.listCourseIdsByTeacherId(userId);
+
+        // 2. 根据课程ID列表查询符合条件的课程（status=1, is_show=1）
+        return courseService.listVisibleCoursesByIds(courseIds);
     }
 }

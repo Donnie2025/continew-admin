@@ -143,7 +143,7 @@ public class CourseStudentServiceImpl implements CourseStudentService {
             .eq(CourseStudentDO::getCourseId, courseId)
             .eq(CourseStudentDO::getStudentId, studentId);
         CourseStudentDO courseStudent = courseStudentMapper.selectOne(wrapper);
-        
+
         if (courseStudent == null) {
             log.warn("要移除的学生关联不存在: courseId={}, studentId={}", courseId, studentId);
             return;
@@ -157,19 +157,21 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         }
 
         // 3. 从ClassIn移除学生（如果课程关联了ClassIn且学生有ClassIn账号）
-        if (course.getCourseUid() != null && courseStudent.getStudentUid() != null && course.getInstitutionId() != null) {
+        if (course.getCourseUid() != null && courseStudent.getStudentUid() != null && course
+            .getInstitutionId() != null) {
             try {
-                classinClient.removeCourseStudent(course.getCourseUid(), courseStudent.getStudentUid(), course.getInstitutionId());
-                log.info("成功从ClassIn课程移除学生: courseName={}, studentName={}, studentUid={}", 
-                    course.getName(), courseStudent.getStudentName(), courseStudent.getStudentUid());
+                classinClient.removeCourseStudent(course.getCourseUid(), courseStudent.getStudentUid(), course
+                    .getInstitutionId());
+                log.info("成功从ClassIn课程移除学生: courseName={}, studentName={}, studentUid={}", course
+                    .getName(), courseStudent.getStudentName(), courseStudent.getStudentUid());
             } catch (Exception e) {
-                log.error("从ClassIn课程移除学生失败: courseName={}, studentName={}, error={}", 
-                    course.getName(), courseStudent.getStudentName(), e.getMessage(), e);
+                log.error("从ClassIn课程移除学生失败: courseName={}, studentName={}, error={}", course.getName(), courseStudent
+                    .getStudentName(), e.getMessage(), e);
                 // 不抛出异常，继续删除本地关联
             }
         } else {
-            log.info("课程未关联ClassIn或学生无ClassIn账号，跳过ClassIn同步: courseName={}, studentName={}", 
-                course.getName(), courseStudent.getStudentName());
+            log.info("课程未关联ClassIn或学生无ClassIn账号，跳过ClassIn同步: courseName={}, studentName={}", course
+                .getName(), courseStudent.getStudentName());
         }
 
         // 4. 删除本地关联关系
@@ -223,6 +225,45 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         LambdaQueryWrapper<CourseStudentDO> wrapper = Wrappers.lambdaQuery(CourseStudentDO.class)
             .eq(CourseStudentDO::getCourseId, courseId);
         courseStudentMapper.delete(wrapper);
+    }
+
+    @Override
+    public Map<Long, List<CourseStudentResp>> listStudentsByCourseIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        LambdaQueryWrapper<CourseStudentDO> wrapper = Wrappers.lambdaQuery(CourseStudentDO.class)
+            .in(CourseStudentDO::getCourseId, courseIds)
+            .orderByDesc(CourseStudentDO::getCreateTime);
+        List<CourseStudentDO> list = courseStudentMapper.selectList(wrapper);
+
+        if (list.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> studentIds = list.stream()
+            .map(CourseStudentDO::getStudentId)
+            .distinct()
+            .collect(Collectors.toList());
+        LambdaQueryWrapper<StudentDO> studentWrapper = Wrappers.lambdaQuery(StudentDO.class)
+            .in(StudentDO::getId, studentIds);
+        Map<Long, StudentDO> studentMap = studentMapper.selectList(studentWrapper)
+            .stream()
+            .collect(Collectors.toMap(StudentDO::getId, s -> s));
+
+        Map<Long, List<CourseStudentResp>> resultMap = new java.util.HashMap<>();
+        for (CourseStudentDO cs : list) {
+            CourseStudentResp resp = BeanUtil.copyProperties(cs, CourseStudentResp.class);
+            StudentDO student = studentMap.get(cs.getStudentId());
+            if (student != null) {
+                resp.setStudentName(student.getName());
+                resp.setStudentPhone(student.getPhone());
+                resp.setStudentEmail(student.getEmail());
+            }
+            resultMap.computeIfAbsent(cs.getCourseId(), k -> new ArrayList<>()).add(resp);
+        }
+        return resultMap;
     }
 
     @Override

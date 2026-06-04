@@ -48,4 +48,12 @@ public interface CourseService extends BaseService<CourseResp, CourseDetailResp,
      * @return 班级信息
      */
     CourseResp getById(Long id);
+
+    /**
+     * 根据课程ID列表查询可见的课程
+     *
+     * @param courseIds 课程ID列表
+     * @return 课程列表
+     */
+    List<CourseResp> listVisibleCoursesByIds(List<Long> courseIds);
 }

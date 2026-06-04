@@ -12,7 +12,7 @@ server:
 spring.datasource:
   type: com.zaxxer.hikari.HikariDataSource
   # 请务必提前创建好名为 continew_admin 的数据库，如果使用其他数据库名请注意同步修改 DB_NAME 配置
-  url: jdbc:p6spy:mysql://${DB_HOST:113.44.176.51}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+  url: jdbc:p6spy:mysql://${DB_HOST:152.136.228.124}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
   username: ${DB_USER:continew_admin}
 #  url: jdbc:p6spy:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:continew_admin}?serverTimezone=Asia/Shanghai&useSSL=true&useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&autoReconnect=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
 #  username: ${DB_USER:root}
@@ -48,7 +48,7 @@ spring.data:
   ## Redis 配置（单机模式）
   redis:
     # 地址
-    host: ${REDIS_HOST:127.0.0.1}
+    host: ${REDIS_HOST:152.136.228.124}
     # 端口（默认 6379）
     port: ${REDIS_PORT:6379}
     # 密码（未设置密码时请注释掉）
@@ -290,10 +290,15 @@ snail-job:
       # 密码
       password: ${SCHEDULE_PASSWORD:admin}
 
---- ### 微信小程序配置
+--- ### 微信配置
 wechat:
   miniprogram:
     # 小程序 AppId
     app-id: ${WECHAT_MINIPROGRAM_APP_ID:wx4511980cf0d37c58}
     # 小程序 AppSecret
     app-secret: ${WECHAT_MINIPROGRAM_APP_SECRET:30b4963ce99ffc0a71bd6b828f40f65c}
+  mp:
+    # 公众号 AppId
+    app-id: ${WECHAT_MP_APP_ID:wx7225583c047bef96}
+    # 公众号 AppSecret
+    app-secret: ${WECHAT_MP_APP_SECRET:6774a2c73ccd7fdc89487c40800d62be}

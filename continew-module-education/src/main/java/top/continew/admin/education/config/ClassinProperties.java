@@ -122,5 +122,54 @@ public class ClassinProperties {
          * 删除课程学生接口
          */
         private String removeCourseStudent;
+
+        // ==============================
+        // 云盘相关接口
+        // ==============================
+
+        /**
+         * 获取顶级文件夹ID
+         */
+        private String cloudGetTopFolderId;
+
+        /**
+         * 获取指定文件夹下的文件及文件夹列表
+         */
+        private String cloudGetList;
+
+        /**
+         * 创建文件夹
+         */
+        private String cloudCreateFolder;
+
+        /**
+         * 删除文件夹
+         */
+        private String cloudDelFolder;
+
+        /**
+         * 删除文件
+         */
+        private String cloudDelFile;
+
+        /**
+         * 重命名文件
+         */
+        private String cloudRenameFile;
+
+        /**
+         * 重命名文件夹
+         */
+        private String cloudRenameFolder;
+
+        /**
+         * 上传文件
+         */
+        private String cloudUploadFile;
+
+        /**
+         * 获取所有文件夹列表
+         */
+        private String cloudGetFolderList;
     }
 }

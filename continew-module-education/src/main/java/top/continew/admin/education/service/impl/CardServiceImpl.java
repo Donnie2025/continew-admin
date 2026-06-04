@@ -45,12 +45,27 @@ public class CardServiceImpl extends BaseServiceImpl<CardMapper, CardDO, CardRes
 
     @Override
     public List<CardResp> listActiveCards() {
-        // 查询状态为1的会员卡，首先按sort字段升序排列，如果sort相同，则按更新时间倒序排列
+        // 查询状态为1的会员卡，首先按sort字段降序排列，如果sort相同，则按更新时间倒序排列
         LambdaQueryWrapper<CardDO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(CardDO::getStatus, 1).orderByAsc(CardDO::getSort).orderByDesc(CardDO::getUpdateTime);
+        queryWrapper.eq(CardDO::getStatus, 1).orderByDesc(CardDO::getSort).orderByDesc(CardDO::getUpdateTime);
         List<CardDO> cardDOList = baseMapper.selectList(queryWrapper);
 
-        // 转换为响应对象
-        return BeanUtil.copyToList(cardDOList, CardResp.class);
+        // 转换为响应对象，initTimes 从 initBalance 映射（init_times 已合并到 init_balance）
+        List<CardResp> result = BeanUtil.copyToList(cardDOList, CardResp.class);
+        result.forEach(resp -> {
+            if (resp.getInitBalance() != null) {
+                resp.setInitTimes(resp.getInitBalance().intValue());
+            }
+        });
+        return result;
+    }
+
+    @Override
+    public CardDetailResp get(Long id) {
+        CardDetailResp detail = super.get(id);
+        if (detail != null && detail.getInitBalance() != null) {
+            detail.setInitTimes(detail.getInitBalance().intValue());
+        }
+        return detail;
     }
 }

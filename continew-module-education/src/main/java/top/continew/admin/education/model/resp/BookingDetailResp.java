@@ -133,6 +133,13 @@ public class BookingDetailResp extends BaseDetailResp {
     private String materialCode;
 
     /**
+     * 课节ID（关联edu_material_lesson表）
+     */
+    @Schema(description = "课节ID")
+    @ExcelProperty(value = "课节ID")
+    private Long lessonId;
+
+    /**
      * 预约课节名字
      */
     @Schema(description = "预约课节名字")

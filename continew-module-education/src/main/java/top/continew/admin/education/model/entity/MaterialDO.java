@@ -21,7 +21,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import top.continew.admin.common.model.entity.BaseDO;
 
 /**
- * 教材主表实体
+ * 教材统一树形表实体（CATEGORY/BOOK/LEVEL/UNIT/LESSON）
  *
  * @author continew-org
  * @since 2024-12-29
@@ -31,34 +31,49 @@ import top.continew.admin.common.model.entity.BaseDO;
 public class MaterialDO extends BaseDO {
 
     /**
-     * 教材编码
+     * 父节点ID（0=根节点）
      */
-    private String code;
+    private Long pid;
 
     /**
-     * 教材名字
+     * 节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）
+     */
+    private String type;
+
+    /**
+     * 节点名称
      */
     private String name;
 
     /**
-     * 级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）
+     * 编码（BOOK/LEVEL层使用）
      */
-    private String level;
+    private String code;
 
     /**
-     * 分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）
-     */
-    private String category;
-
-    /**
-     * 封面图片
+     * 封面图片（BOOK层使用）
      */
     private String coverImg;
 
     /**
-     * 教材描述
+     * 描述
      */
     private String description;
+
+    /**
+     * 课节资源链接（LESSON层使用）
+     */
+    private String lessonUrl;
+
+    /**
+     * ClassIn云盘ID（文件夹节点→文件夹ID，LESSON→文件ID）
+     */
+    private String cloudId;
+
+    /**
+     * ClassIn云盘名称
+     */
+    private String cloudName;
 
     /**
      * 是否前端展示（1:展示 0:不展示）

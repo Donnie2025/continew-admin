@@ -56,6 +56,18 @@ public class FixedResp implements Serializable {
     private String teacherName;
 
     /**
+     * 教师头像
+     */
+    @Schema(description = "教师头像")
+    private String teacherAvatar;
+
+    /**
+     * 教师标签（# 号分隔）
+     */
+    @Schema(description = "教师标签", example = "#日常口语#发音纠正")
+    private String teacherTags;
+
+    /**
      * 课程时长（分钟）
      */
     @Schema(description = "课程时长（分钟）", example = "25")

@@ -21,6 +21,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.SalaryMapper;
 import top.continew.admin.education.mapper.TeacherMapper;
@@ -32,6 +35,7 @@ import top.continew.admin.education.model.req.SalaryBatchSettleReq;
 import top.continew.admin.education.model.req.SalaryReq;
 import top.continew.admin.education.model.resp.SalaryBatchImportResp;
 import top.continew.admin.education.model.resp.SalaryDetailResp;
+import top.continew.admin.education.model.resp.SalaryPageResp;
 import top.continew.admin.education.model.resp.SalaryResp;
 import top.continew.admin.education.service.SalaryService;
 import top.continew.admin.education.util.SalaryCalculationUtil;
@@ -58,6 +62,31 @@ import java.util.stream.Collectors;
 public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, SalaryResp, SalaryDetailResp, SalaryQuery, SalaryReq> implements SalaryService {
 
     private final TeacherMapper teacherMapper;
+
+    @Override
+    public SalaryPageResp pageWithSummary(SalaryQuery query, PageQuery pageQuery) {
+        PageResp<SalaryResp> pageResp = super.page(query, pageQuery);
+
+        QueryWrapper<SalaryDO> summaryWrapper = this.buildQueryWrapper(query);
+        summaryWrapper
+            .select("COALESCE(SUM(course_amount), 0) AS total_amount, COALESCE(SUM(course_count), 0) AS total_count");
+        List<Map<String, Object>> maps = baseMapper.selectMaps(summaryWrapper);
+
+        SalaryPageResp resp = new SalaryPageResp();
+        resp.setList(pageResp.getList());
+        resp.setTotal(pageResp.getTotal());
+        if (!maps.isEmpty() && maps.get(0) != null) {
+            Map<String, Object> summary = maps.get(0);
+            Object totalAmount = summary.get("total_amount");
+            Object totalCount = summary.get("total_count");
+            resp.setTotalCourseAmount(totalAmount != null ? new BigDecimal(totalAmount.toString()) : BigDecimal.ZERO);
+            resp.setTotalCourseCount(totalCount != null ? ((Number)totalCount).intValue() : 0);
+        } else {
+            resp.setTotalCourseAmount(BigDecimal.ZERO);
+            resp.setTotalCourseCount(0);
+        }
+        return resp;
+    }
 
     @Override
     protected void beforeCreate(SalaryReq req) {
@@ -325,11 +354,65 @@ public class SalaryServiceImpl extends BaseServiceImpl<SalaryMapper, SalaryDO, S
 
         log.info("批量导入完成，成功：{}，失败：{}", successCount, failures.size());
 
+        // 特殊规则：Mae的组员课时奖励
+        // Mae的group（groupName = "Mae"）成员的总课时数 × 5，追加到Mae的课时费中（不含Mae自己的课时数）
+        applyMaeBonusRule(teacherMap, existingSalaryMap, finalStartDate, finalEndDate);
+
         return SalaryBatchImportResp.builder()
             .successCount(successCount)
             .failureCount(failures.size())
             .failures(failures)
             .build();
+    }
+
+    /**
+     * 计算并应用 Mae 的组员课时奖励
+     * 规则：groupName = "Mae" 的所有组员（不含 Mae 本人）的课时数总和 × 5，叠加到 Mae 的课时费
+     */
+    private void applyMaeBonusRule(Map<String, TeacherDO> teacherMap,
+                                   Map<Long, SalaryDO> existingSalaryMap,
+                                   LocalDate startDate,
+                                   LocalDate endDate) {
+        TeacherDO maeTeacher = teacherMap.get("Mae");
+        if (maeTeacher == null) {
+            return;
+        }
+
+        int groupMemberCourseTotal = existingSalaryMap.values()
+            .stream()
+            .filter(s -> "Mae".equalsIgnoreCase(s.getGroupName()) && !"Mae".equalsIgnoreCase(s.getTeacherName()))
+            .mapToInt(s -> s.getCourseCount() != null ? s.getCourseCount() : 0)
+            .sum();
+
+        if (groupMemberCourseTotal <= 0) {
+            return;
+        }
+
+        BigDecimal maeBonus = BigDecimal.valueOf((long)groupMemberCourseTotal * 5);
+        log.info("Mae特殊规则：组员总课时数={}，奖励金额={}", groupMemberCourseTotal, maeBonus);
+
+        SalaryDO maeSalary = existingSalaryMap.get(maeTeacher.getId());
+        if (maeSalary == null) {
+            maeSalary = createNewSalary(maeTeacher, startDate, endDate, 0);
+            maeSalary.setCourseAmount(maeBonus);
+            BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(maeBonus, "Mae", maeTeacher.getGroupName());
+            maeSalary.setTipAmount(tipAmount);
+            maeSalary.setFinalAmount(maeBonus.add(tipAmount));
+            baseMapper.insert(maeSalary);
+        } else {
+            BigDecimal newCourseAmount = (maeSalary.getCourseAmount() != null
+                ? maeSalary.getCourseAmount()
+                : BigDecimal.ZERO).add(maeBonus);
+            maeSalary.setCourseAmount(newCourseAmount);
+            BigDecimal deductionAmount = maeSalary.getDeductionAmount() != null
+                ? maeSalary.getDeductionAmount()
+                : BigDecimal.ZERO;
+            BigDecimal tipAmount = SalaryCalculationUtil.calculateTipAmount(newCourseAmount, "Mae", maeSalary
+                .getGroupName());
+            maeSalary.setTipAmount(tipAmount);
+            maeSalary.setFinalAmount(newCourseAmount.subtract(deductionAmount).add(tipAmount));
+            baseMapper.updateById(maeSalary);
+        }
     }
 
     /**

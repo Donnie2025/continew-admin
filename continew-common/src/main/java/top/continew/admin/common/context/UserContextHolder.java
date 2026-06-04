@@ -172,6 +172,15 @@ public class UserContextHolder {
     }
 
     /**
+     * 获取当前用户的代理商编码
+     *
+     * @return 代理商编码，未设置时返回 null
+     */
+    public static String getAgentCode() {
+        return ExceptionUtils.exToNull(() -> getContext().getAgentCode());
+    }
+
+    /**
      * 是否为管理员
      *
      * @return 是否为管理员

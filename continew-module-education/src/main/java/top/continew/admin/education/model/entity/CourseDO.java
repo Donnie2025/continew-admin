@@ -43,6 +43,11 @@ public class CourseDO extends BaseDO {
     private String name;
 
     /**
+     * 所属代理机构编码
+     */
+    private String agentCode;
+
+    /**
      * 班主任ID
      */
     private Long mainTeacherId;
@@ -73,7 +78,27 @@ public class CourseDO extends BaseDO {
     private Integer status;
 
     /**
+     * 是否展示（1：展示；0：不展示）
+     */
+    private Boolean isShow;
+
+    /**
      * 所属机构ID
      */
     private Long institutionId;
+
+    /**
+     * 关联教材ID
+     */
+    private Long materialId;
+
+    /**
+     * 关联教材名称
+     */
+    private String materialName;
+
+    /**
+     * 备注
+     */
+    private String remark;
 }

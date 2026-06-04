@@ -14,52 +14,45 @@
  * limitations under the License.
  */
 
-package top.continew.admin.education.constant;
+package top.continew.admin.education.model.req;
+
+import lombok.Data;
 
 /**
- * 交易类型常量
+ * 预约导入行数据
  *
- * @author continew-org
- * @since 2025-01-02
+ * @author don
  */
-public final class TransactionType {
+@Data
+public class BookingImportRow {
 
     /**
-     * 充值
+     * 上课时间，格式：yyyy-MM-dd HH:mm
      */
-    public static final String CREDIT = "credit";
+    private String classTime;
 
     /**
-     * 扣费
+     * 上课老师姓名
      */
-    public static final String DEBIT = "debit";
+    private String teacherName;
 
     /**
-     * 冻结
+     * 预约会员姓名
      */
-    public static final String FREEZE = "freeze";
+    private String studentName;
 
     /**
-     * 激活
+     * 会员手机号
      */
-    public static final String ACTIVATE = "activate";
+    private String studentPhone;
 
     /**
-     * 取消约课
+     * 使用会员卡名称（仅记录，不执行扣款）
      */
-    public static final String CANCEL = "cancel";
+    private String cardName;
 
     /**
-     * 首次绑卡
+     * 预约备注
      */
-    public static final String BIND = "bind";
-
-    /**
-     * 约课扣费
-     */
-    public static final String BOOK_DEBIT = "book_debit";
-
-    private TransactionType() {
-        // 工具类，禁止实例化
-    }
+    private String remark;
 }

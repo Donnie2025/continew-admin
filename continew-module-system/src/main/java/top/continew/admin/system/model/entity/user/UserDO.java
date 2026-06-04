@@ -108,4 +108,9 @@ public class UserDO extends BaseDO {
      * 部门 ID
      */
     private Long deptId;
+
+    /**
+     * 所属机构编码
+     */
+    private String agentCode;
 }

@@ -23,18 +23,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.common.context.UserContextHolder;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import top.continew.admin.education.enums.AccountTypeEnum;
 import top.continew.admin.education.mapper.CardMapper;
 import top.continew.admin.education.mapper.OrderMapper;
-import top.continew.admin.education.mapper.StuCardMapper;
+import top.continew.admin.education.mapper.AccountMapper;
 import top.continew.admin.education.mapper.TransactionMapper;
+import top.continew.admin.education.model.entity.AccountDO;
 import top.continew.admin.education.model.entity.CardDO;
 import top.continew.admin.education.model.entity.OrderDO;
-import top.continew.admin.education.model.entity.StuCardDO;
 import top.continew.admin.education.model.entity.TransactionDO;
 import top.continew.admin.education.model.query.OrderQuery;
 import top.continew.admin.education.model.req.OrderReq;
 import top.continew.admin.education.model.resp.OrderDetailResp;
 import top.continew.admin.education.model.resp.OrderResp;
+import top.continew.admin.education.enums.TransactionDirectionEnum;
+import top.continew.admin.education.enums.TransactionTypeEnum;
 import top.continew.admin.education.service.OrderService;
 import top.continew.starter.core.exception.BusinessException;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
@@ -54,7 +58,7 @@ import java.time.LocalDateTime;
 public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, OrderResp, OrderDetailResp, OrderQuery, OrderReq> implements OrderService {
 
     private final CardMapper cardMapper;
-    private final StuCardMapper stuCardMapper;
+    private final AccountMapper accountMapper;
     private final OrderMapper orderMapper;
     private final TransactionMapper transactionMapper;
 
@@ -77,22 +81,23 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         }
         String stuName = UserContextHolder.getUsername();
 
-        // 3. 创建空白学生会员卡
-        StuCardDO stuCard = new StuCardDO();
-        stuCard.setStuId(stuId);
-        stuCard.setStuName(stuName);
-        stuCard.setCardId(card.getId());
-        stuCard.setCardName(card.getTitle());
-        stuCard.setCardType(card.getType()); // String类型
-        // 空白卡，余额为0（统一使用balance）
-        stuCard.setBalance(BigDecimal.ZERO); // 空白卡，余额为0
-        stuCard.setActivateDate(null); // 未激活
-        stuCard.setExpireDate(null); // 未设置过期时间
-        stuCard.setPurchasePrice(card.getPrice());
-        stuCard.setStatus(1); // 启用
-        stuCard.setCardStatus(0); // 学生端不可见（待确认后可见）
-        stuCard.setCreateUser(stuId);
-        stuCardMapper.insert(stuCard);
+        // 3. 查找或创建课时账户（同一学生每种 accountType 唯一）
+        LambdaQueryWrapper<AccountDO> existCheck = new LambdaQueryWrapper<>();
+        existCheck.eq(AccountDO::getStudentId, stuId).eq(AccountDO::getAccountType, AccountTypeEnum.PAID.getCode());
+        AccountDO account = accountMapper.selectOne(existCheck);
+        if (account == null) {
+            // 不存在则创建待激活账户
+            account = new AccountDO();
+            account.setStudentId(stuId);
+            account.setStudentName(stuName);
+            account.setAccountType(AccountTypeEnum.PAID.getCode());
+            account.setBalance(BigDecimal.ZERO);
+            account.setExpireDate(null);
+            account.setStatus(0); // 待激活（学生端不可见）
+            account.setRemark(card.getTitle());
+            account.setCreateUser(stuId);
+            accountMapper.insert(account);
+        }
 
         // 4. 生成订单编号
         String orderNo = "ORD" + DateUtil.format(LocalDateTime.now(), "yyyyMMddHHmmss") + IdUtil.randomUUID()
@@ -101,15 +106,14 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         // 5. 创建订单
         OrderDO order = new OrderDO();
         order.setOrderNo(orderNo);
-        order.setStuId(stuId);
-        order.setStuName(stuName);
+        order.setStudentId(stuId);
+        order.setStudentName(stuName);
         order.setCardId(card.getId());
         order.setCardTitle(card.getTitle());
-        order.setCardType(card.getType()); // 直接使用String类型
         order.setOrderPrice(card.getPrice());
         order.setPaymentType(req.getPaymentType());
         order.setOrderStatus("PENDING"); // 待确认
-        order.setStuCardId(stuCard.getId()); // 关联空白卡
+        order.setAccountId(account.getId()); // 关联课时账户
         order.setPaymentTime(LocalDateTime.now());
         order.setInstitutionId(card.getInstitutionId());
         order.setCreateUser(stuId);
@@ -132,10 +136,10 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             throw new BusinessException("订单状态不正确");
         }
 
-        // 2. 查询空白学生会员卡
-        StuCardDO stuCard = stuCardMapper.selectById(order.getStuCardId());
-        if (stuCard == null) {
-            throw new BusinessException("学生会员卡不存在");
+        // 2. 查询课时账户
+        AccountDO account = accountMapper.selectById(order.getAccountId());
+        if (account == null) {
+            throw new BusinessException("课时账户不存在");
         }
 
         // 3. 重新查询会员卡模板获取最新配置
@@ -151,35 +155,30 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             expireDate = activateDate.plusDays(card.getInitDays());
         }
 
-        // 统一使用 initBalance 管理所有卡类型的余额
-        if (card.getInitBalance() != null) {
-            // 统一使用初始余额
-            stuCard.setBalance(card.getInitBalance());
-        } else {
-            // 默认余额为0
-            stuCard.setBalance(BigDecimal.ZERO);
-        }
-
-        stuCard.setActivateDate(activateDate);
-        stuCard.setExpireDate(expireDate);
-        stuCard.setCardStatus(1); // 学生端可见
-        stuCard.setUpdateUser(UserContextHolder.getUserId());
-        stuCardMapper.updateById(stuCard);
+        // 激活账户：设置初始余额和到期日
+        AccountDO updateAccount = new AccountDO();
+        updateAccount.setId(account.getId());
+        updateAccount.setBalance(card.getInitBalance() != null ? card.getInitBalance() : BigDecimal.ZERO);
+        updateAccount.setExpireDate(expireDate);
+        updateAccount.setStatus(1); // 学生端可见
+        updateAccount.setUpdateUser(UserContextHolder.getUserId());
+        accountMapper.updateById(updateAccount);
 
         // 5. 生成交易流水
         TransactionDO transaction = new TransactionDO();
-        transaction.setStuCardId(stuCard.getId());
-        transaction.setStuId(order.getStuId());
-        transaction.setStuName(order.getStuName());
+        transaction.setAccountId(account.getId());
+        transaction.setStudentId(order.getStudentId());
+        transaction.setStudentName(order.getStudentName());
         transaction.setCardTitle(order.getCardTitle());
-        transaction.setTransType("activate"); // 激活
+        transaction.setTransType(TransactionTypeEnum.BIND.getCode());
+        transaction.setDirection(TransactionDirectionEnum.CREDIT.getCode());
 
-        // 统一使用 initBalance 记录交易金额
+        // 统一使用 initBalance 记录课时变动数量
         BigDecimal amount = card.getInitBalance() != null ? card.getInitBalance() : BigDecimal.ZERO;
 
-        transaction.setBeforeAmt(BigDecimal.ZERO);
-        transaction.setAfterAmt(amount);
-        transaction.setAmount(order.getOrderPrice());
+        transaction.setAmount(amount); // 课时变动数量
+        transaction.setBalance(amount); // 交易后余额快照
+        transaction.setCashAmount(order.getOrderPrice()); // 实际支付金额
         transaction.setRemark("订单确认激活：" + order.getOrderNo());
         transaction.setCreateUser(UserContextHolder.getUserId());
         transactionMapper.insert(transaction);

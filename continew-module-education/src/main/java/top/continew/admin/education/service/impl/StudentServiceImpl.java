@@ -19,14 +19,23 @@ package top.continew.admin.education.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
+import top.continew.admin.education.mapper.AgentMapper;
+import top.continew.admin.education.mapper.BookingMapper;
+import top.continew.admin.education.mapper.FixedBookingMapper;
 import top.continew.admin.education.mapper.StudentMapper;
+import top.continew.admin.education.mapper.AccountMapper;
+import top.continew.admin.education.mapper.StuCardMapper;
+import top.continew.admin.education.model.entity.AccountDO;
+import top.continew.admin.education.model.entity.AgentDO;
+import top.continew.admin.education.model.entity.BookingDO;
+import top.continew.admin.education.model.entity.FixedBookingDO;
+import top.continew.admin.education.model.entity.StuCardDO;
 import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.query.StudentQuery;
 import top.continew.admin.education.model.req.StudentBatchImportReq;
@@ -34,7 +43,9 @@ import top.continew.admin.education.model.req.StudentReq;
 import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
+import top.continew.admin.education.model.resp.StudentStatsResp;
 import top.continew.admin.education.service.StudentService;
+import top.continew.admin.education.constants.CardTypeConstants;
 import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.util.InstitutionUtil;
@@ -42,9 +53,17 @@ import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.model.entity.ClassinUserDO;
 import top.continew.admin.education.constant.ClassinConstants;
 
+import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.resp.PageResp;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import cn.hutool.core.util.StrUtil;
 
@@ -58,23 +77,73 @@ import cn.hutool.core.util.StrUtil;
 @Service
 public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO, StudentResp, StudentDetailResp, StudentQuery, StudentReq> implements StudentService {
 
+    private static final Map<String, String> AGENT_NAME_OVERRIDE_MAP = new HashMap<>();
+
+    static {
+        AGENT_NAME_OVERRIDE_MAP.put("高能少年团150", "gnsnt15");
+        AGENT_NAME_OVERRIDE_MAP.put("高能少年团140", "gnsnt15");
+    }
+
     private final ClassinClient classinClient;
     private final ClassinUserService classinUserService;
     private final InstitutionService institutionService;
+    private final AgentMapper agentMapper;
+    private final StuCardMapper stuCardMapper;
+    private final AccountMapper accountMapper;
+    private final BookingMapper bookingMapper;
+    private final FixedBookingMapper fixedBookingMapper;
 
-    public StudentServiceImpl(ClassinClient classinClient, ClassinUserService classinUserService, InstitutionService institutionService) {
+    public StudentServiceImpl(ClassinClient classinClient,
+                              ClassinUserService classinUserService,
+                              InstitutionService institutionService,
+                              AgentMapper agentMapper,
+                              StuCardMapper stuCardMapper,
+                              AccountMapper accountMapper,
+                              BookingMapper bookingMapper,
+                              FixedBookingMapper fixedBookingMapper) {
         this.classinClient = classinClient;
         this.classinUserService = classinUserService;
         this.institutionService = institutionService;
+        this.agentMapper = agentMapper;
+        this.stuCardMapper = stuCardMapper;
+        this.accountMapper = accountMapper;
+        this.bookingMapper = bookingMapper;
+        this.fixedBookingMapper = fixedBookingMapper;
+    }
+
+    @Override
+    public PageResp<StudentResp> page(StudentQuery query, PageQuery pageQuery) {
+        PageResp<StudentResp> pageResp = super.page(query, pageQuery);
+        enrichWithActiveCards(pageResp.getList());
+        return pageResp;
+    }
+
+    private void enrichWithActiveCards(List<StudentResp> students) {
+        if (students == null || students.isEmpty()) {
+            return;
+        }
+        List<Long> studentIds = students.stream().map(StudentResp::getId).collect(Collectors.toList());
+        List<AccountDO> accounts = accountMapper.selectList(new LambdaQueryWrapper<AccountDO>()
+            .in(AccountDO::getStudentId, studentIds)
+            .eq(AccountDO::getStatus, 1));
+        Map<Long, List<StudentResp.CardBriefInfo>> cardMap = accounts.stream()
+            .collect(Collectors.groupingBy(AccountDO::getStudentId, Collectors.mapping(a -> StudentResp.CardBriefInfo
+                .builder()
+                .cardName(a.getRemark())
+                .cardType(a.getAccountType())
+                .balance(a.getBalance())
+                .expireDate(a.getExpireDate())
+                .build(), Collectors.toList())));
+        students.forEach(s -> s.setActiveCards(cardMap.getOrDefault(s.getId(), List.of())));
     }
 
     @Override
     protected QueryWrapper<StudentDO> buildQueryWrapper(StudentQuery query) {
         QueryWrapper<StudentDO> queryWrapper = super.buildQueryWrapper(query);
-        
+
         // 默认只显示启用状态的学生
         queryWrapper.eq("status", 1);
-        
+
         log.debug("学生查询条件: {}", queryWrapper.getTargetSql());
         return queryWrapper;
     }
@@ -115,9 +184,19 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
     public StudentBatchImportResp batchImport(StudentBatchImportReq req) {
         log.info("开始批量导入学生数据");
 
+        // 构建代理商别名→code 映射表
+        Map<String, String> aliasToCodeMap = new HashMap<>(AGENT_NAME_OVERRIDE_MAP);
+        List<AgentDO> agents = agentMapper.selectList(new LambdaQueryWrapper<AgentDO>().eq(AgentDO::getStatus, 1));
+        for (AgentDO agent : agents) {
+            if (StrUtil.isNotBlank(agent.getAlias())) {
+                aliasToCodeMap.put(agent.getAlias(), agent.getCode());
+            }
+        }
+
         // 解析导入数据
         String[] lines = req.getImportData().split("\n");
         List<StudentBatchImportResp.ImportFailureDetail> failures = new ArrayList<>();
+        List<StudentBatchImportResp.ImportWarningDetail> warnings = new ArrayList<>();
         int successCount = 0;
 
         // 逐行处理
@@ -127,7 +206,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             }
 
             try {
-                // 解析每行数据（格式：学生姓名\t手机号码）
+                // 解析每行数据（格式：学生姓名\t手机号码[\t代理商名称]）
                 String[] parts = line.trim().split("\t");
                 if (parts.length < 2) {
                     failures.add(StudentBatchImportResp.ImportFailureDetail.builder()
@@ -139,13 +218,26 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
 
                 String studentName = parts[0].trim();
                 String phone = parts[1].trim();
+                String agentName = parts.length >= 3 ? parts[2].trim() : "";
 
-                // 验证手机号格式（简单验证）
-                if (!phone.matches("^1[3-9]\\d{9}$")) {
+                // 解析代理商code
+                String agentCode = StrUtil.isNotBlank(agentName) ? aliasToCodeMap.get(agentName) : null;
+
+                // 代理商名称有填但匹配不到，记录警告
+                if (StrUtil.isNotBlank(agentName) && agentCode == null) {
+                    warnings.add(StudentBatchImportResp.ImportWarningDetail.builder()
+                        .studentName(parts[0].trim())
+                        .phone(parts.length >= 2 ? parts[1].trim() : "")
+                        .message("代理商 [" + agentName + "] 未识别，已按无代理商导入")
+                        .build());
+                }
+
+                // 验证手机号格式（非空即可，支持国际号码）
+                if (StrUtil.isBlank(phone)) {
                     failures.add(StudentBatchImportResp.ImportFailureDetail.builder()
                         .studentName(studentName)
                         .phone(phone)
-                        .reason("手机号码格式不正确")
+                        .reason("手机号码不能为空")
                         .build());
                     continue;
                 }
@@ -155,16 +247,20 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
                     .eq(StudentDO::getPhone, phone));
 
                 if (existingStudent != null) {
-                    // 学生已存在，更新姓名
+                    // 学生已存在，更新姓名和代理商
                     existingStudent.setName(studentName);
+                    if (agentCode != null) {
+                        existingStudent.setAgentCode(agentCode);
+                    }
                     baseMapper.updateById(existingStudent);
-                    log.debug("更新学生[{}]，手机号：{}", studentName, phone);
+                    log.debug("更新学生[{}]，手机号：{}，代理商：{}", studentName, phone, agentCode);
                 } else {
                     // 创建新学生
                     StudentDO newStudent = new StudentDO();
                     newStudent.setName(studentName);
                     newStudent.setPhone(phone);
-                    newStudent.setGender("male"); // 默认性别
+                    newStudent.setAgentCode(agentCode);
+                    newStudent.setGender("female"); // 默认性别
                     newStudent.setRegisterTime(LocalDateTime.now());
                     // 注意：密码管理已迁移到 CredentialService，不再在此处设置密码
                     newStudent.setStatus(1); // 启用状态
@@ -174,7 +270,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
                     newStudent.setInstitutionId(institutionId);
 
                     baseMapper.insert(newStudent);
-                    log.debug("成功导入学生[{}]，手机号：{}", studentName, phone);
+                    log.debug("成功导入学生[{}]，手机号：{}，代理商：{}", studentName, phone, agentCode);
                 }
 
                 successCount++;
@@ -189,12 +285,14 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             }
         }
 
-        log.info("批量导入完成，成功：{}，失败：{}", successCount, failures.size());
+        log.info("批量导入完成，成功：{}，失败：{}，警告：{}", successCount, failures.size(), warnings.size());
 
         return StudentBatchImportResp.builder()
             .successCount(successCount)
             .failureCount(failures.size())
             .failures(failures)
+            .warningCount(warnings.size())
+            .warnings(warnings)
             .build();
     }
 
@@ -286,16 +384,17 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             // 4. 同步到ClassIn（如果学生已关联ClassIn账号）
             try {
                 // 获取学生的ClassIn用户信息
-                ClassinUserDO classinUser = classinUserService.getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
-                
+                ClassinUserDO classinUser = classinUserService
+                    .getByMemberIdAndUserType(studentId, ClassinConstants.USER_TYPE_STUDENT);
+
                 if (classinUser != null && StrUtil.isNotBlank(classinUser.getClassinUid())) {
                     // 获取机构ID（从ClassIn用户记录中获取）
                     Long institutionId = classinUser.getClassinInstitutionId();
                     if (institutionId != null) {
                         // 调用ClassIn API更新学生姓名
                         classinClient.editSchoolStudent(classinUser.getClassinUid(), newName, institutionId);
-                        log.info("ClassIn同步学生姓名成功: studentId={}, classinUid={}, newName={}", 
-                            studentId, classinUser.getClassinUid(), newName);
+                        log.info("ClassIn同步学生姓名成功: studentId={}, classinUid={}, newName={}", studentId, classinUser
+                            .getClassinUid(), newName);
                     } else {
                         log.warn("学生关联的ClassIn用户缺少机构ID，无法同步到ClassIn: studentId={}", studentId);
                     }
@@ -304,15 +403,96 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
                 }
             } catch (Exception e) {
                 // ClassIn同步失败不影响本地更新的成功
-                log.error("同步学生姓名到ClassIn失败，但本地更新成功: studentId={}, newName={}, error={}", 
-                    studentId, newName, e.getMessage());
+                log.error("同步学生姓名到ClassIn失败，但本地更新成功: studentId={}, newName={}, error={}", studentId, newName, e
+                    .getMessage());
             }
 
             return true;
         } catch (Exception e) {
-            log.error("更新学生姓名并同步ClassIn失败: studentId={}, newName={}, error={}", 
-                studentId, newName, e.getMessage(), e);
+            log.error("更新学生姓名并同步ClassIn失败: studentId={}, newName={}, error={}", studentId, newName, e.getMessage(), e);
             return false;
         }
+    }
+
+    private static final DateTimeFormatter STATS_DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter STATS_TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
+    @Override
+    public StudentStatsResp getStats(Long studentId) {
+        if (studentId == null) {
+            return StudentStatsResp.builder()
+                .remaining(0)
+                .pending(0)
+                .completed(0)
+                .fixedCount(0)
+                .lowBalance(false)
+                .build();
+        }
+
+        // 1. 剩余课程：edu_stu_card 中该学生所有启用状态的"次卡"的 balance 之和（且未过期）
+        LocalDate today = LocalDate.now();
+        List<StuCardDO> cards = stuCardMapper.selectList(new LambdaQueryWrapper<StuCardDO>()
+            .eq(StuCardDO::getStuId, studentId)
+            .eq(StuCardDO::getStatus, 1)
+            .eq(StuCardDO::getCardStatus, 1));
+        int remaining = 0;
+        for (StuCardDO c : cards) {
+            // 仅统计次卡类型
+            if (!CardTypeConstants.isTimesCard(c.getCardType())) {
+                continue;
+            }
+            // 有效期过滤：有限期卡需未过期；无限期卡直接计入
+            if (CardTypeConstants.isLimitedCard(c.getCardType())) {
+                if (c.getExpireDate() == null || c.getExpireDate().isBefore(today)) {
+                    continue;
+                }
+            }
+            BigDecimal bal = c.getBalance();
+            if (bal != null) {
+                remaining += bal.intValue();
+            }
+        }
+
+        // 2. 按当前时间拆分预约为"待上 / 已完成"
+        LocalDateTime now = LocalDateTime.now();
+        String todayStr = now.format(STATS_DATE_FMT);
+        String timeNow = now.format(STATS_TIME_FMT);
+        List<BookingDO> bookings = bookingMapper.selectList(new LambdaQueryWrapper<BookingDO>()
+            .eq(BookingDO::getStudentId, studentId)
+            .eq(BookingDO::getStatus, 1)
+            .select(BookingDO::getSlotDate, BookingDO::getSlotTime));
+        int pending = 0;
+        int completed = 0;
+        for (BookingDO b : bookings) {
+            String d = b.getSlotDate();
+            String t = b.getSlotTime();
+            if (StrUtil.isBlank(d) || StrUtil.isBlank(t)) {
+                continue;
+            }
+            // 字符串比较即可：YYYYMMDD 和 HH:mm 都是定长可比
+            boolean isFuture = d.compareTo(todayStr) > 0 || (d.equals(todayStr) && t.compareTo(timeNow) > 0);
+            if (isFuture) {
+                pending++;
+            } else {
+                completed++;
+            }
+        }
+
+        // 3. 固定课数量：edu_fixed_booking 启用状态下该学生的记录数
+        Long fixedCountLong = fixedBookingMapper.selectCount(new LambdaQueryWrapper<FixedBookingDO>()
+            .eq(FixedBookingDO::getStudentId, studentId)
+            .eq(FixedBookingDO::getStatus, 1));
+        int fixedCount = fixedCountLong == null ? 0 : fixedCountLong.intValue();
+
+        // 剩余课时 < 固定课数 时触发预警
+        boolean lowBalance = fixedCount > 0 && remaining < fixedCount;
+
+        return StudentStatsResp.builder()
+            .remaining(remaining)
+            .pending(pending)
+            .completed(completed)
+            .fixedCount(fixedCount)
+            .lowBalance(lowBalance)
+            .build();
     }
 }

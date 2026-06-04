@@ -54,10 +54,17 @@ public class LessonQuery implements Serializable {
     private Long courseUid;
 
     /**
+     * 所属代理机构编码
+     */
+    @Schema(description = "所属代理机构编码")
+    @Query(type = QueryType.EQ)
+    private String agentCode;
+
+    /**
      * 课堂活动名称
      */
     @Schema(description = "课堂活动名称")
-    @Query(type = QueryType.EQ)
+    @Query(type = QueryType.LIKE)
     private String name;
 
     /**
@@ -80,4 +87,11 @@ public class LessonQuery implements Serializable {
     @Schema(description = "活动结束时间")
     @Query(type = QueryType.EQ)
     private LocalDateTime endTime;
+
+    /**
+     * 课程状态（started:已开课, not_started:未开课）
+     * 注意：这是虚拟字段，不映射到数据库
+     */
+    @Schema(description = "课程状态")
+    private String courseStatus;
 }
