@@ -91,7 +91,6 @@ public class ClassinConstants {
      */
     public static final int CAMERA_HIDE = 1;
 
-
     /**
      * 默认单元ID
      */

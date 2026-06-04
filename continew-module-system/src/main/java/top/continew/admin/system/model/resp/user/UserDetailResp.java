@@ -154,6 +154,13 @@ public class UserDetailResp extends BaseDetailResp {
     private String avatar;
 
     /**
+     * 所属机构编码
+     */
+    @Schema(description = "所属机构编码")
+    @ExcelProperty(value = "机构编码", order = 15)
+    private String agentCode;
+
+    /**
      * 最后一次修改密码时间
      */
     @Schema(description = "最后一次修改密码时间", example = "2023-08-08 08:08:08", type = "string")

@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     `id`             bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
     `username`       varchar(64)  NOT NULL                    COMMENT '用户名',
     `nickname`       varchar(30)  NOT NULL                    COMMENT '昵称',
+    `agent_code`     varchar(50)  DEFAULT NULL                COMMENT '所属机构编码（关联 edu_agent.code）',
     `password`       varchar(255) DEFAULT NULL                COMMENT '密码',
     `gender`         tinyint(1)   UNSIGNED NOT NULL DEFAULT 0 COMMENT '性别（0：未知；1：男；2：女）',
     `email`          varchar(255) DEFAULT NULL                COMMENT '邮箱',
@@ -94,7 +95,8 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     UNIQUE INDEX `uk_phone`(`phone`),
     INDEX `idx_dept_id`(`dept_id`),
     INDEX `idx_create_user`(`create_user`),
-    INDEX `idx_update_user`(`update_user`)
+    INDEX `idx_update_user`(`update_user`),
+    INDEX `idx_agent_code`(`agent_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 CREATE TABLE IF NOT EXISTS `sys_user_password_history` (

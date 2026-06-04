@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.web.multipart.MultipartFile;
 
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
@@ -116,5 +117,17 @@ public class SlotController extends BaseController<SlotService, SlotResp, SlotDe
         }
 
         return R.ok(result);
+    }
+
+    /**
+     * 从 Excel 导入预约
+     *
+     * @param file Excel 文件（列：上课时间、上课老师、预约会员、会员手机号、使用会员卡、预约备注）
+     * @return 每行导入结果
+     */
+    @Operation(summary = "导入预约", description = "从 Excel 文件批量导入预约，不扣款不对接ClassIn")
+    @PostMapping("/import-booking")
+    public List<Map<String, Object>> importBookings(@RequestParam("file") MultipartFile file) {
+        return bookingService.importBookings(file);
     }
 }

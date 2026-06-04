@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.education.client.ClassinClient;
+import top.continew.admin.common.service.CommonUserService;
 import top.continew.admin.education.helper.ClassinHelper;
 import top.continew.admin.education.mapper.CourseMapper;
 import top.continew.admin.education.mapper.CourseTeacherMapper;
@@ -59,6 +60,7 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
     private final TeacherMapper teacherMapper;
     private final ClassinHelper classinHelper;
     private final ClassinClient classinClient;
+    private final CommonUserService commonUserService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -195,6 +197,12 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
                 resp.setTeacherEmail(teacher.getEmail());
             }
 
+            // 手动填充创建人昵称
+            if (courseTeacher.getCreateUser() != null) {
+                String createUserNickname = commonUserService.getNicknameById(courseTeacher.getCreateUser());
+                resp.setCreateUserString(createUserNickname);
+            }
+
             respList.add(resp);
         }
         return respList;
@@ -239,6 +247,56 @@ public class CourseTeacherServiceImpl implements CourseTeacherService {
         }
 
         return countMap;
+    }
+
+    @Override
+    public Map<Long, List<CourseTeacherResp>> listTeachersByCourseIds(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        LambdaQueryWrapper<CourseTeacherDO> wrapper = Wrappers.lambdaQuery(CourseTeacherDO.class)
+            .in(CourseTeacherDO::getCourseId, courseIds)
+            .orderByDesc(CourseTeacherDO::getCreateTime);
+        List<CourseTeacherDO> list = courseTeacherMapper.selectList(wrapper);
+
+        if (list.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> teacherIds = list.stream()
+            .map(CourseTeacherDO::getTeacherId)
+            .distinct()
+            .collect(Collectors.toList());
+        LambdaQueryWrapper<TeacherDO> teacherWrapper = Wrappers.lambdaQuery(TeacherDO.class)
+            .in(TeacherDO::getId, teacherIds);
+        Map<Long, TeacherDO> teacherMap = teacherMapper.selectList(teacherWrapper)
+            .stream()
+            .collect(Collectors.toMap(TeacherDO::getId, t -> t));
+
+        Map<Long, List<CourseTeacherResp>> resultMap = new java.util.HashMap<>();
+        for (CourseTeacherDO ct : list) {
+            CourseTeacherResp resp = BeanUtil.copyProperties(ct, CourseTeacherResp.class);
+            TeacherDO teacher = teacherMap.get(ct.getTeacherId());
+            if (teacher != null) {
+                resp.setTeacherName(teacher.getName());
+                resp.setTeacherPhone(teacher.getPhone());
+                resp.setTeacherEmail(teacher.getEmail());
+            }
+            resultMap.computeIfAbsent(ct.getCourseId(), k -> new ArrayList<>()).add(resp);
+        }
+        return resultMap;
+    }
+
+    @Override
+    public List<Long> listCourseIdsByTeacherId(Long teacherId) {
+        LambdaQueryWrapper<CourseTeacherDO> wrapper = Wrappers.lambdaQuery(CourseTeacherDO.class)
+            .eq(CourseTeacherDO::getTeacherId, teacherId)
+            .select(CourseTeacherDO::getCourseId); // 只查询courseId字段，提升性能
+
+        List<CourseTeacherDO> courseTeachers = courseTeacherMapper.selectList(wrapper);
+
+        return courseTeachers.stream().map(CourseTeacherDO::getCourseId).distinct().collect(Collectors.toList());
     }
 
     /**

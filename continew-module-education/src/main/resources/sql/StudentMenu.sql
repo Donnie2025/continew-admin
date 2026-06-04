@@ -1,11 +1,11 @@
 SET @parentId = 1913646786038648832;
--- 学生管理管理菜单
+-- 学生管理菜单
 INSERT INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `path`, `name`, `component`, `redirect`, `icon`, `is_external`, `is_cache`, `is_hidden`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES
-    (@parentId, '学生管理管理', 1000, 2, '/education/student', 'Student', 'education/student/index', NULL, NULL, b'0', b'0', b'0', NULL, 1, 1, 1, NOW());
+    (@parentId, '学生管理', 1000, 2, '/education/student', 'Student', 'education/student/index', NULL, NULL, b'0', b'0', b'0', NULL, 1, 1, 1, NOW());
 
--- 学生管理管理按钮
+-- 学生管理按钮
 INSERT INTO `sys_menu`
     (`id`, `title`, `parent_id`, `type`, `permission`, `sort`, `status`, `create_user`, `create_time`)
 VALUES

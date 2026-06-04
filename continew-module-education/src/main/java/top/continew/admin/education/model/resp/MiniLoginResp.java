@@ -74,8 +74,20 @@ public class MiniLoginResp implements Serializable {
     private String phone;
 
     /**
+     * 邮箱
+     */
+    @Schema(description = "邮箱", example = "teacher@example.com")
+    private String email;
+
+    /**
      * 用户类型
      */
     @Schema(description = "用户类型", example = "student")
     private String userType;
+
+    /**
+     * 是否为新用户（首次登录）
+     */
+    @Schema(description = "是否为新用户（首次登录）", example = "true")
+    private Boolean isNewUser;
 }

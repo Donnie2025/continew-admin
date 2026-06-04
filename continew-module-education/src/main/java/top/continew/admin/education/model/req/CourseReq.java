@@ -60,8 +60,22 @@ public class CourseReq implements Serializable {
     private Long courseSettingId;
 
     /**
+     * 所属代理机构编码
+     */
+    @Schema(description = "所属代理机构编码")
+    @Length(max = 50, message = "代理机构编码长度不能超过 {max} 个字符")
+    private String agentCode;
+
+    /**
      * 所属机构ID
      */
     @Schema(description = "所属机构ID")
     private Long institutionId;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    @Length(max = 500, message = "备注长度不能超过 {max} 个字符")
+    private String remark;
 }

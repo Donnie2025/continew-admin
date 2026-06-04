@@ -88,6 +88,20 @@ public class StpMiniUtil {
     }
 
     /**
+     * 获取小程序用户登录ID（Long 类型）
+     */
+    public static long getLoginIdAsLong() {
+        return stpLogic.getLoginIdAsLong();
+    }
+
+    /**
+     * 小程序用户是否登录
+     */
+    public static boolean isLogin() {
+        return stpLogic.isLogin();
+    }
+
+    /**
      * 获取小程序用户Token
      */
     public static String getTokenValue() {

@@ -41,6 +41,13 @@ public class LessonReq implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 所属代理机构编码
+     */
+    @Schema(description = "所属代理机构编码")
+    @Length(max = 50, message = "代理机构编码长度不能超过 {max} 个字符")
+    private String agentCode;
+
+    /**
      * 课程ID
      */
     @Schema(description = "课程ID")
@@ -107,4 +114,17 @@ public class LessonReq implements Serializable {
      */
     @Schema(description = "公开状态")
     private Integer openState;
+
+    /**
+     * 关联教材ID（可选）
+     */
+    @Schema(description = "关联教材ID")
+    private Long materialId;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    @Length(max = 500, message = "备注长度不能超过 {max} 个字符")
+    private String remark;
 }

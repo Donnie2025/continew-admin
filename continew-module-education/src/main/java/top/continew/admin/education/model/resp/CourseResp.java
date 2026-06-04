@@ -43,6 +43,12 @@ public class CourseResp extends BaseResp {
     private String name;
 
     /**
+     * 所属代理机构编码
+     */
+    @Schema(description = "所属代理机构编码")
+    private String agentCode;
+
+    /**
      * 班主任ID
      */
     @Schema(description = "班主任ID")
@@ -107,4 +113,22 @@ public class CourseResp extends BaseResp {
      */
     @Schema(description = "学生数量")
     private Integer studentCount;
+
+    /**
+     * 关联教材ID
+     */
+    @Schema(description = "关联教材ID")
+    private Long materialId;
+
+    /**
+     * 关联教材名称
+     */
+    @Schema(description = "关联教材名称")
+    private String materialName;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    private String remark;
 }

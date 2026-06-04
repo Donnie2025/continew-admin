@@ -127,6 +127,12 @@ public class UserResp extends BaseDetailResp {
     @Schema(description = "角色名称列表", example = "测试人员")
     private List<String> roleNames;
 
+    /**
+     * 所属机构编码
+     */
+    @Schema(description = "所属机构编码")
+    private String agentCode;
+
     @Override
     public Boolean getDisabled() {
         return this.getIsSystem() || Objects.equals(this.getId(), UserContextHolder.getUserId());

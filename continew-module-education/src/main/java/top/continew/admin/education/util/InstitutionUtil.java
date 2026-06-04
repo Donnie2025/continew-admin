@@ -68,7 +68,7 @@ public class InstitutionUtil {
      * </p>
      *
      * @param institutionService 机构服务
-     * @param logPrefix 日志前缀，如"为课时设置"、"为学生设置"等
+     * @param logPrefix          日志前缀，如"为课时设置"、"为学生设置"等
      * @return 机构ID
      */
     public static Long getEffectiveInstitutionId(InstitutionService institutionService, String logPrefix) {

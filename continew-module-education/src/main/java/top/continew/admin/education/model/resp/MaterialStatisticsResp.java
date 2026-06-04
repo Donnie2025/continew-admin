@@ -60,16 +60,10 @@ public class MaterialStatisticsResp implements Serializable {
     private Long displayCount;
 
     /**
-     * 按分类统计
+     * 按节点类型统计（CATEGORY/BOOK/LEVEL/UNIT/LESSON）
      */
-    @Schema(description = "按分类统计")
-    private Map<String, Long> categoryStats;
-
-    /**
-     * 按级别统计
-     */
-    @Schema(description = "按级别统计")
-    private Map<String, Long> levelStats;
+    @Schema(description = "按节点类型统计（CATEGORY/BOOK/LEVEL/UNIT/LESSON）")
+    private Map<String, Long> typeStats;
 
     /**
      * 最近创建的教材数（7天内）

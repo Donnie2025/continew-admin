@@ -60,10 +60,10 @@ public class BatchBookingReq implements Serializable {
     private Long lessonId;
 
     /**
-     * 学生会员卡ID（关联edu_stu_card表）
+     * 课时账户ID（关联edu_account表）
      */
-    @Schema(description = "学生会员卡ID")
-    private Long stuCardId;
+    @Schema(description = "课时账户ID")
+    private Long accountId;
 
     /**
      * 时间段列表

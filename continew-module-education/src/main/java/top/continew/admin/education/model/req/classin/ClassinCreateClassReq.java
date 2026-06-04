@@ -159,4 +159,11 @@ public class ClassinCreateClassReq {
      * 0-不允许(默认)，1-允许
      */
     private Integer handsUpEnable;
+
+    /**
+     * 云盘文件夹ID
+     * 非必填
+     * 关联课件所在的ClassIn云盘文件夹ID
+     */
+    private String cloudFolderId;
 }

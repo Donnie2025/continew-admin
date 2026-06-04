@@ -143,4 +143,5 @@ public class CourseController extends BaseController<CourseService, CourseResp, 
     public List<LessonResp> listLessonsByCourseId(@PathVariable Long courseId) {
         return lessonService.listByCourseId(courseId);
     }
+
 }

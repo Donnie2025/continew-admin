@@ -74,12 +74,13 @@ public interface FixedService extends BaseService<FixedResp, FixedResp, FixedQue
     void deleteFixed(Long id);
 
     /**
-     * 学生查询所有固定课（包含预约状态）
+     * 学生查询指定教师的固定课（包含预约状态）
      *
      * @param studentId 学生ID
+     * @param teacherId 教师ID（必填）
      * @return 固定课列表（包含是否已预约状态）
      */
-    List<FixedResp> listForStudent(Long studentId);
+    List<FixedResp> listForStudent(Long studentId, Long teacherId);
 
     /**
      * 批量检查时间冲突

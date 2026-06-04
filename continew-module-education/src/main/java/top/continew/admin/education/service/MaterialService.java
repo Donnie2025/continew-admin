@@ -19,6 +19,7 @@ package top.continew.admin.education.service;
 import top.continew.admin.education.model.query.MaterialQuery;
 import top.continew.admin.education.model.req.MaterialReq;
 import top.continew.admin.education.model.req.MaterialSortReq;
+import top.continew.admin.education.model.req.SyncCloudFoldersReq;
 import top.continew.admin.education.model.resp.MaterialDetailResp;
 import top.continew.admin.education.model.resp.MaterialResp;
 import top.continew.admin.education.model.resp.MaterialStatisticsResp;
@@ -33,6 +34,13 @@ import java.util.List;
  * @since 2025/12/29 21:22
  */
 public interface MaterialService extends BaseService<MaterialResp, MaterialDetailResp, MaterialQuery, MaterialReq> {
+
+    /**
+     * 获取全量教材列表（不分页）
+     *
+     * @return 全量教材列表
+     */
+    List<MaterialResp> listAll();
 
     /**
      * 根据分类获取教材列表
@@ -55,4 +63,20 @@ public interface MaterialService extends BaseService<MaterialResp, MaterialDetai
      * @param sortList 排序列表
      */
     void batchUpdateSort(List<MaterialSortReq> sortList);
+
+    /**
+     * 同步云盘文件夹列表到教材表
+     *
+     * @param req 同步请求
+     * @return 新增节点数量
+     */
+    int syncCloudFolders(SyncCloudFoldersReq req);
+
+    /**
+     * 从ClassIn云盘同步数据到数据库（更新cloudName字段）
+     *
+     * @param ids 教材ID列表
+     * @return 更新节点数量
+     */
+    int syncCloudData(List<Long> ids);
 }

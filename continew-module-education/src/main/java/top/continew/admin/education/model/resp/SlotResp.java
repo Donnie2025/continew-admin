@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.admin.common.model.resp.BaseResp;
 import java.io.Serial;
-import java.time.*;
 import java.util.List;
 
 /**
@@ -176,16 +175,10 @@ public class SlotResp extends BaseResp {
         private String lessonUrl;
 
         /**
-         * 学生会员卡ID
+         * 扣费课时账户ID
          */
-        @Schema(description = "学生会员卡ID")
-        private Long stuCardId;
-
-        /**
-         * 会员卡名称
-         */
-        @Schema(description = "会员卡名称")
-        private String cardName;
+        @Schema(description = "扣费课时账户ID")
+        private Long accountId;
 
         /**
          * 预约备注
@@ -286,20 +279,12 @@ public class SlotResp extends BaseResp {
             this.lessonUrl = lessonUrl;
         }
 
-        public Long getStuCardId() {
-            return stuCardId;
+        public Long getAccountId() {
+            return accountId;
         }
 
-        public void setStuCardId(Long stuCardId) {
-            this.stuCardId = stuCardId;
-        }
-
-        public String getCardName() {
-            return cardName;
-        }
-
-        public void setCardName(String cardName) {
-            this.cardName = cardName;
+        public void setAccountId(Long accountId) {
+            this.accountId = accountId;
         }
 
         public String getRemark() {

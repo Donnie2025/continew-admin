@@ -16,7 +16,6 @@
 
 package top.continew.admin.education.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
@@ -40,7 +39,9 @@ import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.req.MiniBindPhoneReq;
 import top.continew.admin.education.model.req.MiniPasswordLoginReq;
 import top.continew.admin.education.model.req.MiniSendCodeReq;
+import top.continew.admin.education.model.req.MiniSmsLoginReq;
 import top.continew.admin.education.model.req.MiniWechatLoginReq;
+import top.continew.admin.education.model.req.MpOAuthLoginReq;
 import top.continew.admin.education.model.req.CredentialVerifyPasswordReq;
 import top.continew.admin.education.model.resp.CredentialVerifyPasswordResp;
 import top.continew.admin.education.model.resp.MiniLoginResp;
@@ -86,7 +87,15 @@ public class MiniAuthServiceImpl implements MiniAuthService {
     @Value("${wechat.miniprogram.app-secret:}")
     private String appSecret;
 
+    @Value("${wechat.mp.app-id:}")
+    private String mpAppId;
+
+    @Value("${wechat.mp.app-secret:}")
+    private String mpAppSecret;
+
     private static final String WECHAT_API_URL = "https://api.weixin.qq.com/sns/jscode2session";
+    private static final String WECHAT_MP_OAUTH_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
+    private static final String WECHAT_MP_USERINFO_URL = "https://api.weixin.qq.com/sns/userinfo";
     private static final String VERIFY_CODE_PREFIX = "mini:verify:code:";
     private static final long VERIFY_CODE_EXPIRE_TIME = 5;
 
@@ -214,7 +223,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
                 .getPhone(), userType, token, verifyLoginId);
 
             // 5. 返回登录响应
-            String displayName, nickname, avatarUrl, phone;
+            String displayName, nickname, avatarUrl, phone, email;
 
             if (UserType.TEACHER.getValue().equals(userType)) {
                 displayName = StrUtil.isNotBlank(teacher.getName()) ? teacher.getName() : "教师";
@@ -223,6 +232,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
                     ? teacher.getAvatar()
                     : "/assets/images/default.jpeg";
                 phone = teacher.getPhone();
+                email = teacher.getEmail();
             } else {
                 displayName = StrUtil.isNotBlank(student.getName()) ? student.getName() : "用户";
                 nickname = student.getNickname();
@@ -230,6 +240,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
                     ? student.getAvatar()
                     : "/assets/images/default.jpeg";
                 phone = student.getPhone();
+                email = student.getEmail();
             }
 
             return MiniLoginResp.builder()
@@ -239,11 +250,118 @@ public class MiniAuthServiceImpl implements MiniAuthService {
                 .nickname(nickname)
                 .avatar(avatarUrl)
                 .phone(phone)
+                .email(email)
                 .userType(userType)
                 .build();
 
         } catch (Exception e) {
             log.error("小程序密码登录失败: phone={}, error={}", req.getPhone(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @Override
+    public MiniLoginResp loginBySms(MiniSmsLoginReq req, HttpServletRequest request) {
+        log.info("=== 小程序短信验证码登录开始 ===");
+        log.info("请求参数: phone={}, userType={}", req.getPhone(), req.getUserType());
+
+        try {
+            // 1. 验证短信验证码
+            String key = VERIFY_CODE_PREFIX + req.getPhone();
+            String cachedCode = stringRedisTemplate.opsForValue().get(key);
+
+            // 万能验证码453923，用于测试和开发
+            boolean isUniversalCode = "453923".equals(req.getSmsCode());
+
+            if (!isUniversalCode) {
+                if (StrUtil.isBlank(cachedCode)) {
+                    throw new BadRequestException("验证码已过期，请重新获取");
+                }
+                if (!cachedCode.equals(req.getSmsCode())) {
+                    throw new BadRequestException("验证码错误");
+                }
+            }
+
+            // 2. 根据手机号查找用户
+            String userType = req.getUserType();
+            if (!UserType.isValid(userType)) {
+                throw new BadRequestException("无效的用户类型: " + userType);
+            }
+
+            StudentDO student = null;
+            TeacherDO teacher = null;
+            Long userId;
+
+            if (UserType.TEACHER.getValue().equals(userType)) {
+                teacher = teacherService.getByPhone(req.getPhone());
+                if (teacher == null) {
+                    throw new BadRequestException("教师手机号未注册，请联系管理员");
+                }
+                userId = teacher.getId();
+                log.info("找到教师用户: teacherId={}, name={}", teacher.getId(), teacher.getName());
+            } else {
+                student = studentService.getByPhone(req.getPhone());
+                if (student == null) {
+                    throw new BadRequestException("该手机号未注册");
+                }
+                userId = student.getId();
+                log.info("找到学生用户: studentId={}, name={}", student.getId(), student.getName());
+            }
+
+            // 3. 构建用户上下文
+            UserContext userContext = new UserContext(Collections.emptySet(), Collections.emptySet(), -1);
+            userContext.setId(userId);
+            userContext.setUsername(req.getPhone());
+            userContext.setDeptId(null);
+            userContext.setPwdResetTime(null);
+            userContext.setClientType("miniprogram");
+            userContext.setClientId("miniprogram");
+
+            // 4. 登录
+            StpMiniUtil.login(userId, "miniprogram");
+            StpMiniUtil.getStpLogic().getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
+            String token = StpMiniUtil.getTokenValue();
+
+            log.info("小程序短信登录成功: userId={}, phone={}, userType={}", userId, req.getPhone(), userType);
+
+            // 5. 删除已使用的验证码
+            if (!isUniversalCode) {
+                stringRedisTemplate.delete(key);
+            }
+
+            // 6. 返回登录响应
+            String displayName, nickname, avatarUrl, phone, email;
+            if (UserType.TEACHER.getValue().equals(userType)) {
+                displayName = StrUtil.isNotBlank(teacher.getName()) ? teacher.getName() : "教师";
+                nickname = teacher.getName();
+                avatarUrl = StrUtil.isNotBlank(teacher.getAvatar())
+                    ? teacher.getAvatar()
+                    : "/assets/images/default.jpeg";
+                phone = teacher.getPhone();
+                email = teacher.getEmail();
+            } else {
+                displayName = StrUtil.isNotBlank(student.getName()) ? student.getName() : "用户";
+                nickname = student.getNickname();
+                avatarUrl = StrUtil.isNotBlank(student.getAvatar())
+                    ? student.getAvatar()
+                    : "/assets/images/default.jpeg";
+                phone = student.getPhone();
+                email = student.getEmail();
+            }
+
+            return MiniLoginResp.builder()
+                .token(token)
+                .userId(userId)
+                .userName(displayName)
+                .nickname(nickname)
+                .avatar(avatarUrl)
+                .phone(phone)
+                .email(email)
+                .userType(userType)
+                .build();
+
+        } catch (Exception e) {
+            log.error("小程序短信登录失败: phone={}, error={}", req.getPhone(), e.getMessage(), e);
             throw e;
         }
     }
@@ -446,10 +564,19 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         log.info("发送验证码到手机号: {}", phone);
 
         // 检查该手机号是否已被其他用户使用
+        // 注意：本接口为 @SaIgnore，不强制要求登录态。需兼容未登录场景下的判断。
+        // 小程序/H5 用户使用 StpMiniUtil，不能使用默认 StpUtil（后台管理专用）。
         StudentDO existStudent = studentService.getByPhone(phone);
         if (existStudent != null) {
-            Long currentUserId = StpUtil.getLoginIdAsLong();
-            if (!existStudent.getId().equals(currentUserId)) {
+            Long currentUserId = null;
+            try {
+                if (StpMiniUtil.isLogin()) {
+                    currentUserId = StpMiniUtil.getLoginIdAsLong();
+                }
+            } catch (Exception ignored) {
+                // 未登录或 token 解析失败，按未登录处理
+            }
+            if (currentUserId == null || !existStudent.getId().equals(currentUserId)) {
                 throw new BadRequestException("该手机号已被其他用户绑定");
             }
         }
@@ -481,8 +608,8 @@ public class MiniAuthServiceImpl implements MiniAuthService {
 
         log.info("绑定手机号: phone={}, code={}", phone, code);
 
-        // 获取当前登录用户ID
-        Long userId = StpUtil.getLoginIdAsLong();
+        // 获取当前登录用户ID（小程序/H5 用户使用 StpMiniUtil）
+        Long userId = StpMiniUtil.getLoginIdAsLong();
 
         // 验证验证码
         String key = VERIFY_CODE_PREFIX + phone;
@@ -518,6 +645,12 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         student.setUpdateUser(userId);
         student.setUpdateTime(LocalDateTime.now());
 
+        // 绑定时默认代理商编码（若尚未设置）
+        if (StrUtil.isBlank(student.getAgentCode())) {
+            student.setAgentCode("gnsnt15");
+            log.info("设置默认代理商编码: userId={}, agentCode=gnsnt15", userId);
+        }
+
         // 如果用户填写了英文名，则将英文名和年龄拼接存储到name字段
         if (StrUtil.isNotBlank(req.getEnglishName())) {
             StringBuilder nameBuilder = new StringBuilder();
@@ -543,7 +676,15 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         // 处理额外信息并存储到remark字段
         StringBuilder remarkBuilder = new StringBuilder();
 
+        // 保留原来的微信昵称到 remark（便于人工核对用户）
+        if (StrUtil.isNotBlank(student.getNickname())) {
+            remarkBuilder.append("微信昵称: ").append(student.getNickname());
+        }
+
         if (StrUtil.isNotBlank(req.getEnglishName())) {
+            if (remarkBuilder.length() > 0) {
+                remarkBuilder.append("; ");
+            }
             remarkBuilder.append("英文名: ").append(req.getEnglishName().trim());
         }
 
@@ -577,6 +718,304 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         stringRedisTemplate.delete(key);
 
         log.info("绑定手机号成功: userId={}, phone={}", userId, phone);
+    }
+
+    @Override
+    public MiniLoginResp mpOAuthLogin(MpOAuthLoginReq req, HttpServletRequest request) {
+        log.info("开始微信公众号OAuth登录，code: {}", req.getCode());
+
+        // 调用微信OAuth API获取 access_token 和 openid
+        MpOAuthUserInfo mpUserInfo = getMpOAuthUserInfo(req.getCode());
+
+        // 如果 scope 允许（snsapi_userinfo），调用 userinfo 接口获取用户详细信息
+        MpUserDetailInfo detail = null;
+        try {
+            if (StrUtil.isNotBlank(mpUserInfo.getAccessToken()) && StrUtil.isNotBlank(mpUserInfo.getOpenid())) {
+                detail = getMpUserDetailInfo(mpUserInfo.getAccessToken(), mpUserInfo.getOpenid());
+            }
+        } catch (Exception e) {
+            log.warn("获取微信公众号用户详细信息失败（忽略，使用基础信息）: {}", e.getMessage());
+        }
+
+        // 优先使用 userinfo 接口返回的数据，其次使用前端传入的
+        String effectiveNickname = (detail != null && StrUtil.isNotBlank(detail.getNickname()))
+            ? detail.getNickname()
+            : req.getNickname();
+        String effectiveAvatar = (detail != null && StrUtil.isNotBlank(detail.getHeadimgurl()))
+            ? detail.getHeadimgurl()
+            : req.getAvatar();
+
+        // 查找或创建学生用户
+        FindOrCreateResult result = findOrCreateStudentByMpOpenid(mpUserInfo, detail, effectiveNickname, effectiveAvatar, request);
+        StudentDO student = result.getStudent();
+        boolean isNewUser = result.isNewUser();
+
+        // 创建用户上下文
+        UserContext userContext = new UserContext(Collections.emptySet(), Collections.emptySet(), -1);
+        userContext.setId(student.getId());
+        userContext.setUsername(student.getOpenid());
+        userContext.setDeptId(null);
+        userContext.setPwdResetTime(null);
+        userContext.setClientType("mp");
+        userContext.setClientId("mp");
+
+        // 生成token
+        SaLoginParameter loginParameter = new SaLoginParameter();
+        loginParameter.setDeviceType("mp");
+        loginParameter.setExtraData(BeanUtil.beanToMap(new UserExtraContext(request)));
+        StpMiniUtil.login(student.getId(), loginParameter.getDeviceType());
+        UserContextHolder.setContext(userContext);
+        String token = StpMiniUtil.getTokenValue();
+
+        log.info("公众号OAuth登录成功: userId={}, openid={}", student.getId(), student.getOpenid());
+
+        // 返回登录响应
+        String displayName = student.getName();
+        if (StrUtil.isBlank(displayName) || "微信用户".equals(displayName)) {
+            displayName = StrUtil.isNotBlank(student.getNickname()) ? student.getNickname() : "微信用户";
+        }
+
+        String avatarUrl = StrUtil.isNotBlank(student.getAvatar())
+            ? student.getAvatar()
+            : "/assets/images/default.jpeg";
+
+        return MiniLoginResp.builder()
+            .token(token)
+            .userId(student.getId())
+            .userName(displayName)
+            .nickname(student.getNickname())
+            .avatar(avatarUrl)
+            .phone(student.getPhone())
+            .userType(UserType.STUDENT.getValue())
+            .isNewUser(isNewUser)
+            .build();
+    }
+
+    /**
+     * 调用微信公众号 userinfo 接口获取用户详细信息
+     */
+    private MpUserDetailInfo getMpUserDetailInfo(String accessToken, String openid) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("access_token", accessToken);
+        params.put("openid", openid);
+        params.put("lang", "zh_CN");
+
+        String response = HttpUtil.get(WECHAT_MP_USERINFO_URL, params);
+        log.info("微信公众号 userinfo 响应: {}", response);
+
+        JSONObject jsonObject = JSONUtil.parseObj(response);
+        if (jsonObject.containsKey("errcode") && jsonObject.getInt("errcode") != 0) {
+            Integer errcode = jsonObject.getInt("errcode");
+            String errmsg = jsonObject.getStr("errmsg");
+            log.error("微信公众号 userinfo API 调用失败: errcode={}, errmsg={}", errcode, errmsg);
+            throw new RuntimeException("获取用户信息失败: " + errmsg);
+        }
+
+        MpUserDetailInfo info = new MpUserDetailInfo();
+        info.setOpenid(jsonObject.getStr("openid"));
+        info.setNickname(jsonObject.getStr("nickname"));
+        info.setSex(jsonObject.getInt("sex"));
+        info.setCountry(jsonObject.getStr("country"));
+        info.setProvince(jsonObject.getStr("province"));
+        info.setCity(jsonObject.getStr("city"));
+        info.setHeadimgurl(jsonObject.getStr("headimgurl"));
+        info.setUnionid(jsonObject.getStr("unionid"));
+        return info;
+    }
+
+    /**
+     * 调用微信公众号OAuth API获取用户信息
+     *
+     * @param code 微信授权code
+     * @return 微信公众号用户信息
+     */
+    private MpOAuthUserInfo getMpOAuthUserInfo(String code) {
+        ValidationUtils.throwIfBlank(mpAppId, "微信公众号AppId未配置");
+        ValidationUtils.throwIfBlank(mpAppSecret, "微信公众号AppSecret未配置");
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("appid", mpAppId);
+        params.put("secret", mpAppSecret);
+        params.put("code", code);
+        params.put("grant_type", "authorization_code");
+
+        try {
+            String response = HttpUtil.get(WECHAT_MP_OAUTH_URL, params);
+            log.info("微信公众号OAuth API响应: {}", response);
+
+            JSONObject jsonObject = JSONUtil.parseObj(response);
+
+            // 检查是否有错误
+            if (jsonObject.containsKey("errcode")) {
+                Integer errcode = jsonObject.getInt("errcode");
+                String errmsg = jsonObject.getStr("errmsg");
+                log.error("微信公众号OAuth API调用失败: errcode={}, errmsg={}", errcode, errmsg);
+                throw new RuntimeException("微信公众号登录失败: " + errmsg);
+            }
+
+            MpOAuthUserInfo userInfo = new MpOAuthUserInfo();
+            userInfo.setOpenid(jsonObject.getStr("openid"));
+            userInfo.setAccessToken(jsonObject.getStr("access_token"));
+            userInfo.setExpiresIn(jsonObject.getInt("expires_in"));
+            userInfo.setRefreshToken(jsonObject.getStr("refresh_token"));
+            userInfo.setScope(jsonObject.getStr("scope"));
+            userInfo.setUnionid(jsonObject.getStr("unionid"));
+
+            return userInfo;
+        } catch (Exception e) {
+            log.error("调用微信公众号OAuth API异常", e);
+            throw new RuntimeException("微信公众号登录失败，请重试");
+        }
+    }
+
+    /**
+     * 根据公众号openid查找或创建学生用户
+     *
+     * @param mpUserInfo 公号用户信息
+     * @param nickname   用户昵称（可选）
+     * @param avatar     用户头像（可选）
+     * @param request    请求对象
+     * @return 学生信息
+     */
+    private FindOrCreateResult findOrCreateStudentByMpOpenid(MpOAuthUserInfo mpUserInfo,
+                                                             MpUserDetailInfo detail,
+                                                             String nickname,
+                                                             String avatar,
+                                                             HttpServletRequest request) {
+        String openid = mpUserInfo.getOpenid();
+
+        // 根据openid查找学生
+        StudentDO student = studentService.getByOpenid(openid);
+        boolean isNewUser = (student == null);
+
+        // 从 userinfo 接口结果中提取字段
+        String unionid = mpUserInfo.getUnionid();
+        if (detail != null && StrUtil.isNotBlank(detail.getUnionid())) {
+            unionid = detail.getUnionid();
+        }
+        String country = detail != null ? detail.getCountry() : null;
+        String province = detail != null ? detail.getProvince() : null;
+        String city = detail != null ? detail.getCity() : null;
+        // 性别：1=男 2=女 0=未知
+        String gender = null;
+        if (detail != null && detail.getSex() != null) {
+            gender = detail.getSex() == 2 ? "female" : (detail.getSex() == 1 ? "male" : null);
+        }
+
+        if (isNewUser) {
+            // 创建新学生
+            student = new StudentDO();
+            student.setOpenid(openid);
+            student.setUnionid(unionid);
+
+            // 设置用户信息
+            student.setName(StrUtil.isNotBlank(nickname) ? nickname : "微信用户");
+            student.setNickname(StrUtil.isNotBlank(nickname) ? nickname : "微信用户");
+            student.setAvatar(StrUtil.isNotBlank(avatar) ? avatar : "");
+            student.setGender(StrUtil.isNotBlank(gender) ? gender : "male");
+            student.setCountry(country);
+            student.setProvince(province);
+            student.setCity(city);
+            student.setStatus(1);
+            student.setRegisterTime(LocalDateTime.now());
+            student.setLastLoginTime(LocalDateTime.now());
+            student.setLastLoginIp(ServletUtils.getClientIP(request));
+
+            Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "为公众号登录学生设置");
+            student.setInstitutionId(institutionId);
+            student.setCreateUser(1L);
+            student.setCreateTime(LocalDateTime.now());
+
+            boolean saved = studentService.saveStudent(student);
+            if (saved) {
+                log.info("创建公众号学生用户成功: openid={}, name={}", openid, student.getName());
+            } else {
+                log.error("创建公众号学生用户失败: openid={}, name={}", openid, student.getName());
+                throw new RuntimeException("创建用户失败");
+            }
+        } else {
+            // 更新微信信息与最后登录信息
+            if (StrUtil.isNotBlank(nickname)) {
+                student.setNickname(nickname);
+                if (StrUtil.isBlank(student.getName()) || "微信用户".equals(student.getName())) {
+                    student.setName(nickname);
+                }
+            }
+            if (StrUtil.isNotBlank(avatar)) {
+                student.setAvatar(avatar);
+            }
+            if (StrUtil.isNotBlank(unionid) && StrUtil.isBlank(student.getUnionid())) {
+                student.setUnionid(unionid);
+            }
+            if (StrUtil.isNotBlank(country)) {
+                student.setCountry(country);
+            }
+            if (StrUtil.isNotBlank(province)) {
+                student.setProvince(province);
+            }
+            if (StrUtil.isNotBlank(city)) {
+                student.setCity(city);
+            }
+            student.setLastLoginTime(LocalDateTime.now());
+            student.setLastLoginIp(ServletUtils.getClientIP(request));
+            student.setUpdateUser(1L);
+            student.setUpdateTime(LocalDateTime.now());
+
+            boolean updated = studentService.updateStudent(student);
+            if (updated) {
+                log.info("更新公众号学生信息成功: openid={}", openid);
+            } else {
+                log.error("更新公众号学生信息失败: openid={}", openid);
+            }
+        }
+
+        return new FindOrCreateResult(student, isNewUser);
+    }
+
+    /**
+     * 查找或创建学生的返回结果
+     */
+    @Data
+    private static class FindOrCreateResult {
+        private final StudentDO student;
+        private final boolean newUser;
+
+        public FindOrCreateResult(StudentDO student, boolean newUser) {
+            this.student = student;
+            this.newUser = newUser;
+        }
+
+        public boolean isNewUser() {
+            return newUser;
+        }
+    }
+
+    /**
+     * 微信公众号 userinfo 接口返回
+     */
+    @Data
+    private static class MpUserDetailInfo {
+        private String openid;
+        private String nickname;
+        private Integer sex;
+        private String country;
+        private String province;
+        private String city;
+        private String headimgurl;
+        private String unionid;
+    }
+
+    /**
+     * 微信公众号OAuth用户信息
+     */
+    @Data
+    private static class MpOAuthUserInfo {
+        private String openid;
+        private String accessToken;
+        private Integer expiresIn;
+        private String refreshToken;
+        private String scope;
+        private String unionid;
     }
 
     /**

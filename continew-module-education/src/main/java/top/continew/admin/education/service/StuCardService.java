@@ -20,6 +20,7 @@ import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.StuCardQuery;
 import top.continew.admin.education.model.req.StuCardBindReq;
 import top.continew.admin.education.model.req.StuCardReq;
+import top.continew.admin.education.model.resp.CardPurchaseRecordResp;
 import top.continew.admin.education.model.resp.StuCardDetailResp;
 import top.continew.admin.education.model.resp.StuCardResp;
 
@@ -48,4 +49,13 @@ public interface StuCardService extends BaseService<StuCardResp, StuCardDetailRe
      * @return 可用会员卡列表
      */
     List<StuCardResp> getAvailableCards(Long stuId);
+
+    /**
+     * 获取学生的购买记录（近1年的 bind/recharge 交易流水）
+     *
+     * @param stuId 学生ID
+     * @param limit 最大条数
+     * @return 购买记录列表
+     */
+    List<CardPurchaseRecordResp> getPurchaseHistory(Long stuId, int limit);
 }

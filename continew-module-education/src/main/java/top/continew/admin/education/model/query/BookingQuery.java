@@ -59,4 +59,11 @@ public class BookingQuery implements Serializable {
     @Schema(description = "创建人")
     @Query(type = QueryType.EQ)
     private Long createUser;
+
+    /**
+     * 状态（1:有效 0:已取消），默认只查有效记录
+     */
+    @Schema(description = "状态（1:有效 0:已取消）")
+    @Query(type = QueryType.EQ)
+    private Integer status = 1;
 }

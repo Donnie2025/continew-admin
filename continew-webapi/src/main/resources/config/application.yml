@@ -52,6 +52,7 @@ spring:
       - generator
       - classin
       - feishu
+      - wechat
   main:
     # 允许定义重名的 bean 对象覆盖原有的 bean
     allow-bean-definition-overriding: true
@@ -92,9 +93,9 @@ spring.servlet:
   multipart:
     enabled: true
     # 单文件上传大小限制
-    max-file-size: 10MB
+    max-file-size: 500MB
     # 单次总上传文件大小限制
-    max-request-size: 20MB
+    max-request-size: 500MB
 ## 头像配置
 avatar:
   # 存储路径
@@ -217,7 +218,7 @@ continew-starter.crud:
   # 分页配置
   page:
     # 最大分页大小限制，设置为一个很大的值以支持获取所有数据
-    max-page-size: 1000
+    max-page-size: 10000
 
 --- ### 安全配置：密码编码器配置
 continew-starter.security:

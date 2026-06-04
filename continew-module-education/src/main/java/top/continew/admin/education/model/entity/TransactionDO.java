@@ -24,7 +24,7 @@ import java.io.Serial;
 import java.math.BigDecimal;
 
 /**
- * 订单实体
+ * 会员卡交易流水实体
  *
  * @author don
  * @since 2025/05/10 22:11
@@ -37,44 +37,55 @@ public class TransactionDO extends BaseDO {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 学生会员卡绑定表ID
+     * 学生课时账户ID
      */
-    private Long stuCardId;
+    private Long accountId;
 
     /**
      * 学生ID
      */
-    private Long stuId;
+    private Long studentId;
 
     /**
-     * 学生姓名
+     * 学生姓名（快照）
      */
-    private String stuName;
+    private String studentName;
 
     /**
-     * 会员卡标题
+     * 会员卡名称（快照）
      */
     private String cardTitle;
 
     /**
-     * 交易类型
+     * 交易类型：
+     * bind - 首次购买会员卡（C，有 cash_amount）
+     * recharge - 续费充值（C，有 cash_amount）
+     * consume - 上课消费扣减课时（D，cash_amount=null）
+     * refund - 退款退课时（C，有 cash_amount）
+     * expire - 到期清零（D，cash_amount=null）
+     * adjust - 人工调整课时（C/D，cash_amount=null）
      */
     private String transType;
 
     /**
-     * 交易金额
+     * 借贷方向：C=Credit 入账/增加余额，D=Debit 出账/减少余额
+     */
+    private String direction;
+
+    /**
+     * 课时变动数量（始终为正数，direction 标明方向）
      */
     private BigDecimal amount;
 
     /**
-     * 变动前余额
+     * 交易后课时余额快照
      */
-    private BigDecimal beforeAmt;
+    private BigDecimal balance;
 
     /**
-     * 变动后余额
+     * 实际现金金额（购买/退款时使用）
      */
-    private BigDecimal afterAmt;
+    private BigDecimal cashAmount;
 
     /**
      * 备注

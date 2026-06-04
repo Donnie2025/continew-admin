@@ -97,6 +97,13 @@ public class CourseDetailResp extends BaseDetailResp {
     private Long institutionId;
 
     /**
+     * 代理机构编码
+     */
+    @Schema(description = "代理机构编码")
+    @ExcelProperty(value = "代理机构编码")
+    private String agentCode;
+
+    /**
      * 班级老师列表
      */
     @Schema(description = "班级老师列表")
@@ -107,4 +114,11 @@ public class CourseDetailResp extends BaseDetailResp {
      */
     @Schema(description = "班级学生列表")
     private java.util.List<CourseStudentResp> students;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    @ExcelProperty(value = "备注")
+    private String remark;
 }

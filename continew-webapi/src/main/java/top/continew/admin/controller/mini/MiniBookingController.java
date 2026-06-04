@@ -70,7 +70,6 @@ public class MiniBookingController extends BaseController<BookingService, Bookin
         return baseService.listByStudentId(studentId);
     }
 
-
     @Operation(summary = "删除预约", description = "删除预约记录")
     @DeleteMapping("/bookings/{id}")
     public void deleteBooking(@Parameter(description = "预约ID") @PathVariable Long id) {

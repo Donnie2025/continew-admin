@@ -20,9 +20,15 @@ import lombok.Data;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import top.continew.admin.common.model.resp.BaseResp;
 import java.io.Serial;
+import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.*;
+import java.util.List;
 
 /**
  * 学生管理信息
@@ -44,6 +50,12 @@ public class StudentResp extends BaseResp {
     private String name;
 
     /**
+     * 所属代理商编码
+     */
+    @Schema(description = "所属代理商编码")
+    private String agentCode;
+
+    /**
      * 手机号码
      */
     @Schema(description = "手机号码")
@@ -60,12 +72,6 @@ public class StudentResp extends BaseResp {
      */
     @Schema(description = "注册时间")
     private LocalDateTime registerTime;
-
-    /**
-     * 所属代理的ID
-     */
-    @Schema(description = "所属代理的ID")
-    private Long agentId;
 
     /**
      * 头像地址
@@ -96,4 +102,36 @@ public class StudentResp extends BaseResp {
      */
     @Schema(description = "所属机构ID")
     private Long institutionId;
+
+    /**
+     * 激活状态的会员卡列表
+     */
+    @Schema(description = "激活状态的会员卡列表")
+    private List<CardBriefInfo> activeCards;
+
+    /**
+     * 会员卡简要信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "会员卡简要信息")
+    public static class CardBriefInfo implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        @Schema(description = "会员卡名称")
+        private String cardName;
+
+        @Schema(description = "会员卡类型（TL/TU/BL/BU）")
+        private String cardType;
+
+        @Schema(description = "余额")
+        private BigDecimal balance;
+
+        @Schema(description = "到期日期")
+        private LocalDate expireDate;
+    }
 }

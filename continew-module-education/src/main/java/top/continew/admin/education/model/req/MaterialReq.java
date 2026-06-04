@@ -41,50 +41,75 @@ public class MaterialReq implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 教材编码
+     * 父节点ID（0=根节点）
      */
-    @Schema(description = "教材编码")
-    @NotBlank(message = "教材编码不能为空")
-    @Length(max = 50, message = "教材编码长度不能超过 {max} 个字符")
-    private String code;
+    @Schema(description = "父节点ID（0=根节点）")
+    private Long pid;
 
     /**
-     * 教材名字
+     * 节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）
      */
-    @Schema(description = "教材名字")
-    @NotBlank(message = "教材名字不能为空")
-    @Length(max = 100, message = "教材名字长度不能超过 {max} 个字符")
+    @Schema(description = "节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）")
+    @NotBlank(message = "节点类型不能为空")
+    @Length(max = 20, message = "节点类型长度不能超过 {max} 个字符")
+    private String type;
+
+    /**
+     * 节点名称
+     */
+    @Schema(description = "节点名称")
+    @NotBlank(message = "名称不能为空")
+    @Length(max = 200, message = "名称长度不能超过 {max} 个字符")
     private String name;
 
     /**
-     * 级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）
+     * 编码（BOOK/LEVEL层使用）
      */
-    @Schema(description = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）")
-    @NotBlank(message = "级别不能为空")
-    @Length(max = 50, message = "级别长度不能超过 {max} 个字符")
-    private String level;
+    @Schema(description = "编码（BOOK/LEVEL层使用）")
+    @Length(max = 50, message = "编码长度不能超过 {max} 个字符")
+    private String code;
 
     /**
-     * 分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）
+     * 封面图片（BOOK层使用）
      */
-    @Schema(description = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）")
-    @NotBlank(message = "分类不能为空")
-    @Length(max = 50, message = "分类长度不能超过 {max} 个字符")
-    private String category;
-
-    /**
-     * 封面图片
-     */
-    @Schema(description = "封面图片")
+    @Schema(description = "封面图片（BOOK层使用）")
     @Length(max = 500, message = "封面图片URL长度不能超过 {max} 个字符")
     private String coverImg;
 
     /**
-     * 教材描述
+     * 描述
      */
-    @Schema(description = "教材描述")
-    @Length(max = 500, message = "教材描述长度不能超过 {max} 个字符")
+    @Schema(description = "描述")
+    @Length(max = 1000, message = "描述长度不能超过 {max} 个字符")
     private String description;
+
+    /**
+     * 课节资源链接（LESSON层使用）
+     */
+    @Schema(description = "课节资源链接（LESSON层使用）")
+    @Length(max = 500, message = "课节链接长度不能超过 {max} 个字符")
+    private String lessonUrl;
+
+    /**
+     * ClassIn云盘ID
+     */
+    @Schema(description = "ClassIn云盘ID")
+    @Length(max = 100, message = "ClassIn云盘ID长度不能超过 {max} 个字符")
+    private String cloudId;
+
+    /**
+     * ClassIn云盘名称
+     */
+    @Schema(description = "ClassIn云盘名称")
+    @Length(max = 200, message = "ClassIn云盘名称长度不能超过 {max} 个字符")
+    private String cloudName;
+
+    /**
+     * 飞书云空间文件夹token
+     */
+    @Schema(description = "飞书云空间文件夹token")
+    @Length(max = 100, message = "飞书云空间文件夹token长度不能超过 {max} 个字符")
+    private String feishuFolderToken;
 
     /**
      * 是否前端展示（1:展示 0:不展示）

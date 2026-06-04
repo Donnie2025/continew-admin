@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.entity.BookingDO;
@@ -60,7 +59,7 @@ public class BookingController extends BaseController<BookingService, BookingRes
     public Long createBooking(@Validated(CrudValidationGroup.Create.class) @RequestBody BookingReq req) {
         // 转换为BookingDO
         BookingDO booking = BeanUtil.copyProperties(req, BookingDO.class);
-        
+
         // 直接调用createBookingWithTransaction方法
         return baseService.createBookingWithTransaction(booking);
     }
@@ -93,7 +92,6 @@ public class BookingController extends BaseController<BookingService, BookingRes
      * 通过时间段和学生取消预约
      *
      * @param req 取消预约请求
-     * @return 操作结果
      */
     @Operation(summary = "通过时间段和学生取消预约", description = "教师通过时间段和学生取消预约（无时间限制）")
     @PostMapping("/cancel-by-slot")

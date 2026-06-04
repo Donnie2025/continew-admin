@@ -18,6 +18,7 @@ package top.continew.admin.education.model.entity;
 
 import lombok.Data;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import top.continew.admin.common.model.entity.BaseDO;
@@ -83,13 +84,14 @@ public class BookingDO extends BaseDO {
     private String teacherName;
 
     /**
-     * 学生会员卡ID（关联edu_stu_card表）
+     * 扣费课时账户ID
      */
-    private Long stuCardId;
+    private Long accountId;
 
     /**
-     * 预约会员卡名称
+     * 会员卡标题（内存辅助字段，不入库）
      */
+    @TableField(exist = false)
     private String cardName;
 
     /**

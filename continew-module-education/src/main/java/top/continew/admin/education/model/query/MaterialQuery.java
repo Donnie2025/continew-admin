@@ -40,32 +40,39 @@ public class MaterialQuery implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 教材编码
+     * 父节点ID
      */
-    @Schema(description = "教材编码")
+    @Schema(description = "父节点ID")
     @Query(type = QueryType.EQ)
-    private String code;
+    private Long pid;
 
     /**
-     * 教材名字
+     * 节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）
      */
-    @Schema(description = "教材名字")
+    @Schema(description = "节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）")
+    @Query(type = QueryType.EQ)
+    private String type;
+
+    /**
+     * 节点名称
+     */
+    @Schema(description = "节点名称")
     @Query(type = QueryType.LIKE)
     private String name;
 
     /**
-     * 级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）
+     * 编码（BOOK/LEVEL层使用）
      */
-    @Schema(description = "级别（K1:幼儿园小班 K2:幼儿园中班 K3:幼儿园大班 G1-G12:1-12年级 ADULT:成人）")
+    @Schema(description = "编码（BOOK/LEVEL层使用）")
     @Query(type = QueryType.EQ)
-    private String level;
+    private String code;
 
     /**
-     * 分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）
+     * ClassIn云盘ID
      */
-    @Schema(description = "分类（CHILDREN:少儿启蒙 TEENAGER:青少年 ADULT:成人教材 COMPREHENSIVE:综合教材 READING:阅读绘本 PHONICS:自然拼读 EXAM:考试教材 GRAMMAR:语法）")
+    @Schema(description = "ClassIn云盘ID")
     @Query(type = QueryType.EQ)
-    private String category;
+    private String cloudId;
 
     /**
      * 是否前端展示（1:展示 0:不展示）

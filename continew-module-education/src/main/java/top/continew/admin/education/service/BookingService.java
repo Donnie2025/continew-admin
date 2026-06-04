@@ -16,6 +16,7 @@
 
 package top.continew.admin.education.service;
 
+import org.springframework.web.multipart.MultipartFile;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.entity.BookingDO;
 import top.continew.admin.education.model.req.BatchBookingReq;
@@ -68,7 +69,6 @@ public interface BookingService extends BaseService<BookingResp, BookingDetailRe
      * @return 预约列表
      */
     List<BookingDO> listByStudentIdAndMaterialId(Long studentId, Long materialId);
-
 
     /**
      * 更新预约记录
@@ -163,4 +163,13 @@ public interface BookingService extends BaseService<BookingResp, BookingDetailRe
      * @return 预约列表
      */
     List<BookingDO> getBySlotId(Long slotId);
+
+    /**
+     * 从 Excel 文件批量导入预约
+     * 跳过会员卡扣款、ClassIn同步和交易记录创建
+     *
+     * @param file Excel 文件（列：上课时间、上课老师、会员手机号、预约备注）
+     * @return 每行的导入结果列表
+     */
+    List<Map<String, Object>> importBookings(MultipartFile file);
 }

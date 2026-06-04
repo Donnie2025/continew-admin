@@ -50,4 +50,9 @@ public class FeishuConfig {
      * 飞书文件访问域名
      */
     private String fileDomain = "https://ai.feishu.cn";
+
+    /**
+     * 飞书根文件夹token（所有教材文件夹都创建在此根文件夹下）
+     */
+    private String rootFolderToken;
 }

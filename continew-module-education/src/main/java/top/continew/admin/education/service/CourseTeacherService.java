@@ -75,4 +75,20 @@ public interface CourseTeacherService {
      * @return 班级ID -> 教师数量的映射
      */
     Map<Long, Integer> countTeachersByCourseIds(List<Long> courseIds);
+
+    /**
+     * 批量获取多个班级的教师列表
+     *
+     * @param courseIds 班级ID列表
+     * @return 班级ID -> 教师列表的映射
+     */
+    Map<Long, List<CourseTeacherResp>> listTeachersByCourseIds(List<Long> courseIds);
+
+    /**
+     * 获取教师授课的班级ID列表
+     *
+     * @param teacherId 教师ID
+     * @return 班级ID列表
+     */
+    List<Long> listCourseIdsByTeacherId(Long teacherId);
 }

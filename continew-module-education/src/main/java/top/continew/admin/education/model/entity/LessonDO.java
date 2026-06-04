@@ -49,6 +49,11 @@ public class LessonDO extends BaseDO {
     private Long courseUid;
 
     /**
+     * 所属代理机构编码
+     */
+    private String agentCode;
+
+    /**
      * ClassIn 活动ID
      */
     private Long activityUid;
@@ -142,6 +147,21 @@ public class LessonDO extends BaseDO {
      * 状态
      */
     private Integer status;
+
+    /**
+     * 关联教材ID
+     */
+    private Long materialId;
+
+    /**
+     * 关联教材名称
+     */
+    private String materialName;
+
+    /**
+     * 云盘目录ID
+     */
+    private String folderId;
 
     /**
      * 备注

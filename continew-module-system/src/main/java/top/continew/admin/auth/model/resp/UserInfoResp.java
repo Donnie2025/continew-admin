@@ -129,6 +129,12 @@ public class UserInfoResp implements Serializable {
     private String deptName;
 
     /**
+     * 所属代理商编码
+     */
+    @Schema(description = "所属代理商编码")
+    private String agentCode;
+
+    /**
      * 权限码集合
      */
     @Schema(description = "权限码集合", example = "[\"system:user:list\",\"system:user:add\"]")

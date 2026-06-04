@@ -50,6 +50,12 @@ public class LessonResp extends BaseResp {
     private Long courseUid;
 
     /**
+     * 所属代理机构编码
+     */
+    @Schema(description = "所属代理机构编码")
+    private String agentCode;
+
+    /**
      * ClassIn 活动ID
      */
     @Schema(description = "ClassIn 活动ID")
@@ -138,4 +144,28 @@ public class LessonResp extends BaseResp {
      */
     @Schema(description = "状态")
     private Integer status;
+
+    /**
+     * 预估费用（元）
+     */
+    @Schema(description = "预估费用（元）")
+    private Double estimatedCost;
+
+    /**
+     * 关联教材ID
+     */
+    @Schema(description = "关联教材ID")
+    private Long materialId;
+
+    /**
+     * 关联教材名称
+     */
+    @Schema(description = "关联教材名称")
+    private String materialName;
+
+    /**
+     * 备注
+     */
+    @Schema(description = "备注")
+    private String remark;
 }

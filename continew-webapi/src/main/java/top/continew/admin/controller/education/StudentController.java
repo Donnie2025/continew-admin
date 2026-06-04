@@ -39,12 +39,12 @@ import net.dreamlu.mica.core.result.R;
 import java.util.List;
 
 /**
- * 学生管理管理 API
+ * 学生管理 API
  *
  * @author don
  * @since 2025/04/20 01:32
  */
-@Tag(name = "学生管理管理 API")
+@Tag(name = "学生管理 API")
 @RestController
 @CrudRequestMapping(value = "/education/student", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
@@ -83,10 +83,9 @@ public class StudentController extends BaseController<StudentService, StudentRes
      */
     @PutMapping("/{id}/name")
     @Operation(summary = "修改学生姓名", description = "修改学生姓名并同步到ClassIn平台")
-    public R<String> updateStudentName(
-        @Parameter(description = "学生ID") @PathVariable Long id,
-        @Parameter(description = "新姓名") @RequestParam String newName) {
-        
+    public R<String> updateStudentName(@Parameter(description = "学生ID") @PathVariable Long id,
+                                       @Parameter(description = "新姓名") @RequestParam String newName) {
+
         boolean success = baseService.updateStudentNameAndSyncClassin(id, newName);
         if (success) {
             return R.success("学生姓名修改成功");

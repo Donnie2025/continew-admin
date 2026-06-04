@@ -50,6 +50,51 @@ public interface FeishuService {
     String getAccessToken();
 
     /**
+     * 上传文件到飞书云空间
+     *
+     * @param folderToken 目标文件夹token
+     * @param file        文件
+     * @param fileName    文件名
+     * @return 文件token
+     */
+    String uploadFile(String folderToken, byte[] file, String fileName);
+
+    /**
+     * 在飞书云空间创建文件夹
+     *
+     * @param parentFolderToken 父文件夹token（null表示根目录）
+     * @param folderName        文件夹名称
+     * @return 文件夹token
+     */
+    String createFolder(String parentFolderToken, String folderName);
+
+    /**
+     * 删除飞书文件夹
+     *
+     * @param folderToken 文件夹token
+     * @return 是否成功
+     */
+    boolean deleteFolder(String folderToken, String type);
+
+    /**
+     * 重命名飞书文件
+     *
+     * @param fileToken 文件token
+     * @param newName   新文件名
+     * @return 是否成功
+     */
+    boolean renameFile(String fileToken, String newName);
+
+    /**
+     * 已废弃：不再查找子文件夹，完全信任数据库中的token
+     * 策略调整：如果数据库中已有feishuFolderToken，则直接使用，不在飞书端重复创建或查找
+     *
+     * @deprecated 此方法已废弃，不再使用
+     */
+    @Deprecated
+    String findSubFolder(String parentFolderToken, String folderName);
+
+    /**
      * 飞书文件信息
      */
     class FeishuFile {

@@ -44,16 +44,16 @@ public class BookingResp extends BaseResp {
     private Long slotId;
 
     /**
-     * 
+     * 开课日期（格式：YYYYMMDD）
      */
-    @Schema(description = "")
-    private String startDate;
+    @Schema(description = "开课日期")
+    private String slotDate;
 
     /**
-     * 
+     * 开课时间（格式：HH:MM）
      */
-    @Schema(description = "")
-    private String startTime;
+    @Schema(description = "开课时间")
+    private String slotTime;
 
     /**
      * 所属学生姓名
@@ -62,22 +62,22 @@ public class BookingResp extends BaseResp {
     private String studentName;
 
     /**
-     * 预约手机号
+     * 学生手机号
      */
-    @Schema(description = "预约手机号")
-    private String phone;
+    @Schema(description = "学生手机号")
+    private String studentPhone;
 
     /**
-     * 预约会员卡ID
+     * 学生会员卡ID
      */
-    @Schema(description = "预约会员卡ID")
-    private Long cardId;
+    @Schema(description = "学生会员卡ID")
+    private Long stuCardId;
 
     /**
-     * 预约会员卡标题
+     * 预约会员卡名称
      */
-    @Schema(description = "预约会员卡标题")
-    private String cardTitle;
+    @Schema(description = "预约会员卡名称")
+    private String cardName;
 
     /**
      * 操作人名字
@@ -96,6 +96,18 @@ public class BookingResp extends BaseResp {
      */
     @Schema(description = "预约教材名字")
     private String materialName;
+
+    /**
+     * 预约教材级别
+     */
+    @Schema(description = "预约教材级别")
+    private String materialLevel;
+
+    /**
+     * 课节名称
+     */
+    @Schema(description = "课节名称")
+    private String lessonName;
 
     /**
      * 预约备注

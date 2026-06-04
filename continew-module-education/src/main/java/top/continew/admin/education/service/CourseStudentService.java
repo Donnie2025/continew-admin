@@ -75,4 +75,12 @@ public interface CourseStudentService {
      * @return 班级ID -> 学生数量的映射
      */
     Map<Long, Integer> countStudentsByCourseIds(List<Long> courseIds);
+
+    /**
+     * 批量获取多个班级的学生列表
+     *
+     * @param courseIds 班级ID列表
+     * @return 班级ID -> 学生列表的映射
+     */
+    Map<Long, List<CourseStudentResp>> listStudentsByCourseIds(List<Long> courseIds);
 }

@@ -49,6 +49,13 @@ public class StudentDetailResp extends BaseDetailResp {
     private String name;
 
     /**
+     * 所属代理商编码
+     */
+    @Schema(description = "所属代理商编码")
+    @ExcelProperty(value = "代理商编码")
+    private String agentCode;
+
+    /**
      * 性别（male-男 female-女）
      */
     @Schema(description = "性别（male-男 female-女）")
@@ -75,13 +82,6 @@ public class StudentDetailResp extends BaseDetailResp {
     @Schema(description = "注册时间")
     @ExcelProperty(value = "注册时间")
     private LocalDateTime registerTime;
-
-    /**
-     * 所属代理的ID
-     */
-    @Schema(description = "所属代理的ID")
-    @ExcelProperty(value = "所属代理的ID")
-    private Long agentId;
 
     /**
      * 头像地址

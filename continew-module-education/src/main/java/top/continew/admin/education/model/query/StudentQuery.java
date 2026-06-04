@@ -52,4 +52,11 @@ public class StudentQuery implements Serializable {
     @Schema(description = "手机号码")
     @Query(type = QueryType.LIKE)
     private String phone;
+
+    /**
+     * 所属代理商编码
+     */
+    @Schema(description = "所属代理商编码")
+    @Query(type = QueryType.EQ)
+    private String agentCode;
 }

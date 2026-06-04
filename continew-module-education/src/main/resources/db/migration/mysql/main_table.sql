@@ -56,4 +56,42 @@ CREATE TABLE `edu_unit` (
   KEY `idx_course_id` (`course_id`) COMMENT '课程ID索引',
   KEY `idx_unit_id` (`unit_id`) COMMENT '单元ID索引',
   CONSTRAINT `fk_unit_course` FOREIGN KEY (`course_id`) REFERENCES `edu_course` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='课程单元表'; 
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='课程单元表';
+
+-- ----------------------------
+-- Table structure for edu_material
+-- 节点类型（type）：
+--   CATEGORY  分类（少儿启蒙/青少年/成人教材…）
+--   BOOK      课本名字（English for Kids…）
+--   LEVEL     课本级别（K1/K2/G1/G2…）
+--   UNIT      单元（Unit 1/Unit 2…）
+--   LESSON    教材课节（叶节点，对应具体课节文件）
+-- ----------------------------
+DROP TABLE IF EXISTS `edu_material`;
+CREATE TABLE `edu_material` (
+  `id`          bigint        NOT NULL AUTO_INCREMENT   COMMENT '主键ID',
+  `pid`         bigint        NOT NULL DEFAULT 0        COMMENT '父节点ID（0=根节点）',
+  `type`        varchar(20)   NOT NULL                  COMMENT '节点类型（CATEGORY/BOOK/LEVEL/UNIT/LESSON）',
+  `name`        varchar(200)  NOT NULL                  COMMENT '节点名称',
+  `code`        varchar(50)       DEFAULT NULL          COMMENT '编码（BOOK/LEVEL层使用）',
+  `cover_img`   varchar(500)      DEFAULT NULL          COMMENT '封面图片（BOOK层使用）',
+  `description` varchar(1000)     DEFAULT NULL          COMMENT '描述',
+  `lesson_url`  varchar(500)      DEFAULT NULL          COMMENT '课节资源链接（LESSON层使用）',
+  `cloud_id`    varchar(100)      DEFAULT NULL          COMMENT 'ClassIn云盘ID（文件夹节点→文件夹ID，LESSON→文件ID）',
+  `cloud_name`  varchar(200)      DEFAULT NULL          COMMENT 'ClassIn云盘名称',
+  `is_show`     tinyint(1)    NOT NULL DEFAULT 1        COMMENT '是否前端展示（1:展示 0:不展示）',
+  `sort`        int           NOT NULL DEFAULT 999      COMMENT '排序',
+  `status`      tinyint(1)    NOT NULL DEFAULT 1        COMMENT '状态（1:启用 0:禁用）',
+  `create_user` bigint        NOT NULL                  COMMENT '创建人',
+  `create_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_user` bigint            DEFAULT NULL          COMMENT '修改人',
+  `update_time` datetime          DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_pid`         (`pid`),
+  KEY `idx_type`        (`type`),
+  KEY `idx_code`        (`code`),
+  KEY `idx_cloud_id`    (`cloud_id`),
+  KEY `idx_is_show`     (`is_show`),
+  KEY `idx_sort`        (`sort`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教材统一树形表（CATEGORY/BOOK/LEVEL/UNIT/LESSON）';
