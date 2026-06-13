@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="top.continew.admin.education.mapper.FavoriteMapper">
+
+    <select id="selectByStudentAndResource" resultType="top.continew.admin.education.model.entity.FavoriteDO">
+        SELECT * FROM edu_favorite
+        WHERE student_id = #{studentId}
+          AND resource_type = #{resourceType}
+          AND resource_id = #{resourceId}
+        LIMIT 1
+    </select>
+
+    <select id="selectResourceIdsByStudent" resultType="java.lang.Long">
+        SELECT resource_id FROM edu_favorite
+        WHERE student_id = #{studentId}
+          AND resource_type = #{resourceType}
+          AND status = 1
+    </select>
+
+</mapper>
