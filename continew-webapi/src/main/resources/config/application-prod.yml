@@ -234,6 +234,11 @@ sa-token.extension:
     - /education/materialLesson/**
     # 本地存储资源
     - /file/**
+   # 小程序API（不需要登录的）
+    - /mini/**
+    - /api/mini/auth/**
+    - /api/mini/teacher/active
+    - /api/payment/**
 
 --- ### Just Auth 配置
 justauth:

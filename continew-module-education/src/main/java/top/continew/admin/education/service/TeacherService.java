@@ -90,4 +90,13 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @return 教师实体
      */
     TeacherDO getById(Long id);
+
+    /**
+     * 获取教师公开信息（学生端）
+     * 不包含敏感信息：rate、phone、email等
+     *
+     * @param id 教师ID
+     * @return 教师公开信息
+     */
+    top.continew.admin.education.model.resp.TeacherPublicResp getPublicInfo(Long id);
 }

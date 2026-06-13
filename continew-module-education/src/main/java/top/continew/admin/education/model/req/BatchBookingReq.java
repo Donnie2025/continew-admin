@@ -49,8 +49,7 @@ public class BatchBookingReq implements Serializable {
     /**
      * 教材ID
      */
-    @Schema(description = "教材ID")
-    @NotNull(message = "教材ID不能为空")
+    @Schema(description = "教材ID（选填）")
     private Long materialId;
 
     /**

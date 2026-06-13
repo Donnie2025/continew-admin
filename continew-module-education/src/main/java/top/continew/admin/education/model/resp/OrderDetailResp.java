@@ -54,14 +54,14 @@ public class OrderDetailResp extends BaseDetailResp {
      */
     @Schema(description = "学生ID")
     @ExcelProperty(value = "学生ID")
-    private Long stuId;
+    private Long studentId;
 
     /**
      * 学生姓名
      */
     @Schema(description = "学生姓名")
     @ExcelProperty(value = "学生姓名")
-    private String stuName;
+    private String studentName;
 
     /**
      * 会员卡ID
@@ -97,6 +97,20 @@ public class OrderDetailResp extends BaseDetailResp {
     @Schema(description = "支付方式（wechat:微信支付, alipay:支付宝）")
     @ExcelProperty(value = "支付方式（wechat:微信支付, alipay:支付宝）")
     private String paymentType;
+
+    /**
+     * 支付渠道名称
+     */
+    @Schema(description = "支付渠道名称")
+    @ExcelProperty(value = "支付渠道名称")
+    private String paymentChannelName;
+
+    /**
+     * 支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）
+     */
+    @Schema(description = "支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）")
+    @ExcelProperty(value = "支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）")
+    private String paymentMethod;
 
     /**
      * 订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）

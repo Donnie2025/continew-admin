@@ -19,16 +19,18 @@ package top.continew.admin.controller.mini;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.education.model.req.StuCardBindReq;
 import top.continew.admin.education.model.resp.CardDetailResp;
-import top.continew.admin.education.model.resp.CardPurchaseRecordResp;
 import top.continew.admin.education.model.resp.CardResp;
 import top.continew.admin.education.model.resp.StuCardResp;
+import top.continew.admin.education.model.resp.AccountResp;
 import top.continew.admin.education.service.CardService;
 import top.continew.admin.education.service.StuCardService;
+import top.continew.admin.education.service.AccountService;
 import top.continew.starter.web.model.R;
 
 import java.util.List;
@@ -39,6 +41,7 @@ import java.util.List;
  * @author don
  * @since 2025/11/23
  */
+@Slf4j
 @Tag(name = "小程序会员卡 API")
 @Validated
 @RestController
@@ -48,6 +51,8 @@ public class MiniCardController {
 
     private final StuCardService stuCardService;
     private final CardService cardService;
+    private final AccountService accountService;
+    private final top.continew.admin.education.service.OrderService orderService;
 
     @Operation(summary = "获取我的会员卡", description = "获取当前登录学生的会员卡列表")
     @GetMapping("/my-cards")
@@ -94,9 +99,9 @@ public class MiniCardController {
         return R.ok(cardService.get(id));
     }
 
-    @Operation(summary = "购买记录", description = "获取当前学生近1年的购买记录")
+    @Operation(summary = "购买记录", description = "获取当前学生近1年的订单记录（所有状态）")
     @GetMapping("/purchase-history")
-    public R<List<CardPurchaseRecordResp>> getPurchaseHistory(@RequestParam(defaultValue = "20") int limit) {
+    public R<List<top.continew.admin.education.model.resp.OrderResp>> getPurchaseHistory(@RequestParam(defaultValue = "10") int limit) {
         try {
             String authHeader = cn.dev33.satoken.SaManager.getSaTokenContext().getRequest().getHeader("Authorization");
             Long stuId = null;
@@ -107,7 +112,35 @@ public class MiniCardController {
             }
             if (stuId == null)
                 return R.fail("500", "用户未登录");
-            return R.ok(stuCardService.getPurchaseHistory(stuId, limit));
+
+            // 调用 OrderService 获取订单记录
+            List<top.continew.admin.education.model.resp.OrderResp> orders = orderService
+                .getStudentOrders(stuId, limit);
+            return R.ok(orders);
+        } catch (Exception e) {
+            return R.fail("500", e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取我的账户列表", description = "获取当前学生的所有账户信息")
+    @GetMapping("/my-accounts")
+    public R<List<AccountResp>> getMyAccounts() {
+        try {
+            String authHeader = cn.dev33.satoken.SaManager.getSaTokenContext().getRequest().getHeader("Authorization");
+            Long stuId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                Object loginId = StpMiniUtil.getStpLogic().getLoginIdByToken(authHeader.substring(7));
+                if (loginId != null) {
+                    stuId = Long.valueOf(loginId.toString());
+                }
+            }
+            if (stuId == null) {
+                return R.fail("500", "用户未登录");
+            }
+            log.info("=============== 当前登录学生ID: {} ===============", stuId);
+            List<AccountResp> accounts = accountService.getStudentAccounts(stuId);
+            log.info("=============== 查询到账户数量: {} ===============", accounts.size());
+            return R.ok(accounts);
         } catch (Exception e) {
             return R.fail("500", e.getMessage());
         }

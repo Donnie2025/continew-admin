@@ -47,10 +47,9 @@ public class CreatePaymentReq implements Serializable {
     private String orderNo;
 
     /**
-     * 用户OpenId（微信支付必需）
+     * 用户OpenId（微信支付使用，可选，后端会从数据库获取）
      */
     @Schema(description = "用户OpenId", example = "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o")
-    @NotBlank(message = "用户OpenId不能为空")
     private String openid;
 
     /**

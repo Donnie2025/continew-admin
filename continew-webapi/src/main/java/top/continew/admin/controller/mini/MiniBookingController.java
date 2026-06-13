@@ -31,8 +31,10 @@ import top.continew.admin.education.model.resp.BookingDetailResp;
 import top.continew.admin.education.model.resp.BookingResp;
 import top.continew.admin.education.service.BookingService;
 import top.continew.admin.education.model.resp.MyBookingResp;
+import top.continew.admin.education.service.AccountService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 小程序预约管理 API
@@ -45,6 +47,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/mini/booking")
 public class MiniBookingController extends BaseController<BookingService, BookingResp, BookingDetailResp, BookingQuery, BookingReq> {
+
+    private final AccountService accountService;
+
+    public MiniBookingController(AccountService accountService) {
+        this.accountService = accountService;
+    }
 
     @Operation(summary = "创建预约", description = "批量创建课程预约记录（事务性操作）")
     @PostMapping("/create")
@@ -106,6 +114,12 @@ public class MiniBookingController extends BaseController<BookingService, Bookin
     public void cancelBookingBySlotAndStudent(@Parameter(description = "时间段ID") @PathVariable Long slotId,
                                               @Parameter(description = "学生ID") @PathVariable Long studentId) {
         baseService.cancelBookingBySlotAndStudent(slotId, studentId);
+    }
+
+    @Operation(summary = "获取账户余额", description = "获取当前学生的课时账户余额信息")
+    @GetMapping("/account/balance")
+    public Map<String, Object> getAccountBalance() {
+        return accountService.getCurrentStudentAccountBalance();
     }
 
 }

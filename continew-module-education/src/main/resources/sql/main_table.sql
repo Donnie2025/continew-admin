@@ -495,22 +495,22 @@ CREATE TABLE `edu_fixed_log` (
     `student_name` varchar(50) DEFAULT NULL COMMENT '学生姓名（冗余字段）',
     `teacher_id` bigint NOT NULL COMMENT '教师ID',
     `teacher_name` varchar(50) NOT NULL COMMENT '教师姓名（冗余字段）',
-    
+
     -- 操作信息（简化）
     `op_type` tinyint NOT NULL COMMENT '操作类型：1-预约，2-取消',
     `op_desc` varchar(200) NOT NULL COMMENT '操作描述',
-    
+
     -- 时间信息
     `op_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
     `op_user` bigint DEFAULT NULL COMMENT '操作人ID',
     `op_user_name` varchar(50) DEFAULT NULL COMMENT '操作人姓名（冗余字段）',
-    
+
     -- 审计字段（BaseDO继承的字段）
     `create_user` bigint DEFAULT NULL COMMENT '创建人',
     `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_user` bigint DEFAULT NULL COMMENT '修改人',
     `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
-    
+
     PRIMARY KEY (`id`),
     KEY `idx_fixed_id` (`fixed_id`),
     KEY `idx_student_id` (`student_id`),
@@ -523,3 +523,64 @@ CREATE TABLE `edu_fixed_log` (
     CONSTRAINT `fk_fixed_log_fixed` FOREIGN KEY (`fixed_id`) REFERENCES `edu_fixed` (`id`),
     CONSTRAINT `fk_fixed_log_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='固定课操作记录表';
+
+-- ================================
+-- 支付渠道表
+-- 用途：会员卡详情页点击"立即购买"时，根据该表配置展示支付方式
+-- ================================
+
+CREATE TABLE `edu_payment_channel` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `channel_code` varchar(50) NOT NULL COMMENT '渠道编码（alipay-支付宝 wechat-微信）',
+  `channel_name` varchar(50) NOT NULL COMMENT '渠道名称（支付宝、微信）',
+  `payment_type` varchar(20) NOT NULL COMMENT '支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）',
+  `qrcode_image` varchar(512) DEFAULT NULL COMMENT '收款二维码图片地址（仅支付类型为qrcode时有值）',
+  `description` varchar(500) DEFAULT NULL COMMENT '支付说明',
+  `sort` int NOT NULL DEFAULT 999 COMMENT '排序字段，值越小排序越靠前',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；2：禁用）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) NOT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  KEY `idx_channel_code` (`channel_code`),
+  KEY `idx_payment_type` (`payment_type`),
+  KEY `idx_sort` (`sort`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='支付渠道配置表';
+
+-- 插入示例数据
+INSERT INTO `edu_payment_channel`
+  (`channel_code`, `channel_name`, `payment_type`, `qrcode_image`, `description`, `sort`, `status`, `create_user`)
+VALUES
+  ('wechat', '微信', 'online', NULL, '微信在线支付', 1, 1, 1),
+  ('alipay', '支付宝', 'online', NULL, '支付宝在线支付', 2, 1, 1),
+  ('wechat', '微信', 'qrcode', '/payment/wechat_qrcode.png', '微信扫码支付', 3, 1, 1),
+  ('alipay', '支付宝', 'qrcode', '/payment/alipay_qrcode.png', '支付宝扫码支付', 4, 1, 1),
+  ('offline', '线下支付', 'offline', NULL, '线下转账或现金支付', 5, 1, 1);
+
+-- ================================
+-- 收藏功能表
+-- 用途：支持学生收藏教师、教材等资源
+-- ================================
+CREATE TABLE `edu_favorite` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `student_id` bigint(20) NOT NULL COMMENT '学生ID，关联edu_student表',
+  `resource_type` varchar(20) NOT NULL COMMENT '资源类型（teacher-教师, material-教材）',
+  `resource_id` bigint(20) NOT NULL COMMENT '资源ID（教师ID或教材ID）',
+  `resource_name` varchar(100) DEFAULT NULL COMMENT '资源名称（教师姓名或教材名称）',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：有效；0：已取消）',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间（收藏时间）',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) DEFAULT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_student_resource` (`student_id`, `resource_type`, `resource_id`),
+  KEY `idx_student_id` (`student_id`),
+  KEY `idx_resource_type` (`resource_type`),
+  KEY `idx_resource_id` (`resource_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_create_time` (`create_time`),
+  KEY `idx_student_type_status` (`student_id`, `resource_type`, `status`),
+  CONSTRAINT `fk_favorite_student` FOREIGN KEY (`student_id`) REFERENCES `edu_student` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学生收藏表';

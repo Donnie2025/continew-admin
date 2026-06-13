@@ -104,6 +104,8 @@ public class MiniLessonController {
 
             // 预查询所有相关教材，构建 materialId -> textbookName 映射
             Map<Long, String> textbookNameMap = buildTextbookNameMap(lessons);
+            // 预查询所有相关教材，构建 materialId -> lessonUrl 映射
+            Map<Long, String> lessonUrlMap = buildLessonUrlMap(lessons);
 
             // 映射全部记录，计算 status
             List<MiniLessonBookingResp> allMapped = lessons.stream().map(lesson -> {
@@ -112,6 +114,7 @@ public class MiniLessonController {
                 resp.setName(lesson.getName());
                 resp.setMaterialName(lesson.getMaterialName());
                 resp.setTextbookName(textbookNameMap.get(lesson.getMaterialId()));
+                resp.setLessonUrl(lessonUrlMap.get(lesson.getMaterialId()));
                 resp.setRemark(lesson.getRemark());
 
                 if (lesson.getStartTime() != null) {
@@ -216,5 +219,29 @@ public class MiniLessonController {
             node = cache.get(pid);
         }
         return null;
+    }
+
+    /**
+     * 构建 materialId -> lessonUrl 的映射
+     */
+    private Map<Long, String> buildLessonUrlMap(List<LessonDO> lessons) {
+        List<Long> materialIds = lessons.stream()
+            .map(LessonDO::getMaterialId)
+            .filter(id -> id != null)
+            .distinct()
+            .collect(Collectors.toList());
+        if (materialIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // 批量查询教材
+        List<MaterialDO> materials = materialMapper.selectBatchIds(materialIds);
+        Map<Long, String> result = new HashMap<>();
+        for (MaterialDO material : materials) {
+            if (material.getLessonUrl() != null) {
+                result.put(material.getId(), material.getLessonUrl());
+            }
+        }
+        return result;
     }
 }

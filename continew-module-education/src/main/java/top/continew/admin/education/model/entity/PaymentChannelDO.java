@@ -16,47 +16,57 @@
 
 package top.continew.admin.education.model.entity;
 
-import lombok.Data;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 import top.continew.admin.common.model.entity.BaseDO;
 
+import java.io.Serial;
+
 /**
- * 教材课节实体
+ * 支付渠道实体
  *
- * @author continew-org
- * @since 2024-12-29
+ * @author don
+ * @since 2026/06/09
  */
 @Data
-@TableName(value = "edu_material", resultMap = "lessonResultMap")
-public class MaterialLessonDO extends BaseDO {
+@TableName("edu_payment_channel")
+public class PaymentChannelDO extends BaseDO {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
-     * 教材ID（父节点ID）
+     * 渠道编码（alipay-支付宝 wechat-微信）
      */
-    private Long materialId;
+    private String channelCode;
 
     /**
-     * 教材名称（冗余字段，格式：name + level）
+     * 渠道名称（支付宝、微信）
      */
-    private String materialName;
+    private String channelName;
 
     /**
-     * 课节名字（映射自edu_material.name，当type=LESSON时）
+     * 支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）
      */
-    private String lessonName;
+    private String paymentType;
 
     /**
-     * 课节链接（映射自edu_material.lesson_url）
+     * 收款二维码图片地址（仅支付类型为qrcode时有值）
      */
-    private String lessonUrl;
+    private String qrcodeImage;
 
     /**
-     * 节点类型（应为LESSON）
+     * 支付说明
      */
-    private String type;
+    private String description;
 
     /**
-     * 状态（1:启用 0:禁用）
+     * 排序字段，值越小排序越靠前
      */
-    private Boolean status;
+    private Integer sort;
+
+    /**
+     * 状态（1：启用；2：禁用）
+     */
+    private Integer status;
 }

@@ -25,7 +25,10 @@ import me.chanjar.weixin.common.error.WxErrorException;
 import me.chanjar.weixin.mp.api.WxMpService;
 import me.chanjar.weixin.common.bean.oauth2.WxOAuth2AccessToken;
 import org.springframework.web.bind.annotation.*;
+import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.education.config.WechatMpConfig;
+import top.continew.admin.education.mapper.StudentMapper;
+import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.starter.web.model.R;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -49,6 +52,7 @@ public class WechatOAuthController {
 
     private final WxMpService wxMpService;
     private final WechatMpConfig wechatMpConfig;
+    private final StudentMapper studentMapper;
 
     /**
      * 获取授权链接
@@ -110,6 +114,21 @@ public class WechatOAuthController {
             // 将openid保存到session中
             session.setAttribute("wechat_openid", openid);
 
+            // 如果用户已登录，更新学生表中的openid
+            try {
+                if (StpMiniUtil.isLogin()) {
+                    Long userId = StpMiniUtil.getLoginIdAsLong();
+                    StudentDO student = studentMapper.selectById(userId);
+                    if (student != null && (student.getOpenid() == null || student.getOpenid().isEmpty())) {
+                        student.setOpenid(openid);
+                        studentMapper.updateById(student);
+                        log.info("已更新学生openid，studentId: {}, openid: {}", userId, openid);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("更新学生openid失败，但不影响授权流程", e);
+            }
+
             // 重定向到指定页面
             String redirectUrl = redirect != null && !redirect.isEmpty() ? redirect : "/pages/card/index"; // 默认跳转到会员卡页面
 
@@ -159,5 +178,70 @@ public class WechatOAuthController {
         session.removeAttribute("wechat_openid");
         log.info("已清除授权信息");
         return R.ok();
+    }
+
+    /**
+     * 绑定微信openid到当前登录学生
+     */
+    @Operation(summary = "绑定微信openid", description = "将session中的openid绑定到当前登录的学生账户")
+    @PostMapping("/bind")
+    public R<Void> bindOpenid(HttpSession session) {
+        // 验证小程序用户登录
+        if (!StpMiniUtil.isLogin()) {
+            return R.fail("401", "请先登录");
+        }
+
+        // 获取session中的openid
+        String openid = (String)session.getAttribute("wechat_openid");
+        if (openid == null || openid.isEmpty()) {
+            return R.fail("400", "未找到openid，请先进行微信授权");
+        }
+
+        // 更新学生表中的openid
+        Long userId = StpMiniUtil.getLoginIdAsLong();
+        StudentDO student = studentMapper.selectById(userId);
+        if (student == null) {
+            return R.fail("404", "学生信息不存在");
+        }
+
+        student.setOpenid(openid);
+        studentMapper.updateById(student);
+
+        log.info("绑定微信openid成功，studentId: {}, openid: {}", userId, openid);
+        return R.ok();
+    }
+
+    /**
+     * 获取微信JS-SDK配置签名
+     *
+     * 用于前端调用wx.config初始化微信JS-SDK
+     */
+    @Operation(summary = "获取JS-SDK配置签名", description = "获取微信JS-SDK配置所需的签名信息")
+    @GetMapping("/jssdk-signature")
+    public R<Object> getJsSdkSignature(@Parameter(description = "当前页面URL") @RequestParam String url) {
+        log.info("获取JS-SDK签名，url: {}", url);
+
+        try {
+            // 获取微信JS-SDK配置
+            me.chanjar.weixin.common.bean.WxJsapiSignature signature = wxMpService.createJsapiSignature(url);
+
+            // 构建返回数据
+            java.util.Map<String, Object> result = new java.util.HashMap<>();
+            result.put("appId", signature.getAppId());
+            result.put("timestamp", signature.getTimestamp());
+            result.put("nonceStr", signature.getNonceStr());
+            result.put("signature", signature.getSignature());
+            result.put("url", signature.getUrl());
+
+            log.info("JS-SDK签名生成成功");
+            return R.ok(result);
+
+        } catch (WxErrorException e) {
+            log.error("生成JS-SDK签名失败，错误码: {}, 错误信息: {}", e.getError().getErrorCode(), e.getError().getErrorMsg(), e);
+            return R.fail("500", "生成JS-SDK签名失败: " + e.getError().getErrorMsg());
+        } catch (Exception e) {
+            log.error("生成JS-SDK签名失败", e);
+            return R.fail("500", "生成JS-SDK签名失败: " + e.getMessage());
+        }
     }
 }

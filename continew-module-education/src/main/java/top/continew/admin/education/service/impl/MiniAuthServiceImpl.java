@@ -90,7 +90,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
     @Value("${wechat.mp.app-id:}")
     private String mpAppId;
 
-    @Value("${wechat.mp.app-secret:}")
+    @Value("${wechat.mp.secret:}")
     private String mpAppSecret;
 
     private static final String WECHAT_API_URL = "https://api.weixin.qq.com/sns/jscode2session";
@@ -117,6 +117,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         userContext.setPwdResetTime(null); // 无密码
         userContext.setClientType("miniprogram");
         userContext.setClientId("miniprogram");
+        userContext.setOpenid(student.getOpenid()); // 设置 openid，用于微信支付
 
         // 生成token（使用Sa-Token）
         SaLoginParameter loginParameter = new SaLoginParameter();
@@ -125,6 +126,11 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         // 使用小程序专用的StpLogic进行登录，避免与后台管理系统的用户ID冲突
         StpMiniUtil.login(student.getId(), loginParameter.getDeviceType());
         UserContextHolder.setContext(userContext);
+
+        // 将用户上下文保存到 session（包含 openid）
+        StpMiniUtil.getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
+        log.info("已保存用户上下文到 session: userId={}, openid={}", student.getId(), student.getOpenid());
+
         String token = StpMiniUtil.getTokenValue();
 
         log.info("小程序登录成功: userId={}, openid={}", student.getId(), student.getOpenid());
@@ -208,6 +214,13 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             userContext.setPwdResetTime(null);
             userContext.setClientType("miniprogram");
             userContext.setClientId("miniprogram");
+
+            // 设置 openid（如果学生有 openid）
+            if (UserType.STUDENT.getValue().equals(userType) && student != null && StrUtil.isNotBlank(student
+                .getOpenid())) {
+                userContext.setOpenid(student.getOpenid());
+                log.info("密码登录 - 设置 openid 到 UserContext: userId={}, openid={}", userId, student.getOpenid());
+            }
 
             // 4. 使用小程序专用的StpLogic进行登录
             StpMiniUtil.login(userId, "miniprogram");
@@ -317,9 +330,17 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             userContext.setClientType("miniprogram");
             userContext.setClientId("miniprogram");
 
+            // 设置 openid（如果学生有 openid）
+            if (UserType.STUDENT.getValue().equals(userType) && student != null && StrUtil.isNotBlank(student
+                .getOpenid())) {
+                userContext.setOpenid(student.getOpenid());
+                log.info("短信登录 - 设置 openid 到 UserContext: userId={}, openid={}", userId, student.getOpenid());
+            }
+
             // 4. 登录
             StpMiniUtil.login(userId, "miniprogram");
             StpMiniUtil.getStpLogic().getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
+
             String token = StpMiniUtil.getTokenValue();
 
             log.info("小程序短信登录成功: userId={}, phone={}, userType={}", userId, req.getPhone(), userType);
@@ -714,6 +735,21 @@ public class MiniAuthServiceImpl implements MiniAuthService {
             throw new BadRequestException("绑定手机号失败");
         }
 
+        // 绑定成功后，如果有 openid，更新 UserContext
+        if (StrUtil.isNotBlank(student.getOpenid())) {
+            try {
+                UserContext userContext = (UserContext)StpMiniUtil.getSession()
+                    .get(cn.dev33.satoken.session.SaSession.USER);
+                if (userContext != null) {
+                    userContext.setOpenid(student.getOpenid());
+                    StpMiniUtil.getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
+                    log.info("已更新 UserContext 中的 openid: userId={}, openid={}", userId, student.getOpenid());
+                }
+            } catch (Exception e) {
+                log.warn("更新 UserContext 中的 openid 失败: {}", e.getMessage());
+            }
+        }
+
         // 删除验证码
         stringRedisTemplate.delete(key);
 
@@ -758,6 +794,7 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         userContext.setPwdResetTime(null);
         userContext.setClientType("mp");
         userContext.setClientId("mp");
+        userContext.setOpenid(student.getOpenid()); // 设置 openid，用于微信支付
 
         // 生成token
         SaLoginParameter loginParameter = new SaLoginParameter();
@@ -765,6 +802,11 @@ public class MiniAuthServiceImpl implements MiniAuthService {
         loginParameter.setExtraData(BeanUtil.beanToMap(new UserExtraContext(request)));
         StpMiniUtil.login(student.getId(), loginParameter.getDeviceType());
         UserContextHolder.setContext(userContext);
+
+        // 将用户上下文保存到 session（包含 openid）
+        StpMiniUtil.getSession().set(cn.dev33.satoken.session.SaSession.USER, userContext);
+        log.info("公众号登录 - 已保存用户上下文到 session: userId={}, openid={}", student.getId(), student.getOpenid());
+
         String token = StpMiniUtil.getTokenValue();
 
         log.info("公众号OAuth登录成功: userId={}, openid={}", student.getId(), student.getOpenid());

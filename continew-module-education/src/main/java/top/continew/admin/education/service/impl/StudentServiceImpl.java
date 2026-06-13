@@ -425,10 +425,12 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         }
 
         // 1. 剩余课程：edu_account 中该学生所有启用状态的账户的 balance 之和（且未过期）
+        // 只统计 account_type 为 PAID 和 GIFT 的账户
         LocalDate today = LocalDate.now();
         List<AccountDO> accounts = accountMapper.selectList(new LambdaQueryWrapper<AccountDO>()
             .eq(AccountDO::getStudentId, studentId)
-            .eq(AccountDO::getStatus, 1));
+            .eq(AccountDO::getStatus, 1)
+            .in(AccountDO::getAccountType, "PAID", "GIFT"));
         int remaining = 0;
         for (AccountDO account : accounts) {
             // 检查是否过期：有到期日期且已过期的账户不计入

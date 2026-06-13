@@ -22,7 +22,6 @@ import lombok.Data;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import org.hibernate.validator.constraints.Length;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -54,17 +53,16 @@ public class OrderReq implements Serializable {
     private Long cardId;
 
     /**
-     * 支付方式（wechat:微信支付, alipay:支付宝）
+     * 支付渠道ID
      */
-    @Schema(description = "支付方式（wechat:微信支付, alipay:支付宝）")
-    @NotBlank(message = "支付方式（wechat:微信支付, alipay:支付宝）不能为空")
-    @Length(max = 20, message = "支付方式（wechat:微信支付, alipay:支付宝）长度不能超过 {max} 个字符")
-    private String paymentType;
+    @Schema(description = "支付渠道ID", example = "1")
+    @NotNull(message = "支付渠道ID不能为空")
+    private Long paymentChannelId;
 
     /**
-     * 创建人
+     * 支付方式（wechat:微信支付, alipay:支付宝）- 已废弃，保留向下兼容
      */
-    @Schema(description = "创建人")
-    @NotNull(message = "创建人不能为空")
-    private Long createUser;
+    @Schema(description = "支付方式（wechat:微信支付, alipay:支付宝）- 已废弃")
+    @Deprecated
+    private String paymentType;
 }

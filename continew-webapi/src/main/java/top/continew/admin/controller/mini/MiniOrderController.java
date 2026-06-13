@@ -21,10 +21,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import top.continew.admin.common.satoken.StpMiniUtil;
+import top.continew.admin.common.context.UserContextHolder;
+import top.continew.admin.common.context.UserContext;
 import top.continew.admin.education.model.req.OrderReq;
 import top.continew.admin.education.model.resp.OrderDetailResp;
 import top.continew.admin.education.service.OrderService;
 import top.continew.starter.web.model.R;
+
+import java.util.Collections;
 
 /**
  * 小程序订单 API
@@ -44,7 +49,32 @@ public class MiniOrderController {
     @Operation(summary = "创建订单", description = "用户购买会员卡时创建订单")
     @PostMapping("/create")
     public R<OrderDetailResp> createOrder(@Validated @RequestBody OrderReq req) {
+        // 验证小程序用户登录
+        StpMiniUtil.checkLogin();
+
+        // 设置用户上下文
+        Long userId = StpMiniUtil.getLoginIdAsLong();
+        UserContext userContext = new UserContext(Collections.emptySet(), Collections.emptySet(), -1);
+        userContext.setId(userId);
+        UserContextHolder.setContext(userContext);
+
         OrderDetailResp order = orderService.createOrder(req);
         return R.ok(order);
+    }
+
+    @Operation(summary = "取消订单", description = "取消待支付的订单")
+    @PostMapping("/cancel/{orderNo}")
+    public R<Void> cancelOrder(@PathVariable String orderNo) {
+        // 验证小程序用户登录
+        StpMiniUtil.checkLogin();
+
+        // 设置用户上下文
+        Long userId = StpMiniUtil.getLoginIdAsLong();
+        UserContext userContext = new UserContext(Collections.emptySet(), Collections.emptySet(), -1);
+        userContext.setId(userId);
+        UserContextHolder.setContext(userContext);
+
+        orderService.cancelOrder(orderNo);
+        return R.ok();
     }
 }

@@ -75,6 +75,21 @@ public class OrderDO extends BaseDO {
     private String paymentType;
 
     /**
+     * 支付渠道ID（关联edu_payment_channel.id）
+     */
+    private Long paymentChannelId;
+
+    /**
+     * 支付渠道名称（快照）
+     */
+    private String paymentChannelName;
+
+    /**
+     * 支付方式（online-在线支付 qrcode-扫码支付 offline-线下支付）
+     */
+    private String paymentMethod;
+
+    /**
      * 订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）
      */
     private String orderStatus;

@@ -81,10 +81,14 @@ public class WechatPayConfig {
         String privateKeyRealPath = privateKeyPath;
         if (privateKeyPath.startsWith("classpath:")) {
             privateKeyRealPath = ResourceUtils.getURL(privateKeyPath).getPath();
+        } else if (privateKeyPath.startsWith("file:")) {
+            privateKeyRealPath = privateKeyPath.substring(5);
         }
         String publicKeyRealPath = publicKeyPath;
         if (publicKeyPath.startsWith("classpath:")) {
             publicKeyRealPath = ResourceUtils.getURL(publicKeyPath).getPath();
+        } else if (publicKeyPath.startsWith("file:")) {
+            publicKeyRealPath = publicKeyPath.substring(5);
         }
         return new RSAPublicKeyConfig.Builder().merchantId(mchId)
             .privateKeyFromPath(privateKeyRealPath)

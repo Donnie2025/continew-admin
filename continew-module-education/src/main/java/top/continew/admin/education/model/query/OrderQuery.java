@@ -49,8 +49,8 @@ public class OrderQuery implements Serializable {
      * 学生姓名
      */
     @Schema(description = "学生姓名")
-    @Query(type = QueryType.EQ)
-    private String stuName;
+    @Query(type = QueryType.LIKE, columns = "student_name")
+    private String studentName;
 
     /**
      * 会员卡ID
@@ -79,6 +79,13 @@ public class OrderQuery implements Serializable {
     @Schema(description = "支付方式（wechat:微信支付, alipay:支付宝）")
     @Query(type = QueryType.EQ)
     private String paymentType;
+
+    /**
+     * 支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）
+     */
+    @Schema(description = "支付类型（online-在线支付 qrcode-扫码支付 offline-线下支付）")
+    @Query(type = QueryType.EQ)
+    private String paymentMethod;
 
     /**
      * 订单状态（PENDING:待确认, COMPLETED:已完成, CANCELLED:已取消）

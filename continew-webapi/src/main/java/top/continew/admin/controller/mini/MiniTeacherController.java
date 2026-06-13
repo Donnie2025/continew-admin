@@ -26,9 +26,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.education.model.query.SlotQuery;
 import top.continew.admin.education.model.resp.SlotResp;
-import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
+import top.continew.admin.education.model.resp.TeacherPublicResp;
 import top.continew.admin.education.service.BookingService;
+import top.continew.admin.education.service.FavoriteService;
 import top.continew.admin.education.service.SlotService;
 import top.continew.admin.education.service.TeacherService;
 import top.continew.starter.web.model.R;
@@ -57,6 +58,7 @@ public class MiniTeacherController {
     private final TeacherService teacherService;
     private final SlotService slotService;
     private final BookingService bookingService;
+    private final FavoriteService favoriteService;
 
     @SaIgnore
     @GetMapping("/active")
@@ -66,8 +68,23 @@ public class MiniTeacherController {
                                                      @RequestParam(required = false) String startTimeFrom,
                                                      @RequestParam(required = false) String startTimeTo,
                                                      @RequestParam(defaultValue = "1") int page,
-                                                     @RequestParam(defaultValue = "10") int pageSize) {
-        return R.ok(teacherService.listActiveTeachersPage(name, startDate, startTimeFrom, startTimeTo, page, pageSize));
+                                                     @RequestParam(defaultValue = "10") int pageSize,
+                                                     @RequestParam(required = false) Long studentId) {
+        Map<String, Object> result = teacherService
+            .listActiveTeachersPage(name, startDate, startTimeFrom, startTimeTo, page, pageSize);
+
+        // 如果提供了学生ID，添加收藏状态
+        if (studentId != null) {
+            @SuppressWarnings("unchecked") List<TeacherResp> teachers = (List<TeacherResp>)result.get("list");
+            if (teachers != null && !teachers.isEmpty()) {
+                List<Long> favoriteTeacherIds = favoriteService.getFavoriteResourceIds(studentId, "teacher");
+                for (TeacherResp teacher : teachers) {
+                    teacher.setIsFavorite(favoriteTeacherIds.contains(teacher.getId()));
+                }
+            }
+        }
+
+        return R.ok(result);
     }
 
     @SaIgnore
@@ -79,9 +96,9 @@ public class MiniTeacherController {
 
     @SaIgnore
     @GetMapping("/{id}")
-    @Operation(summary = "查询教师详情", description = "根据教师ID查询教师详细信息")
-    public TeacherDetailResp getTeacher(@PathVariable Long id) {
-        return teacherService.get(id);
+    @Operation(summary = "查询教师详情", description = "根据教师ID查询教师详细信息（学生端，不包含敏感信息）")
+    public TeacherPublicResp getTeacher(@PathVariable Long id) {
+        return teacherService.getPublicInfo(id);
     }
 
     @SaIgnore

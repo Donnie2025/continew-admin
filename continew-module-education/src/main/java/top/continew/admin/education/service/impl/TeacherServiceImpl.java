@@ -32,6 +32,7 @@ import top.continew.admin.education.model.query.TeacherQuery;
 import top.continew.admin.education.model.req.TeacherReq;
 import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
+import top.continew.admin.education.model.resp.TeacherPublicResp;
 import top.continew.admin.education.service.TeacherService;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 
@@ -178,6 +179,17 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
             return null;
         }
         return this.baseMapper.selectById(id);
+    }
+
+    @Override
+    public TeacherPublicResp getPublicInfo(Long id) {
+        TeacherDetailResp detail = this.get(id);
+        if (detail == null) {
+            return null;
+        }
+        TeacherPublicResp publicResp = new TeacherPublicResp();
+        BeanUtils.copyProperties(detail, publicResp);
+        return publicResp;
     }
 
     /**

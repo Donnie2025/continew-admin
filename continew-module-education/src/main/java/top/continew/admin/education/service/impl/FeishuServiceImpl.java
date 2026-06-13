@@ -118,23 +118,23 @@ public class FeishuServiceImpl implements FeishuService {
                             String fileName = fileNode.get("name").asText();
                             String fileType = fileNode.get("type").asText();
 
-                            // 只处理PDF文件
-                            if ("pdf".equalsIgnoreCase(fileType) || fileName.toLowerCase().endsWith(".pdf")) {
-                                FeishuFile feishuFile = new FeishuFile();
-                                feishuFile.setToken(fileNode.get("token").asText());
-                                feishuFile.setName(fileName);
-                                feishuFile.setType(fileType);
-                                feishuFile.setSize(fileNode.has("size") ? fileNode.get("size").asLong() : 0L);
+                            // 返回所有文件和文件夹（包括PDF、文件夹等）
+                            FeishuFile feishuFile = new FeishuFile();
+                            feishuFile.setToken(fileNode.get("token").asText());
+                            feishuFile.setName(fileName);
+                            feishuFile.setType(fileType);
+                            feishuFile.setSize(fileNode.has("size") ? fileNode.get("size").asLong() : 0L);
 
-                                // 获取文件下载链接
+                            // 为文件获取下载链接（文件夹除外）
+                            if (!"folder".equalsIgnoreCase(fileType)) {
                                 String downloadUrl = getFileDownloadUrl(feishuFile.getToken());
                                 feishuFile.setUrl(downloadUrl);
-
-                                files.add(feishuFile);
                             }
+
+                            files.add(feishuFile);
                         }
                     }
-                    log.info("成功获取飞书文件夹 {} 下的文件，共 {} 个PDF文件", folderToken, files.size());
+                    log.info("成功获取飞书文件夹 {} 下的文件，共 {} 个文件/文件夹（包括文件夹、PDF文件等）", folderToken, files.size());
                 } else {
                     log.error("获取飞书文件夹文件失败: {}", jsonNode.get("msg").asText());
                 }

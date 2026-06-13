@@ -117,4 +117,15 @@ public class MaterialController extends BaseController<MaterialService, Material
         int count = baseService.syncCloudData(ids);
         return R.ok(count);
     }
+
+    /**
+     * 同步飞书文件夹token
+     */
+    @Operation(summary = "同步飞书文件夹token", description = "同步指定节点的飞书token和lesson_url，可选择是否递归同步子节点")
+    @PostMapping("/{id}/sync-feishu")
+    public R<java.util.Map<String, Object>> syncFeishu(@Parameter(description = "节点ID") @PathVariable Long id,
+                                                       @RequestBody(required = false) java.util.Map<String, Object> params) {
+        boolean recursive = params != null && Boolean.TRUE.equals(params.get("recursive"));
+        return R.ok(baseService.syncFeishu(id, recursive));
+    }
 }

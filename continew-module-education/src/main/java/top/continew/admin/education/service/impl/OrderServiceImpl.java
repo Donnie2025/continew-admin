@@ -25,14 +25,19 @@ import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.common.context.UserContextHolder;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import top.continew.admin.education.enums.AccountTypeEnum;
+import top.continew.admin.education.enums.OrderStatus;
 import top.continew.admin.education.mapper.CardMapper;
 import top.continew.admin.education.mapper.OrderMapper;
 import top.continew.admin.education.mapper.AccountMapper;
 import top.continew.admin.education.mapper.TransactionMapper;
+import top.continew.admin.education.mapper.PaymentChannelMapper;
+import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.model.entity.AccountDO;
 import top.continew.admin.education.model.entity.CardDO;
 import top.continew.admin.education.model.entity.OrderDO;
 import top.continew.admin.education.model.entity.TransactionDO;
+import top.continew.admin.education.model.entity.PaymentChannelDO;
+import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.query.OrderQuery;
 import top.continew.admin.education.model.req.OrderReq;
 import top.continew.admin.education.model.resp.OrderDetailResp;
@@ -46,6 +51,10 @@ import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 订单业务实现
@@ -61,6 +70,8 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
     private final AccountMapper accountMapper;
     private final OrderMapper orderMapper;
     private final TransactionMapper transactionMapper;
+    private final PaymentChannelMapper paymentChannelMapper;
+    private final StudentMapper studentMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -74,14 +85,32 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             throw new BusinessException("会员卡已下架");
         }
 
-        // 2. 获取当前登录学生信息
+        // 2. 查询支付渠道信息
+        PaymentChannelDO paymentChannel = null;
+        if (req.getPaymentChannelId() != null) {
+            paymentChannel = paymentChannelMapper.selectById(req.getPaymentChannelId());
+            if (paymentChannel == null) {
+                throw new BusinessException("支付渠道不存在");
+            }
+            if (paymentChannel.getStatus() != 1) {
+                throw new BusinessException("支付渠道已禁用");
+            }
+        }
+
+        // 3. 获取当前登录学生信息
         Long stuId = UserContextHolder.getUserId();
         if (stuId == null) {
             throw new BusinessException("用户未登录，请先登录后再创建订单");
         }
-        String stuName = UserContextHolder.getUsername();
 
-        // 3. 查找或创建课时账户（同一学生每种 accountType 唯一）
+        // 查询学生信息获取真实姓名
+        StudentDO student = studentMapper.selectById(stuId);
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        String stuName = student.getName();
+
+        // 4. 查找或创建课时账户（同一学生每种 accountType 唯一）
         LambdaQueryWrapper<AccountDO> existCheck = new LambdaQueryWrapper<>();
         existCheck.eq(AccountDO::getStudentId, stuId).eq(AccountDO::getAccountType, AccountTypeEnum.PAID.getCode());
         AccountDO account = accountMapper.selectOne(existCheck);
@@ -99,11 +128,11 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             accountMapper.insert(account);
         }
 
-        // 4. 生成订单编号
+        // 5. 生成订单编号
         String orderNo = "ORD" + DateUtil.format(LocalDateTime.now(), "yyyyMMddHHmmss") + IdUtil.randomUUID()
             .substring(0, 6);
 
-        // 5. 创建订单
+        // 6. 创建订单
         OrderDO order = new OrderDO();
         order.setOrderNo(orderNo);
         order.setStudentId(stuId);
@@ -111,15 +140,26 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         order.setCardId(card.getId());
         order.setCardTitle(card.getTitle());
         order.setOrderPrice(card.getPrice());
-        order.setPaymentType(req.getPaymentType());
-        order.setOrderStatus("PENDING"); // 待确认
+
+        // 设置支付渠道信息
+        if (paymentChannel != null) {
+            order.setPaymentChannelId(paymentChannel.getId());
+            order.setPaymentChannelName(paymentChannel.getChannelName());
+            order.setPaymentMethod(paymentChannel.getPaymentType());
+            order.setPaymentType(paymentChannel.getChannelCode()); // 保留向下兼容
+        } else if (req.getPaymentType() != null) {
+            // 向下兼容：如果没有传 paymentChannelId，使用旧的 paymentType
+            order.setPaymentType(req.getPaymentType());
+        }
+
+        order.setOrderStatus(OrderStatus.PENDING); // 待确认
         order.setAccountId(account.getId()); // 关联课时账户
         order.setPaymentTime(LocalDateTime.now());
         order.setInstitutionId(card.getInstitutionId());
         order.setCreateUser(stuId);
         orderMapper.insert(order);
 
-        // 6. 返回订单详情
+        // 7. 返回订单详情
         OrderDetailResp resp = new OrderDetailResp();
         BeanUtil.copyProperties(order, resp);
         return resp;
@@ -132,7 +172,7 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         if (order == null) {
             throw new BusinessException("订单不存在");
         }
-        if (!"PENDING".equals(order.getOrderStatus())) {
+        if (!OrderStatus.PENDING.equals(order.getOrderStatus())) {
             throw new BusinessException("订单状态不正确");
         }
 
@@ -155,11 +195,24 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             expireDate = activateDate.plusDays(card.getInitDays());
         }
 
-        // 激活账户：设置初始余额和到期日
+        // 计算充值金额
+        BigDecimal rechargeAmount = card.getInitBalance() != null ? card.getInitBalance() : BigDecimal.ZERO;
+
+        // 计算新余额：原余额 + 充值金额
+        BigDecimal newBalance = account.getBalance().add(rechargeAmount);
+
+        // 更新账户：累加余额和更新到期日
         AccountDO updateAccount = new AccountDO();
         updateAccount.setId(account.getId());
-        updateAccount.setBalance(card.getInitBalance() != null ? card.getInitBalance() : BigDecimal.ZERO);
-        updateAccount.setExpireDate(expireDate);
+        updateAccount.setBalance(newBalance); // 累加余额
+
+        // 更新到期日：如果新的到期日更晚，则更新
+        if (expireDate != null) {
+            if (account.getExpireDate() == null || expireDate.isAfter(account.getExpireDate())) {
+                updateAccount.setExpireDate(expireDate);
+            }
+        }
+
         updateAccount.setStatus(1); // 学生端可见
         updateAccount.setUpdateUser(UserContextHolder.getUserId());
         accountMapper.updateById(updateAccount);
@@ -173,20 +226,75 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         transaction.setTransType(TransactionTypeEnum.BIND.getCode());
         transaction.setDirection(TransactionDirectionEnum.CREDIT.getCode());
 
-        // 统一使用 initBalance 记录课时变动数量
-        BigDecimal amount = card.getInitBalance() != null ? card.getInitBalance() : BigDecimal.ZERO;
-
-        transaction.setAmount(amount); // 课时变动数量
-        transaction.setBalance(amount); // 交易后余额快照
+        transaction.setAmount(rechargeAmount); // 充值金额
+        transaction.setBalance(newBalance); // 交易后余额快照（新余额）
         transaction.setCashAmount(order.getOrderPrice()); // 实际支付金额
         transaction.setRemark("订单确认激活：" + order.getOrderNo());
         transaction.setCreateUser(UserContextHolder.getUserId());
         transactionMapper.insert(transaction);
 
         // 6. 更新订单状态
-        order.setOrderStatus("COMPLETED"); // 已完成
+        order.setOrderStatus(OrderStatus.COMPLETED); // 已完成
         order.setConfirmTime(LocalDateTime.now());
         order.setUpdateUser(UserContextHolder.getUserId());
         orderMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelOrder(String orderNo) {
+        // 1. 查询订单
+        LambdaQueryWrapper<OrderDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(OrderDO::getOrderNo, orderNo);
+        OrderDO order = orderMapper.selectOne(queryWrapper);
+
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+
+        // 2. 只有待确认状态的订单才能取消
+        if (!OrderStatus.PENDING.equals(order.getOrderStatus())) {
+            throw new BusinessException("订单状态不正确，无法取消");
+        }
+
+        // 3. 更新订单状态为已取消
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        order.setUpdateUser(UserContextHolder.getUserId());
+        order.setRemark("支付失败自动取消");
+        orderMapper.updateById(order);
+    }
+
+    @Override
+    public List<OrderResp> getStudentOrders(Long studentId, int limit) {
+        if (studentId == null) {
+            return new ArrayList<>();
+        }
+
+        // 查询近1年内的订单，状态为 COMPLETED 或 PENDING
+        LambdaQueryWrapper<OrderDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(OrderDO::getStudentId, studentId)
+            .in(OrderDO::getOrderStatus, Arrays.asList(OrderStatus.COMPLETED, OrderStatus.PENDING))
+            .ge(OrderDO::getCreateTime, LocalDateTime.now().minusYears(1))
+            .orderByDesc(OrderDO::getCreateTime)
+            .last("LIMIT " + limit);
+
+        List<OrderDO> orders = orderMapper.selectList(queryWrapper);
+
+        // 转换为响应对象，并关联查询会员卡的课时数
+        return orders.stream().map(order -> {
+            OrderResp resp = BeanUtil.copyProperties(order, OrderResp.class);
+            resp.setStudentId(order.getStudentId());
+            resp.setStudentName(order.getStudentName());
+
+            // 查询会员卡信息获取课时数
+            if (order.getCardId() != null) {
+                CardDO card = cardMapper.selectById(order.getCardId());
+                if (card != null && card.getInitBalance() != null) {
+                    resp.setAmount(card.getInitBalance().intValue());
+                }
+            }
+
+            return resp;
+        }).collect(Collectors.toList());
     }
 }

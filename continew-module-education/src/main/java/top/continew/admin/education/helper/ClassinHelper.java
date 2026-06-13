@@ -92,7 +92,7 @@ public class ClassinHelper {
         ClassinUserDO classinUser = classinUserService
             .getByMemberIdAndUserTypeAndInstitution(studentId, ClassinConstants.USER_TYPE_STUDENT, institutionId);
 
-        if (classinUser != null) {
+        if (classinUser != null && StrUtil.isNotBlank(classinUser.getClassinUid())) {
             log.info("学生[{}]在机构[{}]下已有ClassIn账号，无需创建", student.getName(), institutionId);
             return classinUser;
         }
@@ -174,7 +174,7 @@ public class ClassinHelper {
         ClassinUserDO classinUser = classinUserService
             .getByMemberIdAndUserTypeAndInstitution(teacherId, ClassinConstants.USER_TYPE_TEACHER, institutionId);
 
-        if (classinUser != null) {
+        if (classinUser != null && StrUtil.isNotBlank(classinUser.getClassinUid())) {
             log.info("教师[{}]在机构[{}]下已有ClassIn账号，无需创建", teacher.getName(), institutionId);
             return classinUser;
         }

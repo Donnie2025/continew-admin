@@ -528,7 +528,7 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
         try {
             log.info("开始批量创建预约: teacherId={}, materialId={}, slotCount={}", batchReq.getTeacherId(), batchReq
-                .getMaterialId(), batchReq.getSlotCount());
+                .getMaterialId(), batchReq.getSlots().size());
 
             // 获取当前登录用户ID作为学生ID
             Long studentId = getCurrentStudentId();
@@ -553,101 +553,68 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 material = materialService.get(batchReq.getMaterialId());
             }
 
-            // accountId 由 batchReq.getAccountId() 传入，无需额外查询卡信息
+            // 预检查：验证账户余额是否足够
+            // 如果前端未传递accountId，则自动查找学生的可用账户
+            Long accountId = batchReq.getAccountId();
+            if (accountId == null) {
+                log.info("前端未传递accountId，开始自动查找学生可用账户: studentId={}", studentId);
+                accountId = findAvailableAccountForStudent(studentId);
+                if (accountId == null) {
+                    throw new RuntimeException("未找到可用的课时账户，请先购买课时卡");
+                }
+                batchReq.setAccountId(accountId);
+                log.info("自动查找到可用账户: accountId={}", accountId);
+            }
 
-            // 为每个时间段创建预约记录
-            List<BookingDO> bookings = new ArrayList<>();
+            AccountDO account = accountMapper.selectById(accountId);
+            if (account == null) {
+                throw new RuntimeException("课时账户不存在");
+            }
+
+            int requiredSlots = batchReq.getSlots().size();
+            BigDecimal currentBalance = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
+
+            if (currentBalance.compareTo(new BigDecimal(requiredSlots)) < 0) {
+                throw new RuntimeException(String.format("账户余额不足，需要%d节课，当前余额%.0f节课", requiredSlots, currentBalance
+                    .doubleValue()));
+            }
+            log.info("余额检查通过: 需要{}节课, 当前余额{}节课", requiredSlots, currentBalance);
+
+            // 为每个时间段执行完整的预约流程
             for (int i = 0; i < batchReq.getSlots().size(); i++) {
                 BatchBookingReq.SlotInfo slotInfo = batchReq.getSlots().get(i);
-
-                // 检查该时间段的预约容量
                 Long slotId = Long.valueOf(slotInfo.getSlotId());
-                LambdaQueryWrapper<BookingDO> slotCountWrapper = new LambdaQueryWrapper<>();
-                slotCountWrapper.eq(BookingDO::getSlotId, slotId).eq(BookingDO::getStatus, 1); // 只统计已预约状态的记录
-                long bookedCount = baseMapper.selectCount(slotCountWrapper);
 
-                // 获取课时最大可预约人数
-                SlotDetailResp slot = slotService.get(slotId);
-                if (slot != null && slot.getStudentCount() != null) {
-                    int maxCount = slot.getStudentCount();
-                    if (bookedCount >= maxCount) {
-                        throw new RuntimeException("时间段 " + slotInfo.getStartTime() + " 预约人数已满，无法继续预约");
-                    }
-                }
+                log.info("开始处理第{}个时间段预约: slotId={}, date={}, time={}", i + 1, slotId, slotInfo.getDate(), slotInfo
+                    .getStartTime());
 
-                // 检查该学生是否已经预约过该课时
-                LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(BookingDO::getSlotId, slotId)
-                    .eq(BookingDO::getStudentId, studentId)
-                    .eq(BookingDO::getStatus, 1); // 只检查已预约状态的记录
-                long existingCount = baseMapper.selectCount(queryWrapper);
-                if (existingCount > 0) {
-                    throw new RuntimeException("您已经预约过时间段 " + slotInfo.getStartTime() + "，不能重复预约");
-                }
-
+                // 构建完整的BookingDO对象
                 BookingDO booking = new BookingDO();
                 booking.setSlotId(slotId);
-
-                // 验证并设置slot_date字段
-                String slotDate = slotInfo.getDate();
-                if (slotDate == null || slotDate.trim().isEmpty()) {
-                    log.error("批量预约中slotInfo.getDate()为空! slotId={}, slotInfo: {}", slotId, slotInfo);
-                    throw new RuntimeException("课时数据异常：日期为空，slotId=" + slotId);
-                }
-                booking.setSlotDate(slotDate.replace("-", ""));
-
-                booking.setSlotTime(slotInfo.getStartTime());
                 booking.setStudentId(studentId);
-                booking.setStudentName(student.getName());
-                booking.setStudentPhone(student.getPhone());
-                booking.setTeacherId(batchReq.getTeacherId());
-                booking.setMaterialId(batchReq.getMaterialId());
-                booking.setAccountId(batchReq.getAccountId());
+                booking.setAccountId(accountId); // 使用预检查阶段确定的accountId
 
                 // 设置课节ID - 优先使用每个时间段的lessonId，否则使用全局的lessonId
-                Long lessonId = null;
                 if (slotInfo.getLessonId() != null) {
-                    lessonId = slotInfo.getLessonId();
+                    booking.setLessonId(slotInfo.getLessonId());
                 } else if (batchReq.getLessonId() != null) {
-                    lessonId = batchReq.getLessonId();
+                    booking.setLessonId(batchReq.getLessonId());
                 }
 
-                if (lessonId != null) {
-                    booking.setLessonId(lessonId);
-
-                    // 获取课节信息用于设置lesson_name
-                    try {
-                        MaterialLessonDetailResp lessonInfo = materialLessonService.get(lessonId);
-                        if (lessonInfo != null) {
-                            booking.setLessonName(lessonInfo.getLessonName());
-                        }
-                    } catch (Exception e) {
-                        log.warn("获取课节信息失败: lessonId={}, error={}", lessonId, e.getMessage());
-                    }
+                // 设置教材ID
+                if (batchReq.getMaterialId() != null) {
+                    booking.setMaterialId(batchReq.getMaterialId());
                 }
-
-                // 设置教材信息
-                if (material != null) {
-                    booking.setMaterialName(material.getName());
-                    booking.setMaterialLevel(material.getType());
-                }
-
-                // accountId 已在上方设置，cardName 由 transient 字段管理
-
-                // 设置教师信息
-                booking.setTeacherName(teacher.getName());
 
                 // 设置预约备注
                 booking.setRemark(batchReq.getNote());
-                booking.setStatus(1); // 有效状态
+                booking.setStatus(1);
 
-                bookings.add(booking);
-            }
+                // 调用完整的单个预约流程（包含验证、扣款、创建交易记录、创建课程记录、同步ClassIn）
+                Long bookingId = createBookingWithTransaction(booking);
+                bookingIds.add(bookingId);
 
-            // 批量保存预约记录
-            for (BookingDO booking : bookings) {
-                baseMapper.insert(booking);
-                bookingIds.add(booking.getId());
+                log.info("第{}个时间段预约完成: bookingId={}", i + 1, bookingId);
             }
 
             log.info("批量预约创建成功: 共{}条记录", bookingIds.size());
@@ -1246,12 +1213,17 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 resp.setMaterialId(booking.getMaterialId());
                 resp.setMaterialName(booking.getMaterialName());
 
-                // 查询教材级别
+                // 查询教材级别和预览链接
                 if (booking.getMaterialId() != null) {
                     try {
                         MaterialDetailResp material = materialService.get(booking.getMaterialId());
-                        if (material != null && material.getType() != null) {
-                            resp.setMaterialLevel(material.getType());
+                        if (material != null) {
+                            if (material.getType() != null) {
+                                resp.setMaterialLevel(material.getType());
+                            }
+                            if (material.getLessonUrl() != null) {
+                                resp.setLessonUrl(material.getLessonUrl());
+                            }
                         }
                     } catch (Exception e) {
                         log.warn("查询教材级别失败: materialId={}, error={}", booking.getMaterialId(), e.getMessage());
@@ -1764,6 +1736,40 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         }
         String str = val.toString().trim();
         return str.isEmpty() ? null : str;
+    }
+
+    /**
+     * 查找学生可用的账户
+     * 优先返回余额最多的账户
+     *
+     * @param studentId 学生ID
+     * @return 账户ID，如果没有可用账户返回null
+     */
+    private Long findAvailableAccountForStudent(Long studentId) {
+        try {
+            // 查询该学生的所有有效账户（状态为1且余额>0）
+            LambdaQueryWrapper<AccountDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(AccountDO::getStudentId, studentId)
+                .eq(AccountDO::getStatus, 1) // 状态为有效
+                .gt(AccountDO::getBalance, BigDecimal.ZERO) // 余额大于0
+                .orderByDesc(AccountDO::getBalance) // 按余额降序排列
+                .last("LIMIT 1"); // 只取第一个（余额最多的）
+
+            AccountDO account = accountMapper.selectOne(queryWrapper);
+
+            if (account != null) {
+                log.info("找到学生可用账户: studentId={}, accountId={}, balance={}", studentId, account.getId(), account
+                    .getBalance());
+                return account.getId();
+            }
+
+            log.warn("学生没有可用的课时账户: studentId={}", studentId);
+            return null;
+
+        } catch (Exception e) {
+            log.error("查找学生可用账户失败: studentId={}, error={}", studentId, e.getMessage(), e);
+            return null;
+        }
     }
 
 }

@@ -8,10 +8,10 @@ wechat:
     api-v3-key: ${WECHAT_API_V3_KEY:ca689933f1894504a16b138418e6db65}
     # 商户证书序列号（在商户平台-API安全中查看）
     merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER:46FE4DCB3519C210AE29C46F5F3854066F939C99}
-    # 商户私钥路径（相对于classpath，证书文件在 continew-webapi/resources/cert/ 目录）
-    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:classpath:cert/apiclient_key.pem}
+    # 商户私钥路径（生产环境使用外部文件路径）
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:file:/www/wwwroot/continew-admin/cert/apiclient_key.pem}
     # 微信支付公钥路径
-    public-key-path: ${WECHAT_PUBLIC_KEY_PATH:classpath:cert/pub_key.pem}
+    public-key-path: ${WECHAT_PUBLIC_KEY_PATH:file:/www/wwwroot/continew-admin/cert/pub_key.pem}
     # 微信支付公钥ID
     public-key-id: ${WECHAT_PUBLIC_KEY_ID:PUB_KEY_ID_0117454591482026060500291682001003}
     # 支付回调通知地址（必须是公网HTTPS地址）

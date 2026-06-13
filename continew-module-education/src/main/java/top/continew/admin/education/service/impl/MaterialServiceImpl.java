@@ -17,6 +17,7 @@
 package top.continew.admin.education.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -40,6 +41,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -53,6 +55,7 @@ import java.util.stream.Collectors;
  * @since 2025/12/29 21:22
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MaterialServiceImpl extends BaseServiceImpl<MaterialMapper, MaterialDO, MaterialResp, MaterialDetailResp, MaterialQuery, MaterialReq> implements MaterialService {
 
@@ -457,5 +460,137 @@ public class MaterialServiceImpl extends BaseServiceImpl<MaterialMapper, Materia
         resp.setUpdateUser(materialDO.getUpdateUser());
         resp.setUpdateTime(materialDO.getUpdateTime());
         return resp;
+    }
+
+    @Override
+    public Map<String, Object> syncFeishu(Long id, boolean recursive) {
+        MaterialDO root = baseMapper.selectById(id);
+        if (root == null) {
+            throw new RuntimeException("节点不存在");
+        }
+        if ("LESSON".equals(root.getType())) {
+            throw new RuntimeException("课程节点不支持同步，请选择文件夹节点");
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        List<String> failedDetails = new ArrayList<>();
+        int[] counts = {0, 0, 0}; // [total, success, failed]
+        Map<String, List<FeishuService.FeishuFile>> folderCache = new HashMap<>();
+
+        if (recursive) {
+            // 递归同步节点及其所有子节点
+            syncNodeRecursive(root, failedDetails, counts, folderCache);
+        } else {
+            // 只同步直接子节点（下一层级）
+            List<MaterialDO> children = baseMapper.selectList(Wrappers.<MaterialDO>lambdaQuery()
+                .eq(MaterialDO::getPid, root.getId()));
+            for (MaterialDO child : children) {
+                syncSingleNode(child, failedDetails, counts, folderCache);
+            }
+        }
+
+        result.put("total", counts[0]);
+        result.put("success", counts[1]);
+        result.put("failed", counts[2]);
+        result.put("details", failedDetails);
+        return result;
+    }
+
+    private void syncSingleNode(MaterialDO node,
+                                List<String> failedDetails,
+                                int[] counts,
+                                Map<String, List<FeishuService.FeishuFile>> folderCache) {
+        // 如果当前节点没有飞书token（null或空字符串），尝试同步
+        if (node.getFeishuFolderToken() == null || node.getFeishuFolderToken().isEmpty()) {
+            counts[0]++;
+            MaterialDO parent = baseMapper.selectById(node.getPid());
+            if (parent != null && parent.getFeishuFolderToken() != null && !parent.getFeishuFolderToken().isEmpty()) {
+                try {
+                    String parentToken = parent.getFeishuFolderToken();
+                    List<FeishuService.FeishuFile> files;
+
+                    // 检查缓存中是否已有该文件夹的文件列表
+                    if (folderCache.containsKey(parentToken)) {
+                        log.info("[飞书同步] 使用缓存获取文件夹 {} 的文件", parentToken);
+                        files = folderCache.get(parentToken);
+                    } else {
+                        log.info("[飞书同步] 查询飞书获取文件夹 {} 的文件", parentToken);
+                        files = feishuService.getFolderFiles(parentToken);
+                        folderCache.put(parentToken, files);
+                    }
+
+                    String targetName = "LESSON".equals(node.getType()) ? node.getCloudName() : node.getName();
+
+                    log.info("[飞书同步] 节点: {}, 类型: {}, 目标名称: {}, 父节点token: {}", node.getName(), node
+                        .getType(), targetName, parentToken);
+
+                    // 匹配飞书文件/文件夹
+                    FeishuService.FeishuFile matched = files.stream().filter(f -> {
+                        boolean result = matchName(f.getName(), targetName);
+                        if (result) {
+                            log.info("[飞书同步] ✓ 匹配成功: {} 与 {} 匹配", f.getName(), targetName);
+                        }
+                        return result;
+                    }).findFirst().orElse(null);
+
+                    if (matched != null) {
+                        log.info("[飞书同步] 节点 {} 同步成功，token: {}", node.getName(), matched.getToken());
+                        MaterialDO update = new MaterialDO();
+                        update.setId(node.getId());
+                        update.setFeishuFolderToken(matched.getToken());
+                        if ("LESSON".equals(node.getType()) && matched.getUrl() != null) {
+                            update.setLessonUrl(matched.getUrl());
+                        }
+                        baseMapper.updateById(update);
+                        node.setFeishuFolderToken(matched.getToken());
+                        counts[1]++;
+                    } else {
+                        log.warn("[飞书同步] ✗ 节点 {} 在飞书中未找到匹配文件，目标名称: {}", node.getName(), targetName);
+                        counts[2]++;
+                        failedDetails.add(node.getName() + "（飞书中未找到匹配文件）");
+                    }
+                } catch (Exception e) {
+                    log.error("[飞书同步] 节点 {} 同步异常", node.getName(), e);
+                    counts[2]++;
+                    failedDetails.add(node.getName() + "（" + e.getMessage() + "）");
+                }
+            } else {
+                log.warn("[飞书同步] 节点 {} 的父节点缺少飞书token", node.getName());
+                counts[2]++;
+                failedDetails.add(node.getName() + "（父节点缺少飞书token）");
+            }
+        }
+    }
+
+    private void syncNodeRecursive(MaterialDO node,
+                                   List<String> failedDetails,
+                                   int[] counts,
+                                   Map<String, List<FeishuService.FeishuFile>> folderCache) {
+        // 同步当前节点
+        syncSingleNode(node, failedDetails, counts, folderCache);
+
+        // 递归处理子节点
+        List<MaterialDO> children = baseMapper.selectList(Wrappers.<MaterialDO>lambdaQuery()
+            .eq(MaterialDO::getPid, node.getId()));
+        for (MaterialDO child : children) {
+            syncNodeRecursive(child, failedDetails, counts, folderCache);
+        }
+    }
+
+    private boolean matchName(String feishuName, String localName) {
+        if (feishuName == null || localName == null)
+            return false;
+
+        // 去掉扩展名后比较
+        String fn = feishuName.replaceAll("\\.[^.]+$", "");
+        String ln = localName.replaceAll("\\.[^.]+$", "");
+
+        // 标准化：去掉所有空格进行比较
+        fn = fn.replaceAll("\\s+", "");
+        ln = ln.replaceAll("\\s+", "");
+
+        log.debug("[飞书同步-matchName] 去空格后比较: '{}' vs '{}', 结果: {}", fn, ln, fn.equals(ln));
+
+        return fn.equals(ln);
     }
 }

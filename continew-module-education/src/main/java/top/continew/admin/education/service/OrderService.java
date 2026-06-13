@@ -22,6 +22,8 @@ import top.continew.admin.education.model.query.OrderQuery;
 import top.continew.admin.education.model.req.OrderReq;
 import top.continew.admin.education.model.resp.OrderResp;
 
+import java.util.List;
+
 /**
  * 订单业务接口
  *
@@ -44,5 +46,21 @@ public interface OrderService extends BaseService<OrderResp, OrderDetailResp, Or
      * @param orderId 订单ID
      */
     void confirmOrder(Long orderId);
+
+    /**
+     * 取消订单
+     *
+     * @param orderNo 订单编号
+     */
+    void cancelOrder(String orderNo);
+
+    /**
+     * 获取学生的订单记录（近1年，所有状态）
+     *
+     * @param studentId 学生ID
+     * @param limit     限制条数
+     * @return 订单列表
+     */
+    List<OrderResp> getStudentOrders(Long studentId, int limit);
 
 }

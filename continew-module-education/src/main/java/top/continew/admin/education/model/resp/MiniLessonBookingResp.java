@@ -72,6 +72,12 @@ public class MiniLessonBookingResp implements Serializable {
     private String materialName;
 
     /**
+     * 教材预览链接
+     */
+    @Schema(description = "教材预览链接")
+    private String lessonUrl;
+
+    /**
      * 所属课本名称（BOOK层级）
      */
     @Schema(description = "所属课本名称")

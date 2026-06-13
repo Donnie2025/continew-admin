@@ -58,7 +58,6 @@ public class LessonReq implements Serializable {
      * ClassIn 课程ID
      */
     @Schema(description = "ClassIn 课程ID")
-    @NotNull(message = "ClassIn 课程ID不能为空")
     private Long courseUid;
 
     /**

@@ -73,8 +73,10 @@ public class MaterialLessonServiceImpl extends BaseServiceImpl<MaterialLessonMap
     @Override
     protected QueryWrapper<MaterialLessonDO> buildQueryWrapper(MaterialLessonQuery query) {
         QueryWrapper<MaterialLessonDO> queryWrapper = super.buildQueryWrapper(query);
+        // 只查询type=LESSON的记录（从edu_material表中）
+        queryWrapper.eq("type", "LESSON");
         // 按照课节名称正序排列
-        queryWrapper.orderByAsc("lesson_name");
+        queryWrapper.orderByAsc("name");
         return queryWrapper;
     }
 

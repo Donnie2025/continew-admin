@@ -79,4 +79,13 @@ public interface MaterialService extends BaseService<MaterialResp, MaterialDetai
      * @return 更新节点数量
      */
     int syncCloudData(List<Long> ids);
+
+    /**
+     * 同步飞书文件夹token
+     *
+     * @param id        节点ID
+     * @param recursive 是否递归同步子节点
+     * @return 同步结果统计
+     */
+    java.util.Map<String, Object> syncFeishu(Long id, boolean recursive);
 }

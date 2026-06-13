@@ -17,26 +17,29 @@
 package top.continew.admin.education.model.resp;
 
 import lombok.Data;
-
 import io.swagger.v3.oas.annotations.media.Schema;
-
-import top.continew.admin.common.model.resp.BaseResp;
-
 import java.io.Serial;
-import java.time.*;
+import java.io.Serializable;
 
 /**
- * 教师信息
+ * 教师公开信息（学生端）
+ * 不包含敏感信息：rate（课时费）、phone（手机号）、email（邮箱）等
  *
  * @author donnie
- * @since 2025/04/04 18:33
+ * @since 2026/06/10
  */
 @Data
-@Schema(description = "教师信息")
-public class TeacherResp extends BaseResp {
+@Schema(description = "教师公开信息")
+public class TeacherPublicResp implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
+
+    /**
+     * ID
+     */
+    @Schema(description = "ID")
+    private Long id;
 
     /**
      * 教师姓名
@@ -51,12 +54,6 @@ public class TeacherResp extends BaseResp {
     private Integer score;
 
     /**
-     * 单价
-     */
-    @Schema(description = "单价")
-    private Integer rate;
-
-    /**
      * 标签
      */
     @Schema(description = "标签")
@@ -69,28 +66,10 @@ public class TeacherResp extends BaseResp {
     private String gender;
 
     /**
-     * 是否展示
-     */
-    @Schema(description = "是否展示")
-    private Integer isShow;
-
-    /**
      * 是否固定
      */
     @Schema(description = "是否固定")
     private Integer isFixed;
-
-    /**
-     * 手机号码
-     */
-    @Schema(description = "手机号码")
-    private String phone;
-
-    /**
-     * 邮箱
-     */
-    @Schema(description = "邮箱")
-    private String email;
 
     /**
      * 头像地址
@@ -123,40 +102,10 @@ public class TeacherResp extends BaseResp {
     private String description;
 
     /**
-     * 所属组
-     */
-    @Schema(description = "所属组")
-    private String groupName;
-
-    /**
-     * 是否在教师端展示工资（0：不展示；1：展示）
-     */
-    @Schema(description = "是否在教师端展示工资（0：不展示；1：展示）")
-    private Integer showSalary;
-
-    /**
      * 排序
      */
     @Schema(description = "排序")
     private Integer sort;
-
-    /**
-     * 状态
-     */
-    @Schema(description = "状态")
-    private Integer status;
-
-    /**
-     * 更新时间
-     */
-    @Schema(description = "更新时间")
-    private LocalDateTime updateTime;
-
-    /**
-     * 收款人姓名
-     */
-    @Schema(description = "收款人姓名")
-    private String recvName;
 
     /**
      * 是否已收藏

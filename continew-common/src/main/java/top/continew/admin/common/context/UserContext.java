@@ -95,6 +95,11 @@ public class UserContext implements Serializable {
      */
     private String clientId;
 
+    /**
+     * 微信 openid（用于微信支付等场景）
+     */
+    private String openid;
+
     public UserContext(Set<String> permissions, Set<RoleContext> roles, Integer passwordExpirationDays) {
         this.permissions = permissions;
         this.setRoles(roles);

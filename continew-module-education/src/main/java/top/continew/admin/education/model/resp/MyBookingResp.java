@@ -109,6 +109,12 @@ public class MyBookingResp implements Serializable {
     private String materialLevel;
 
     /**
+     * 教材预览链接
+     */
+    @Schema(description = "教材预览链接")
+    private String lessonUrl;
+
+    /**
      * 课节ID
      */
     @Schema(description = "课节ID")

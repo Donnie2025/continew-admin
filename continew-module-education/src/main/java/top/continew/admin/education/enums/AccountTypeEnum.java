@@ -32,17 +32,17 @@ public enum AccountTypeEnum {
     /**
      * 正常购买账户
      */
-    PAID("PAID", "正常购买"),
+    PAID("PAID", "普通账户"),
 
     /**
      * 赠送课时账户
      */
-    GIFT("GIFT", "赠送课时"),
+    GIFT("GIFT", "赠送账户"),
 
     /**
      * 请假课时账户
      */
-    LEAVE("LEAVE", "请假课时"),
+    LEAVE("LEAVE", "临时请假次数"),
 
     /**
      * 冻结账户
