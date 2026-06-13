@@ -5,7 +5,7 @@ wechat:
     # 商户号（示例：1234567890）
     mch-id: ${WECHAT_MCH_ID:1745459148}
     # 商户API密钥（APIv3密钥，32位字符串）
-    api-v3-key: ${WECHAT_API_V3_KEY:ca689933f1894504a16b138418e6db65}
+    api-v3-key: ${WECHAT_API_V3_KEY:6cdfb365086b4ef292d56234bb690391}
     # 商户证书序列号（在商户平台-API安全中查看）
     merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER:46FE4DCB3519C210AE29C46F5F3854066F939C99}
     # 商户私钥路径（生产环境使用外部文件路径）
@@ -14,8 +14,8 @@ wechat:
     public-key-path: ${WECHAT_PUBLIC_KEY_PATH:file:/www/wwwroot/continew-admin/cert/pub_key.pem}
     # 微信支付公钥ID
     public-key-id: ${WECHAT_PUBLIC_KEY_ID:PUB_KEY_ID_0117454591482026060500291682001003}
-    # 支付回调通知地址（必须是公网HTTPS地址）
-    notify-url: ${WECHAT_NOTIFY_URL:https://student.haoyueke.com.cn/api/payment/wechat/notify}
+    # 支付回调通知地址（必须是公网可访问地址）
+    notify-url: ${WECHAT_NOTIFY_URL:http://api.haoyueke.com.cn/api/payment/wechat/notify}
 
   # 微信公众号配置（用于获取用户openid）
   mp:

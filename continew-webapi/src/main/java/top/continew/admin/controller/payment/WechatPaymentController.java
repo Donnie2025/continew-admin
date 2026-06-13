@@ -60,6 +60,7 @@ public class WechatPaymentController {
      */
     @Operation(summary = "创建JSAPI支付订单", description = "创建微信公众号JSAPI支付订单，返回支付参数")
     @PostMapping("/jsapi")
+    @SaIgnore
     public R<WechatPaymentResp> createJsapiOrder(@Validated @RequestBody CreatePaymentReq req) {
         log.info("收到创建JSAPI支付订单请求: {}", req);
 
@@ -152,9 +153,9 @@ public class WechatPaymentController {
      * 支付回调通知
      */
     @Operation(summary = "支付回调通知", description = "接收微信支付回调通知")
-    @PostMapping("/notify")
+    @PostMapping(value = "/notify", consumes = "application/json", produces = "application/json")
     @SaIgnore
-    public String paymentNotify(@RequestBody String requestBody,
+    public String paymentNotify(jakarta.servlet.http.HttpServletRequest request,
                                 @RequestHeader("Wechatpay-Serial") String serial,
                                 @RequestHeader("Wechatpay-Nonce") String nonce,
                                 @RequestHeader("Wechatpay-Signature") String signature,
@@ -162,13 +163,22 @@ public class WechatPaymentController {
         log.info("收到微信支付回调通知");
 
         try {
+            // 读取原始请求体
+            StringBuilder requestBody = new StringBuilder();
+            try (java.io.BufferedReader reader = request.getReader()) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    requestBody.append(line);
+                }
+            }
+
             Map<String, String> headers = new HashMap<>();
             headers.put("Wechatpay-Serial", serial);
             headers.put("Wechatpay-Nonce", nonce);
             headers.put("Wechatpay-Signature", signature);
             headers.put("Wechatpay-Timestamp", timestamp);
 
-            wechatPayService.handlePaymentNotify(requestBody, headers);
+            wechatPayService.handlePaymentNotify(requestBody.toString(), headers);
 
             // 返回成功响应
             return "{\"code\":\"SUCCESS\",\"message\":\"成功\"}";

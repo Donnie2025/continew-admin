@@ -233,6 +233,7 @@ sa-token.extension:
     - /api/mini/auth/**
     - /api/mini/teacher/active
     - /api/payment/**
+    - /api/wechat/oauth/**
 ## Just Auth 配置
 justauth:
   enabled: true

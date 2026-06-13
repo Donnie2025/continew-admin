@@ -38,6 +38,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.AnnotationUtils;
 import top.continew.admin.common.context.UserContext;
 import top.continew.admin.common.context.UserContextHolder;
+import top.continew.admin.common.satoken.StpMiniUtil;
 import top.continew.admin.open.sign.OpenApiSignTemplate;
 import top.continew.starter.auth.satoken.autoconfigure.SaTokenExtensionProperties;
 import top.continew.starter.core.constant.StringConstants;
@@ -94,8 +95,15 @@ public class SaTokenConfiguration {
                     return;
                 }
                 // 不包含 sign 参数，进行普通登录验证
-                // 普通请求，使用默认StpUtil进行登录检查
-                StpUtil.checkLogin();
+                // 判断请求路径，使用对应的StpLogic进行登录检查
+                if (requestPath.startsWith("/api/mini/") || requestPath.startsWith("/api/wechat/") || requestPath
+                    .startsWith("/api/payment/")) {
+                    // 小程序/H5相关接口，使用StpMiniUtil
+                    StpMiniUtil.checkLogin();
+                } else {
+                    // 后台管理接口，使用默认StpUtil
+                    StpUtil.checkLogin();
+                }
                 if (SaRouter.isMatchCurrURI(loginPasswordProperties.getExcludes())) {
                     return;
                 }

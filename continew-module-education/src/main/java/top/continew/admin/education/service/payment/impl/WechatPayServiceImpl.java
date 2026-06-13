@@ -17,6 +17,7 @@
 package top.continew.admin.education.service.payment.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.wechat.pay.java.core.exception.ServiceException;
 import com.wechat.pay.java.core.notification.NotificationConfig;
 import com.wechat.pay.java.core.notification.NotificationParser;
@@ -33,7 +34,11 @@ import top.continew.admin.education.config.WechatPayConfig;
 import top.continew.admin.education.mapper.OrderMapper;
 import top.continew.admin.education.model.entity.OrderDO;
 import top.continew.admin.education.model.resp.payment.WechatPaymentResp;
+import top.continew.admin.education.service.OrderService;
 import top.continew.admin.education.service.payment.WechatPayService;
+import top.continew.admin.education.enums.OrderStatus;
+import top.continew.admin.common.context.UserContext;
+import top.continew.admin.common.context.UserContextHolder;
 import top.continew.starter.core.exception.BusinessException;
 
 import java.time.LocalDateTime;
@@ -55,6 +60,7 @@ public class WechatPayServiceImpl implements WechatPayService {
     private final WechatMpConfig wechatMpConfig;
     private final NotificationConfig rsaAutoCertificateConfig;
     private final OrderMapper orderMapper;
+    private final OrderService orderService;
 
     @Override
     public WechatPaymentResp createJsapiOrder(String orderNo, String openid, Integer amount, String description) {
@@ -81,6 +87,18 @@ public class WechatPayServiceImpl implements WechatPayService {
             request.setNotifyUrl(wechatPayConfig.getNotifyUrl());
             request.setAmount(amountObj);
             request.setPayer(payer);
+
+            // 打印调用微信支付API的请求参数
+            log.info("========== 调用微信支付API请求参数开始 ==========");
+            log.info("appid: {}", request.getAppid());
+            log.info("mchid: {}", request.getMchid());
+            log.info("description: {}", request.getDescription());
+            log.info("outTradeNo: {}", request.getOutTradeNo());
+            log.info("notifyUrl: {}", request.getNotifyUrl());
+            log.info("amount.total: {}", amountObj.getTotal());
+            log.info("amount.currency: {}", amountObj.getCurrency());
+            log.info("payer.openid: {}", payer.getOpenid());
+            log.info("========== 调用微信支付API请求参数结束 ==========");
 
             // 调用微信支付API
             PrepayWithRequestPaymentResponse response = jsapiService.prepayWithRequestPayment(request);
@@ -111,6 +129,12 @@ public class WechatPayServiceImpl implements WechatPayService {
     @Transactional(rollbackFor = Exception.class)
     public void handlePaymentNotify(String requestBody, Map<String, String> headers) {
         log.info("收到微信支付回调通知");
+        log.info("========== 回调通知详情 ==========");
+        log.info("请求头 - Serial: {}", headers.get("Wechatpay-Serial"));
+        log.info("请求头 - Nonce: {}", headers.get("Wechatpay-Nonce"));
+        log.info("请求头 - Timestamp: {}", headers.get("Wechatpay-Timestamp"));
+        log.info("请求头 - Signature: {}", headers.get("Wechatpay-Signature"));
+        log.info("请求体（原始）: {}", requestBody);
 
         try {
             // 构建通知解析器
@@ -124,38 +148,81 @@ public class WechatPayServiceImpl implements WechatPayService {
                 .build();
 
             // 解析通知内容
+            log.info("========== 开始解析回调通知 ==========");
             Transaction transaction = parser.parse(requestParam, Transaction.class);
+            log.info("========== 回调通知解析成功 ==========");
 
             String outTradeNo = transaction.getOutTradeNo();
             String transactionId = transaction.getTransactionId();
             String tradeState = transaction.getTradeState().name();
 
-            log.info("支付回调解析成功, outTradeNo: {}, transactionId: {}, tradeState: {}", outTradeNo, transactionId, tradeState);
+            log.info("========== 解析结果 ==========");
+            log.info("订单号(outTradeNo): {}", outTradeNo);
+            log.info("交易号(transactionId): {}", transactionId);
+            log.info("支付状态(tradeState): {}", tradeState);
+            log.info("支付类型(tradeType): {}", transaction.getTradeType());
+            if (transaction.getAmount() != null) {
+                log.info("支付金额(total): {}", transaction.getAmount().getTotal());
+            }
+            if (transaction.getPayer() != null) {
+                log.info("支付者openid: {}", transaction.getPayer().getOpenid());
+            }
+            log.info("========== 解析结果结束 ==========");
 
-            // 查询订单
-            OrderDO order = orderMapper.selectById(outTradeNo);
+            // 查询订单（通过订单号查询）
+            QueryWrapper<OrderDO> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("order_no", outTradeNo);
+            OrderDO order = orderMapper.selectOne(queryWrapper);
+
             if (order == null) {
                 log.error("订单不存在, orderNo: {}", outTradeNo);
                 throw new BusinessException("订单不存在");
             }
 
+            log.info("========== 订单信息 ==========");
+            log.info("订单ID: {}", order.getId());
+            log.info("订单号: {}", order.getOrderNo());
+            log.info("当前状态: {}", order.getOrderStatus());
+            log.info("订单金额: {}", order.getOrderPrice());
+            log.info("========== 订单信息结束 ==========");
+
             // 检查订单状态，防止重复处理
-            if ("COMPLETED".equals(order.getOrderStatus())) {
+            if (OrderStatus.COMPLETED.equals(order.getOrderStatus())) {
                 log.warn("订单已处理，跳过重复回调, orderNo: {}", outTradeNo);
                 return;
             }
 
             // 处理支付成功
             if ("SUCCESS".equals(tradeState)) {
-                order.setOrderStatus("PAID"); // 已支付，待确认
-                order.setPaymentTime(LocalDateTime.now());
-                order.setRemark(StrUtil.isBlank(order.getRemark())
-                    ? "微信支付成功，交易号：" + transactionId
-                    : order.getRemark() + "；微信支付成功，交易号：" + transactionId);
+                log.info("========== 开始处理支付成功 ==========");
 
-                orderMapper.updateById(order);
+                // 调用订单服务的确认订单方法，完成充值
+                // 注意：回调场景下没有用户上下文，需要临时设置学生ID作为操作用户
+                try {
+                    // 临时设置用户上下文为订单的学生ID
+                    UserContext userContext = new UserContext();
+                    userContext.setId(order.getStudentId());
+                    userContext.setUsername(order.getStudentName());
+                    UserContextHolder.setContext(userContext, false);
 
-                log.info("订单支付成功，状态已更新, orderNo: {}, transactionId: {}", outTradeNo, transactionId);
+                    orderService.confirmOrder(order.getId());
+                    log.info("订单确认成功，已完成充值, orderId: {}, orderNo: {}", order.getId(), outTradeNo);
+                } catch (Exception e) {
+                    log.error("订单确认失败, orderId: {}, orderNo: {}", order.getId(), outTradeNo, e);
+                    // 如果确认失败，将订单状态保持为PENDING（待确认），需人工处理
+                    order.setOrderStatus(OrderStatus.PENDING);
+                    order.setPaymentTime(LocalDateTime.now());
+                    order.setRemark(StrUtil.isBlank(order.getRemark())
+                        ? "微信支付成功，交易号：" + transactionId + "；自动充值失败，需人工确认"
+                        : order.getRemark() + "；微信支付成功，交易号：" + transactionId + "；自动充值失败，需人工确认");
+                    orderMapper.updateById(order);
+                    throw e;
+                } finally {
+                    // 清理用户上下文
+                    UserContextHolder.clearContext();
+                }
+
+                log.info("========== 支付成功处理完成 ==========");
 
                 // TODO: 发送支付成功通知（短信/邮件/公众号消息）
 
