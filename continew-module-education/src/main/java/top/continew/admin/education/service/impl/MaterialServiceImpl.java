@@ -23,6 +23,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import top.continew.admin.education.service.FeishuService;
+import top.continew.admin.education.service.BookingService;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.MaterialMapper;
 import top.continew.admin.education.model.entity.MaterialDO;
@@ -33,6 +34,9 @@ import top.continew.admin.education.model.req.SyncCloudFoldersReq;
 import top.continew.admin.education.model.resp.MaterialDetailResp;
 import top.continew.admin.education.model.resp.MaterialResp;
 import top.continew.admin.education.model.resp.MaterialStatisticsResp;
+import top.continew.admin.education.model.resp.MaterialImportResp;
+import top.continew.admin.education.model.resp.MaterialLessonWithCompletionResp;
+import top.continew.admin.education.model.req.MaterialLessonImportReq;
 import top.continew.admin.education.client.ClassinClient;
 import top.continew.admin.education.model.resp.classin.ClassinCloudListResp;
 import top.continew.admin.education.service.MaterialService;
@@ -47,6 +51,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import top.continew.admin.common.context.UserContextHolder;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 教材业务实现
@@ -61,6 +69,9 @@ public class MaterialServiceImpl extends BaseServiceImpl<MaterialMapper, Materia
 
     private final ClassinClient classinClient;
     private final FeishuService feishuService;
+
+    @Autowired
+    private BookingService bookingService;
 
     @Override
     public List<MaterialResp> listAll() {
@@ -592,5 +603,247 @@ public class MaterialServiceImpl extends BaseServiceImpl<MaterialMapper, Materia
         log.debug("[飞书同步-matchName] 去空格后比较: '{}' vs '{}', 结果: {}", fn, ln, fn.equals(ln));
 
         return fn.equals(ln);
+    }
+
+    // ========== 课节相关方法（原MaterialLessonService） ==========
+
+    @Override
+    public MaterialImportResp importLessonsFromFeishu(MaterialLessonImportReq req) {
+        log.info("开始从飞书链接导入课节，教材ID: {}, 飞书链接: {}, 覆盖模式: {}", req.getMaterialId(), req.getFeishuUrl(), req
+            .getOverwrite());
+
+        MaterialImportResp resp = new MaterialImportResp();
+        resp.setTotalCount(0);
+        resp.setSuccessCount(0);
+        resp.setFailureCount(0);
+        resp.setSkipCount(0);
+        resp.setSuccessLessons(new ArrayList<>());
+        resp.setFailureLessons(new ArrayList<>());
+        resp.setSkipLessons(new ArrayList<>());
+
+        try {
+            // 验证教材是否存在
+            MaterialDO material = baseMapper.selectById(req.getMaterialId());
+            if (material == null) {
+                MaterialImportResp.FailureInfo failureInfo = new MaterialImportResp.FailureInfo();
+                failureInfo.setLessonName("导入验证");
+                failureInfo.setReason("教材ID不存在: " + req.getMaterialId());
+                resp.getFailureLessons().add(failureInfo);
+                resp.setFailureCount(1);
+                resp.setTotalCount(1);
+                return resp;
+            }
+
+            // 解析飞书链接，提取文件夹ID
+            String folderId = extractFolderIdFromUrl(req.getFeishuUrl());
+            if (folderId == null) {
+                MaterialImportResp.FailureInfo failureInfo = new MaterialImportResp.FailureInfo();
+                failureInfo.setLessonName("链接解析");
+                failureInfo.setReason("无效的飞书文件夹链接格式");
+                resp.getFailureLessons().add(failureInfo);
+                resp.setFailureCount(1);
+                resp.setTotalCount(1);
+                return resp;
+            }
+
+            // 从飞书获取文件列表
+            List<FeishuService.FeishuFile> feishuFiles = feishuService.getFolderFiles(folderId);
+            resp.setTotalCount(feishuFiles.size());
+
+            String materialName = material.getName();
+
+            // 处理每个文件
+            for (FeishuService.FeishuFile feishuFile : feishuFiles) {
+                String fileName = feishuFile.getName();
+                try {
+                    boolean lessonExists = isLessonExists(req.getMaterialId(), fileName);
+                    log.info("处理文件: {}, 课节已存在: {}, 覆盖模式: {}", fileName, lessonExists, req.getOverwrite());
+
+                    // 检查是否已存在相同名称的课节
+                    if (!req.getOverwrite() && lessonExists) {
+                        log.info("跳过已存在的课节: {}", fileName);
+                        resp.getSkipLessons().add(fileName);
+                        resp.setSkipCount(resp.getSkipCount() + 1);
+                        continue;
+                    }
+
+                    // 创建课节
+                    MaterialDO lesson = new MaterialDO();
+                    lesson.setPid(req.getMaterialId());
+                    lesson.setType("LESSON");
+                    lesson.setName(fileName);
+                    lesson.setLessonUrl(feishuFile.getUrl());
+                    lesson.setStatus(true);
+                    lesson.setCreateUser(getCurrentUserId());
+                    lesson.setCreateTime(LocalDateTime.now());
+
+                    // 如果覆盖模式且课节已存在，则更新
+                    if (req.getOverwrite() && lessonExists) {
+                        log.info("覆盖模式：更新已存在的课节: {}", fileName);
+                        MaterialDO existingLesson = getLessonByName(req.getMaterialId(), fileName);
+                        if (existingLesson != null) {
+                            lesson.setId(existingLesson.getId());
+                            lesson.setUpdateUser(getCurrentUserId());
+                            lesson.setUpdateTime(LocalDateTime.now());
+                            baseMapper.updateById(lesson);
+                            log.info("成功更新课节: {}", fileName);
+                        }
+                    } else {
+                        log.info("新增课节: {}", fileName);
+                        baseMapper.insert(lesson);
+                    }
+
+                    resp.getSuccessLessons().add(fileName);
+                    resp.setSuccessCount(resp.getSuccessCount() + 1);
+                    log.info("成功导入课节: {}, 文件大小: {} bytes", fileName, feishuFile.getSize());
+
+                } catch (Exception e) {
+                    log.error("导入课节失败: {}, 错误: {}", fileName, e.getMessage(), e);
+                    MaterialImportResp.FailureInfo failureInfo = new MaterialImportResp.FailureInfo();
+                    failureInfo.setLessonName(fileName);
+                    failureInfo.setReason("导入失败: " + e.getMessage());
+                    resp.getFailureLessons().add(failureInfo);
+                    resp.setFailureCount(resp.getFailureCount() + 1);
+                }
+            }
+
+            log.info("飞书导入完成，总计: {}, 成功: {}, 失败: {}, 跳过: {}", resp.getTotalCount(), resp.getSuccessCount(), resp
+                .getFailureCount(), resp.getSkipCount());
+
+        } catch (Exception e) {
+            log.error("飞书导入过程中发生异常", e);
+            MaterialImportResp.FailureInfo failureInfo = new MaterialImportResp.FailureInfo();
+            failureInfo.setLessonName("系统错误");
+            failureInfo.setReason("导入过程中发生异常: " + e.getMessage());
+            resp.getFailureLessons().add(failureInfo);
+            resp.setFailureCount(resp.getFailureCount() + 1);
+        }
+
+        return resp;
+    }
+
+    @Override
+    public List<MaterialLessonWithCompletionResp> listLessonsWithCompletionStatus(Long materialId) {
+        try {
+            log.info("获取教材课程列表（包含完成状态）: materialId={}", materialId);
+
+            // 1. 获取教材的所有课程
+            LambdaQueryWrapper<MaterialDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(MaterialDO::getPid, materialId)
+                .eq(MaterialDO::getType, "LESSON")
+                .eq(MaterialDO::getStatus, 1)
+                .orderByAsc(MaterialDO::getName);
+
+            List<MaterialDO> lessons = baseMapper.selectList(queryWrapper);
+
+            if (lessons.isEmpty()) {
+                log.info("教材下没有找到课程: materialId={}", materialId);
+                return new ArrayList<>();
+            }
+
+            // 2. 获取当前学生已完成的课程ID列表
+            Set<Long> completedLessonIds = new HashSet<>();
+            try {
+                Long currentStudentId = getCurrentStudentId();
+                if (currentStudentId != null) {
+                    List<Long> completedIds = bookingService.getCompletedLessonIds(currentStudentId, materialId);
+                    completedLessonIds.addAll(completedIds);
+                    log.info("学生已完成课程数量: studentId={}, completedCount={}", currentStudentId, completedIds.size());
+                }
+            } catch (Exception e) {
+                log.warn("获取学生完成状态失败，将返回未完成状态: {}", e.getMessage());
+            }
+
+            // 3. 组装响应数据
+            List<MaterialLessonWithCompletionResp> result = new ArrayList<>();
+            for (MaterialDO lesson : lessons) {
+                MaterialLessonWithCompletionResp resp = new MaterialLessonWithCompletionResp();
+
+                // 手动映射字段
+                resp.setId(lesson.getId());
+                resp.setMaterialId(lesson.getPid());
+                resp.setLessonName(lesson.getName());
+                resp.setLessonUrl(lesson.getLessonUrl());
+                resp.setStatus(lesson.getStatus() != null && lesson.getStatus() ? 1 : 0);
+                resp.setCreateUser(lesson.getCreateUser());
+                resp.setCreateTime(lesson.getCreateTime());
+                resp.setUpdateUser(lesson.getUpdateUser());
+                resp.setUpdateTime(lesson.getUpdateTime());
+
+                boolean isCompleted = completedLessonIds.contains(lesson.getId());
+                resp.setCompleted(isCompleted);
+
+                if (isCompleted) {
+                    resp.setCompletionTime("已完成");
+                }
+
+                result.add(resp);
+            }
+
+            log.info("返回课程列表: materialId={}, totalCount={}, completedCount={}", materialId, result
+                .size(), completedLessonIds.size());
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("获取教材课程列表失败: materialId={}, error={}", materialId, e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 从飞书URL中提取文件夹ID
+     */
+    private String extractFolderIdFromUrl(String url) {
+        Pattern pattern = Pattern.compile("https://[^/]+/drive/folder/([a-zA-Z0-9]+)");
+        Matcher matcher = pattern.matcher(url);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    /**
+     * 检查课节是否已存在
+     */
+    private boolean isLessonExists(Long materialId, String lessonName) {
+        return baseMapper.selectCount(Wrappers.<MaterialDO>lambdaQuery()
+            .eq(MaterialDO::getPid, materialId)
+            .eq(MaterialDO::getType, "LESSON")
+            .eq(MaterialDO::getName, lessonName)) > 0;
+    }
+
+    /**
+     * 根据名称获取课节
+     */
+    private MaterialDO getLessonByName(Long materialId, String lessonName) {
+        return baseMapper.selectOne(Wrappers.<MaterialDO>lambdaQuery()
+            .eq(MaterialDO::getPid, materialId)
+            .eq(MaterialDO::getType, "LESSON")
+            .eq(MaterialDO::getName, lessonName)
+            .last("LIMIT 1"));
+    }
+
+    /**
+     * 获取当前登录学生ID
+     */
+    private Long getCurrentStudentId() {
+        try {
+            return UserContextHolder.getUserId();
+        } catch (Exception e) {
+            log.warn("获取当前学生ID失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 获取当前用户ID
+     */
+    private Long getCurrentUserId() {
+        try {
+            return StpUtil.getLoginIdAsLong();
+        } catch (Exception e) {
+            return 1L;
+        }
     }
 }

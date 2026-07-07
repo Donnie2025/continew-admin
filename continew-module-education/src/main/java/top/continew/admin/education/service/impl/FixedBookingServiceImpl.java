@@ -25,11 +25,15 @@ import top.continew.admin.education.model.entity.FixedBookingDO;
 import top.continew.admin.education.model.entity.FixedDO;
 import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.req.FixedBookingReq;
+import top.continew.admin.education.model.resp.FixedResp;
 import top.continew.admin.education.service.FixedBookingService;
 import top.continew.admin.education.service.StudentService;
 import top.continew.admin.education.service.FixedLogService;
 import top.continew.admin.common.context.UserContextHolder;
+import top.continew.admin.education.enums.RecordStatusEnum;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.bean.BeanUtil;
+import top.continew.admin.education.service.TeacherService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -48,6 +52,7 @@ public class FixedBookingServiceImpl implements FixedBookingService {
     private final FixedMapper fixedMapper;
     private final StudentService studentService;
     private final FixedLogService fixedLogService;
+    private final TeacherService teacherService;
 
     @Override
     @Transactional
@@ -141,7 +146,7 @@ public class FixedBookingServiceImpl implements FixedBookingService {
 
         // 软删除预约记录
         FixedBookingDO booking = bookings.get(0);
-        booking.setStatus(0);
+        booking.setStatus(RecordStatusEnum.DISABLED.getValue());
         booking.setUpdateUser(updateUserId);
         fixedBookingMapper.updateById(booking);
 
@@ -287,12 +292,59 @@ public class FixedBookingServiceImpl implements FixedBookingService {
         }
 
         // 软删除预约记录
-        booking.setStatus(0);
+        booking.setStatus(RecordStatusEnum.DISABLED.getValue());
         booking.setUpdateUser(updateUserId);
         fixedBookingMapper.updateById(booking);
 
         // 记录取消预约操作日志
         fixedLogService.logCancel(booking.getFixedId(), booking.getStudentId(), booking.getStudentName(), booking
             .getTeacherId(), booking.getTeacherName(), updateUserId, "系统");
+    }
+
+    @Override
+    public List<FixedResp> listFixedDetailsByStudentId(Long studentId) {
+        if (studentId == null) {
+            return List.of();
+        }
+
+        // 获取学生的所有预约的固定课ID列表
+        List<Long> fixedIds = listByStudentId(studentId);
+        if (fixedIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 根据固定课ID列表查询固定课详情
+        return fixedIds.stream()
+            .map(fixedId -> {
+                FixedDO fixed = fixedMapper.selectById(fixedId);
+                if (fixed == null) {
+                    return null;
+                }
+
+                FixedResp resp = BeanUtil.copyProperties(fixed, FixedResp.class);
+                resp.setIsBooked(true);
+                resp.setIsMyBooking(true);
+
+                // 查询教师信息，补充头像和标签
+                if (fixed.getTeacherId() != null) {
+                    try {
+                        top.continew.admin.education.model.entity.TeacherDO teacher = teacherService.getById(fixed.getTeacherId());
+                        if (teacher != null) {
+                            // 过滤掉状态为0（失效）的教师
+                            if (teacher.getStatus() != null && teacher.getStatus() == 0) {
+                                return null;
+                            }
+                            resp.setTeacherAvatar(teacher.getAvatar());
+                            resp.setTeacherTags(teacher.getTags());
+                        }
+                    } catch (Exception e) {
+                        // 如果查询教师信息失败，不影响其他数据返回
+                    }
+                }
+
+                return resp;
+            })
+            .filter(ObjectUtil::isNotNull)
+            .collect(Collectors.toList());
     }
 }

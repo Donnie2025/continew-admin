@@ -28,11 +28,13 @@ import org.springframework.web.bind.annotation.*;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.admin.common.controller.BaseController;
 import top.continew.admin.education.model.query.StudentQuery;
+import top.continew.admin.education.model.req.StudentAdjustBalanceReq;
 import top.continew.admin.education.model.req.StudentBatchImportReq;
 import top.continew.admin.education.model.req.StudentReq;
 import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
+import top.continew.admin.education.model.resp.TransactionResp;
 import top.continew.admin.education.service.StudentService;
 import net.dreamlu.mica.core.result.R;
 
@@ -92,5 +94,33 @@ public class StudentController extends BaseController<StudentService, StudentRes
         } else {
             return R.fail("学生姓名修改失败");
         }
+    }
+
+    /**
+     * 调整学生余额（充值/扣费）
+     *
+     * @param id  学生ID
+     * @param req 调整请求
+     * @return 操作结果
+     */
+    @PostMapping("/{id}/adjust-balance")
+    @Operation(summary = "调整学生余额", description = "对学生账户进行充值或扣费操作")
+    public R<String> adjustBalance(@Parameter(description = "学生ID") @PathVariable Long id,
+                                   @Valid @RequestBody StudentAdjustBalanceReq req) {
+        baseService.adjustBalance(id, req);
+        String action = "INCREASE".equals(req.getType()) ? "充值" : "扣费";
+        return R.success(action + "成功");
+    }
+
+    /**
+     * 查询学生余额操作记录
+     *
+     * @param id 学生ID
+     * @return 操作记录列表
+     */
+    @GetMapping("/{id}/balance-records")
+    @Operation(summary = "查询学生余额操作记录", description = "查询学生的充值、扣费等余额变动记录")
+    public R<List<TransactionResp>> getBalanceRecords(@Parameter(description = "学生ID") @PathVariable Long id) {
+        return R.success(baseService.getBalanceRecords(id));
     }
 }

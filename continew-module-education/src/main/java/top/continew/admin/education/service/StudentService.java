@@ -19,12 +19,15 @@ package top.continew.admin.education.service;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.query.StudentQuery;
+import top.continew.admin.education.model.req.StudentAdjustBalanceReq;
 import top.continew.admin.education.model.req.StudentBatchImportReq;
 import top.continew.admin.education.model.req.StudentReq;
+import top.continew.admin.education.model.req.StudentUpdateReq;
 import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.model.resp.StudentStatsResp;
+import top.continew.admin.education.model.resp.TransactionResp;
 
 import java.util.List;
 
@@ -108,4 +111,28 @@ public interface StudentService extends BaseService<StudentResp, StudentDetailRe
      * @return 剩余/待上/已完成课程数 + 固定课数量 + 余额预警
      */
     StudentStatsResp getStats(Long studentId);
+
+    /**
+     * 更新学生信息（昵称/头像）
+     *
+     * @param studentId 学生ID
+     * @param req       更新请求
+     */
+    void updateStudentInfo(Long studentId, StudentUpdateReq req);
+
+    /**
+     * 调整学生余额（充值/扣费）
+     *
+     * @param studentId 学生ID
+     * @param req       调整请求
+     */
+    void adjustBalance(Long studentId, StudentAdjustBalanceReq req);
+
+    /**
+     * 查询学生余额操作记录
+     *
+     * @param studentId 学生ID
+     * @return 操作记录列表
+     */
+    List<TransactionResp> getBalanceRecords(Long studentId);
 }

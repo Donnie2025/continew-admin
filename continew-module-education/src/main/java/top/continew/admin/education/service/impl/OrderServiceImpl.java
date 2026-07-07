@@ -97,10 +97,15 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
             }
         }
 
-        // 3. 获取当前登录学生信息
-        Long stuId = UserContextHolder.getUserId();
+        // 3. 获取学生信息
+        // 如果请求中提供了studentId，使用该ID（管理员为学生创建订单）
+        // 否则使用当前登录用户ID（学生自己创建订单）
+        Long stuId = req.getStudentId();
         if (stuId == null) {
-            throw new BusinessException("用户未登录，请先登录后再创建订单");
+            stuId = UserContextHolder.getUserId();
+            if (stuId == null) {
+                throw new BusinessException("用户未登录，请先登录后再创建订单");
+            }
         }
 
         // 查询学生信息获取真实姓名
@@ -189,10 +194,28 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         }
 
         // 4. 激活会员卡（赋值）
-        LocalDate activateDate = LocalDate.now();
+        LocalDate now = LocalDate.now();
         LocalDate expireDate = null;
+
+        // 根据会员卡有效天数和账户当前过期时间计算新的过期时间
         if (card.getInitDays() != null && card.getInitDays() > 0) {
-            expireDate = activateDate.plusDays(card.getInitDays());
+            LocalDate currentExpireDate = account.getExpireDate();
+
+            if (currentExpireDate == null) {
+                // 规则1：第一次激活，过期时间 = 当前时间 + 会员卡有效天数
+                expireDate = now.plusDays(card.getInitDays());
+            } else if (currentExpireDate.isBefore(now)) {
+                // 规则2：账户已过期，过期时间 = 当前时间 + 会员卡有效天数
+                expireDate = now.plusDays(card.getInitDays());
+            } else {
+                // 账户未过期，判断距离当前时间是否超过一年
+                LocalDate oneYearLater = now.plusYears(1);
+                if (currentExpireDate.isBefore(oneYearLater) || currentExpireDate.isEqual(oneYearLater)) {
+                    // 规则3：过期时间距离当前时间不超过一年，过期时间 = 当前过期时间 + 会员卡有效天数
+                    expireDate = currentExpireDate.plusDays(card.getInitDays());
+                }
+                // 规则4：过期时间距离当前时间超过一年，不更新过期时间（expireDate 保持为 null）
+            }
         }
 
         // 计算充值金额
@@ -206,11 +229,9 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         updateAccount.setId(account.getId());
         updateAccount.setBalance(newBalance); // 累加余额
 
-        // 更新到期日：如果新的到期日更晚，则更新
+        // 更新到期日：仅在计算出新的过期时间时更新
         if (expireDate != null) {
-            if (account.getExpireDate() == null || expireDate.isAfter(account.getExpireDate())) {
-                updateAccount.setExpireDate(expireDate);
-            }
+            updateAccount.setExpireDate(expireDate);
         }
 
         updateAccount.setStatus(1); // 学生端可见
@@ -223,7 +244,7 @@ public class OrderServiceImpl extends BaseServiceImpl<OrderMapper, OrderDO, Orde
         transaction.setStudentId(order.getStudentId());
         transaction.setStudentName(order.getStudentName());
         transaction.setCardTitle(order.getCardTitle());
-        transaction.setTransType(TransactionTypeEnum.BIND.getCode());
+        transaction.setTransType(TransactionTypeEnum.RECHARGE.getCode());
         transaction.setDirection(TransactionDirectionEnum.CREDIT.getCode());
 
         transaction.setAmount(rechargeAmount); // 充值金额

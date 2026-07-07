@@ -35,6 +35,6 @@ import top.continew.starter.extension.crud.enums.Api;
  */
 @Tag(name = "订单管理 API")
 @RestController
-@CrudRequestMapping(value = "/education/transaction", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
+@CrudRequestMapping(value = "/api/education/transaction", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
 public class TransactionController extends BaseController<TransactionService, TransactionResp, TransactionDetailResp, TransactionQuery, TransactionReq> {}

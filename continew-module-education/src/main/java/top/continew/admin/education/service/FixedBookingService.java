@@ -123,4 +123,12 @@ public interface FixedBookingService {
      * @param id 预约ID
      */
     void deleteById(Long id);
+
+    /**
+     * 根据学生ID查询预约的固定课详情列表
+     *
+     * @param studentId 学生ID
+     * @return 固定课详情列表
+     */
+    List<top.continew.admin.education.model.resp.FixedResp> listFixedDetailsByStudentId(Long studentId);
 }

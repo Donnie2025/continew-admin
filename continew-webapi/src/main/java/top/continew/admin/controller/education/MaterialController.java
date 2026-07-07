@@ -36,6 +36,9 @@ import top.continew.admin.education.model.req.SyncCloudFoldersReq;
 import top.continew.admin.education.model.resp.MaterialDetailResp;
 import top.continew.admin.education.model.resp.MaterialResp;
 import top.continew.admin.education.model.resp.MaterialStatisticsResp;
+import top.continew.admin.education.model.resp.MaterialImportResp;
+import top.continew.admin.education.model.resp.MaterialLessonWithCompletionResp;
+import top.continew.admin.education.model.req.MaterialLessonImportReq;
 import top.continew.admin.education.service.MaterialService;
 
 import jakarta.validation.Valid;
@@ -127,5 +130,27 @@ public class MaterialController extends BaseController<MaterialService, Material
                                                        @RequestBody(required = false) java.util.Map<String, Object> params) {
         boolean recursive = params != null && Boolean.TRUE.equals(params.get("recursive"));
         return R.ok(baseService.syncFeishu(id, recursive));
+    }
+
+    // ========== 课节相关端点（原MaterialLessonController） ==========
+
+    /**
+     * 从飞书链接导入课节
+     */
+    @Operation(summary = "从飞书链接导入课节", description = "根据飞书文件夹链接批量导入课节到指定教材下")
+    @PostMapping("/lessons/import-feishu")
+    public R<MaterialImportResp> importLessonsFromFeishu(@Valid @RequestBody MaterialLessonImportReq req) {
+        MaterialImportResp result = baseService.importLessonsFromFeishu(req);
+        return R.ok(result);
+    }
+
+    /**
+     * 获取教材的课程列表（包含完成状态）
+     */
+    @Operation(summary = "获取教材课程列表（含完成状态）", description = "获取指定教材下的所有课程，包含学生完成状态")
+    @Parameter(name = "materialId", description = "教材ID", required = true)
+    @GetMapping("/{materialId}/lessons-with-completion")
+    public R<List<MaterialLessonWithCompletionResp>> listLessonsWithCompletionStatus(@PathVariable Long materialId) {
+        return R.ok(baseService.listLessonsWithCompletionStatus(materialId));
     }
 }

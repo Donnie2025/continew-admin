@@ -17,6 +17,7 @@
 package top.continew.admin.education.util;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 /**
  * 薪资计算工具类
@@ -25,6 +26,12 @@ import java.math.BigDecimal;
  * @since 2025/10/25
  */
 public class SalaryCalculationUtil {
+
+    /**
+     * 不参与小费结算的教师名单
+     */
+    private static final Set<String> EXCLUDED_TEACHERS = Set
+        .of("Issa", "French", "Anna", "Mae", "Alex", "Lady", "Mary", "Ainie", "Daisy", "Mira", "Lina", "Yham", "Jenalyn", "Gistel", "Johanna", "Tasha", "Ray", "Jessa", "Via");
 
     private SalaryCalculationUtil() {
         // 工具类不允许实例化
@@ -57,15 +64,7 @@ public class SalaryCalculationUtil {
         }
 
         // 特殊规则2：特定老师小费为0
-        if ("Issa".equalsIgnoreCase(teacherName) || "French".equalsIgnoreCase(teacherName) || "Anna"
-            .equalsIgnoreCase(teacherName) || "Mae".equalsIgnoreCase(teacherName) || "Alex"
-                .equalsIgnoreCase(teacherName) || "Lady".equalsIgnoreCase(teacherName) || "Mary"
-                    .equalsIgnoreCase(teacherName) || "Ainie".equalsIgnoreCase(teacherName) || "Daisy"
-                        .equalsIgnoreCase(teacherName) || "Mira".equalsIgnoreCase(teacherName) || "Lina"
-                            .equalsIgnoreCase(teacherName) || "Yham".equalsIgnoreCase(teacherName) || "Jenalyn"
-                                .equalsIgnoreCase(teacherName) || "Gistel".equalsIgnoreCase(teacherName) || "Johanna"
-                                    .equalsIgnoreCase(teacherName) || "Tasha".equalsIgnoreCase(teacherName) || "Ray"
-                                        .equalsIgnoreCase(teacherName)) {
+        if (teacherName != null && EXCLUDED_TEACHERS.stream().anyMatch(name -> name.equalsIgnoreCase(teacherName))) {
             return BigDecimal.ZERO;
         }
 

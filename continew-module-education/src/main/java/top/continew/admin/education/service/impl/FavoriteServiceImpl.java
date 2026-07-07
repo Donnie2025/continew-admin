@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import top.continew.admin.education.mapper.FavoriteMapper;
 import top.continew.admin.education.model.entity.FavoriteDO;
 import top.continew.admin.education.service.FavoriteService;
+import top.continew.admin.education.enums.RecordStatusEnum;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,8 +49,8 @@ public class FavoriteServiceImpl implements FavoriteService {
 
         if (existing != null) {
             // 如果已存在且状态为禁用，则启用
-            if (existing.getStatus() == 0) {
-                existing.setStatus(1);
+            if (existing.getStatus().equals(RecordStatusEnum.DISABLED.getValue())) {
+                existing.setStatus(RecordStatusEnum.ENABLED.getValue());
                 existing.setUpdateTime(LocalDateTime.now());
                 return favoriteMapper.updateById(existing) > 0;
             }
@@ -63,7 +64,7 @@ public class FavoriteServiceImpl implements FavoriteService {
         favorite.setResourceType(resourceType);
         favorite.setResourceId(resourceId);
         favorite.setResourceName(resourceName);
-        favorite.setStatus(1);
+        favorite.setStatus(RecordStatusEnum.ENABLED.getValue());
         favorite.setCreateTime(LocalDateTime.now());
         favorite.setUpdateTime(LocalDateTime.now());
 
@@ -75,12 +76,12 @@ public class FavoriteServiceImpl implements FavoriteService {
     public boolean unfavorite(Long studentId, String resourceType, Long resourceId) {
         FavoriteDO existing = favoriteMapper.selectByStudentAndResource(studentId, resourceType, resourceId);
 
-        if (existing == null || existing.getStatus() == 0) {
+        if (existing == null || existing.getStatus().equals(RecordStatusEnum.DISABLED.getValue())) {
             return true;
         }
 
-        // 软删除：将状态设置为0
-        existing.setStatus(0);
+        // 软删除：将状态设置为禁用
+        existing.setStatus(RecordStatusEnum.DISABLED.getValue());
         existing.setUpdateTime(LocalDateTime.now());
         return favoriteMapper.updateById(existing) > 0;
     }
@@ -90,7 +91,7 @@ public class FavoriteServiceImpl implements FavoriteService {
     public boolean toggle(Long studentId, String resourceType, Long resourceId, String resourceName) {
         FavoriteDO existing = favoriteMapper.selectByStudentAndResource(studentId, resourceType, resourceId);
 
-        if (existing != null && existing.getStatus() == 1) {
+        if (existing != null && existing.getStatus().equals(RecordStatusEnum.ENABLED.getValue())) {
             // 已收藏，取消收藏
             unfavorite(studentId, resourceType, resourceId);
             return false;

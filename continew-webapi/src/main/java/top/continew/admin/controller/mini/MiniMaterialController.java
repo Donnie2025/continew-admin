@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.education.model.resp.MaterialLessonWithCompletionResp;
-import top.continew.admin.education.service.MaterialLessonService;
+import top.continew.admin.education.service.MaterialService;
 
 import java.util.List;
 
@@ -40,11 +40,11 @@ import java.util.List;
 @RequestMapping("/api/mini/materials")
 public class MiniMaterialController {
 
-    private final MaterialLessonService materialLessonService;
+    private final MaterialService materialService;
 
     @Operation(summary = "获取教材课程内容列表", description = "获取指定教材的所有课程内容，包含完成状态")
     @GetMapping("/{materialId}/coursewares")
     public List<MaterialLessonWithCompletionResp> getCoursewares(@Parameter(description = "教材ID") @PathVariable Long materialId) {
-        return materialLessonService.listWithCompletionStatus(materialId);
+        return materialService.listLessonsWithCompletionStatus(materialId);
     }
 }

@@ -30,19 +30,24 @@ import top.continew.admin.education.mapper.BookingMapper;
 import top.continew.admin.education.mapper.FixedBookingMapper;
 import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.mapper.AccountMapper;
+import top.continew.admin.education.mapper.TransactionMapper;
 import top.continew.admin.education.model.entity.AccountDO;
 import top.continew.admin.education.model.entity.AgentDO;
 import top.continew.admin.education.model.entity.BookingDO;
 import top.continew.admin.education.model.entity.FixedBookingDO;
 import top.continew.admin.education.model.entity.StudentDO;
 import top.continew.admin.education.model.entity.StudentDO;
+import top.continew.admin.education.model.entity.TransactionDO;
 import top.continew.admin.education.model.query.StudentQuery;
+import top.continew.admin.education.model.req.StudentAdjustBalanceReq;
 import top.continew.admin.education.model.req.StudentBatchImportReq;
 import top.continew.admin.education.model.req.StudentReq;
+import top.continew.admin.education.model.req.StudentUpdateReq;
 import top.continew.admin.education.model.resp.StudentBatchImportResp;
 import top.continew.admin.education.model.resp.StudentDetailResp;
 import top.continew.admin.education.model.resp.StudentResp;
 import top.continew.admin.education.model.resp.StudentStatsResp;
+import top.continew.admin.education.model.resp.TransactionResp;
 import top.continew.admin.education.service.StudentService;
 import top.continew.admin.education.service.ClassinUserService;
 import top.continew.admin.education.service.InstitutionService;
@@ -89,6 +94,7 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
     private final AccountMapper accountMapper;
     private final BookingMapper bookingMapper;
     private final FixedBookingMapper fixedBookingMapper;
+    private final TransactionMapper transactionMapper;
 
     public StudentServiceImpl(ClassinClient classinClient,
                               ClassinUserService classinUserService,
@@ -96,7 +102,8 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
                               AgentMapper agentMapper,
                               AccountMapper accountMapper,
                               BookingMapper bookingMapper,
-                              FixedBookingMapper fixedBookingMapper) {
+                              FixedBookingMapper fixedBookingMapper,
+                              TransactionMapper transactionMapper) {
         this.classinClient = classinClient;
         this.classinUserService = classinUserService;
         this.institutionService = institutionService;
@@ -104,13 +111,34 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
         this.accountMapper = accountMapper;
         this.bookingMapper = bookingMapper;
         this.fixedBookingMapper = fixedBookingMapper;
+        this.transactionMapper = transactionMapper;
     }
 
     @Override
     public PageResp<StudentResp> page(StudentQuery query, PageQuery pageQuery) {
         PageResp<StudentResp> pageResp = super.page(query, pageQuery);
         enrichWithActiveCards(pageResp.getList());
+        enrichWithPaidBalance(pageResp.getList());
         return pageResp;
+    }
+
+    private void enrichWithPaidBalance(List<StudentResp> students) {
+        if (students == null || students.isEmpty()) {
+            return;
+        }
+        List<Long> studentIds = students.stream().map(StudentResp::getId).collect(Collectors.toList());
+        // 查询 PAID 类型账户余额
+        List<AccountDO> paidAccounts = accountMapper.selectList(new LambdaQueryWrapper<AccountDO>()
+            .in(AccountDO::getStudentId, studentIds)
+            .eq(AccountDO::getStatus, 1)
+            .eq(AccountDO::getAccountType, "PAID"));
+        Map<Long, BigDecimal> paidBalanceMap = paidAccounts.stream()
+            .collect(Collectors.toMap(
+                AccountDO::getStudentId,
+                AccountDO::getBalance,
+                BigDecimal::add
+            ));
+        students.forEach(s -> s.setPaidBalance(paidBalanceMap.getOrDefault(s.getId(), BigDecimal.ZERO)));
     }
 
     private void enrichWithActiveCards(List<StudentResp> students) {
@@ -118,9 +146,11 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             return;
         }
         List<Long> studentIds = students.stream().map(StudentResp::getId).collect(Collectors.toList());
+        // 只查询 PAID 类型的账户
         List<AccountDO> accounts = accountMapper.selectList(new LambdaQueryWrapper<AccountDO>()
             .in(AccountDO::getStudentId, studentIds)
-            .eq(AccountDO::getStatus, 1));
+            .eq(AccountDO::getStatus, 1)
+            .eq(AccountDO::getAccountType, "PAID"));
         Map<Long, List<StudentResp.CardBriefInfo>> cardMap = accounts.stream()
             .collect(Collectors.groupingBy(AccountDO::getStudentId, Collectors.mapping(a -> StudentResp.CardBriefInfo
                 .builder()
@@ -484,5 +514,181 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
             .fixedCount(fixedCount)
             .lowBalance(lowBalance)
             .build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateStudentInfo(Long studentId, StudentUpdateReq req) {
+        StudentDO student = baseMapper.selectById(studentId);
+        if (student == null) {
+            throw new IllegalArgumentException("学生不存在");
+        }
+
+        boolean needUpdate = false;
+
+        // 更新昵称到 name 字段
+        if (StringUtils.hasText(req.getNickname()) && !req.getNickname().equals(student.getName())) {
+            student.setName(req.getNickname());
+            needUpdate = true;
+        }
+
+        // 更新头像
+        if (StringUtils.hasText(req.getAvatar()) && !req.getAvatar().equals(student.getAvatar())) {
+            student.setAvatar(req.getAvatar());
+            needUpdate = true;
+        }
+
+        if (needUpdate) {
+            baseMapper.updateById(student);
+            log.info("更新学生信息成功，studentId={}, nickname={}, avatar={}", studentId, req.getNickname(), req.getAvatar());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void adjustBalance(Long studentId, StudentAdjustBalanceReq req) {
+        // 1. 参数校验
+        if (studentId == null) {
+            throw new IllegalArgumentException("学生ID不能为空");
+        }
+        if (req.getAmount() == null || req.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("调整金额必须大于0");
+        }
+        if (!"INCREASE".equals(req.getType()) && !"DECREASE".equals(req.getType())) {
+            throw new IllegalArgumentException("调整类型只能是INCREASE或DECREASE");
+        }
+
+        // 2. 查询学生信息
+        StudentDO student = baseMapper.selectById(studentId);
+        if (student == null) {
+            throw new IllegalArgumentException("学生不存在");
+        }
+
+        // 3. 查询或创建学生的PAID账户
+        AccountDO account = accountMapper.selectOne(Wrappers.lambdaQuery(AccountDO.class)
+            .eq(AccountDO::getStudentId, studentId)
+            .eq(AccountDO::getAccountType, "PAID")
+            .eq(AccountDO::getStatus, 1)
+            .last("LIMIT 1"));
+
+        if (account == null) {
+            // 如果不存在PAID账户，创建一个
+            account = new AccountDO();
+            account.setStudentId(studentId);
+            account.setStudentName(student.getName());
+            account.setAccountType("PAID");
+            account.setBalance(BigDecimal.ZERO);
+            account.setStatus(1);
+            account.setRemark("付费课时账户");
+            accountMapper.insert(account);
+            log.info("为学生创建PAID账户，studentId={}, accountId={}", studentId, account.getId());
+        }
+
+        // 4. 记录调整前余额
+        BigDecimal balanceBefore = account.getBalance();
+
+        // 5. 计算新余额
+        BigDecimal newBalance;
+        String direction;
+        String transType;
+
+        if ("INCREASE".equals(req.getType())) {
+            // 充值增加
+            newBalance = balanceBefore.add(req.getAmount());
+            direction = "C"; // Credit 入账
+            transType = "adjust"; // 人工调整
+        } else {
+            // 扣费减少
+            if (balanceBefore.compareTo(req.getAmount()) < 0) {
+                throw new IllegalArgumentException("当前余额不足，无法扣费");
+            }
+            newBalance = balanceBefore.subtract(req.getAmount());
+            direction = "D"; // Debit 出账
+            transType = "adjust"; // 人工调整
+        }
+
+        // 6. 更新账户余额
+        account.setBalance(newBalance);
+        accountMapper.updateById(account);
+
+        // 7. 记录交易流水
+        TransactionDO transaction = new TransactionDO();
+        transaction.setAccountId(account.getId());
+        transaction.setStudentId(studentId);
+        transaction.setStudentName(student.getName());
+        transaction.setCardTitle("PAID账户");
+        transaction.setTransType(transType);
+        transaction.setDirection(direction);
+        transaction.setAmount(req.getAmount());
+        transaction.setBalance(newBalance);
+        transaction.setCashAmount(req.getCashAmount()); // 充值时记录现金金额
+        transaction.setRemark(req.getRemark());
+        transactionMapper.insert(transaction);
+
+        log.info("学生余额调整成功，studentId={}, type={}, amount={}, balanceBefore={}, balanceAfter={}",
+            studentId, req.getType(), req.getAmount(), balanceBefore, newBalance);
+    }
+
+    @Override
+    public List<TransactionResp> getBalanceRecords(Long studentId) {
+        // 查询该学生的所有交易记录，按时间倒序
+        List<TransactionDO> transactions = transactionMapper.selectList(
+            Wrappers.lambdaQuery(TransactionDO.class)
+                .eq(TransactionDO::getStudentId, studentId)
+                .orderByDesc(TransactionDO::getCreateTime)
+        );
+
+        // 转换为响应对象
+        return transactions.stream().map(this::convertToTransactionResp).collect(Collectors.toList());
+    }
+
+    /**
+     * 将 TransactionDO 转换为 TransactionResp
+     */
+    private TransactionResp convertToTransactionResp(TransactionDO transaction) {
+        if (transaction == null) {
+            return null;
+        }
+        TransactionResp resp = new TransactionResp();
+
+        // 基础字段
+        resp.setId(transaction.getId());
+        resp.setCreateTime(transaction.getCreateTime());
+        resp.setCreateUser(transaction.getCreateUser());
+
+        // 学生信息
+        resp.setStuId(transaction.getStudentId());
+        resp.setStuName(transaction.getStudentName());
+
+        // 卡片信息
+        resp.setCardTitle(transaction.getCardTitle());
+
+        // 根据 direction 设置 type 和金额
+        // C=Credit 入账/增加，D=Debit 出账/减少
+        if ("C".equals(transaction.getDirection())) {
+            resp.setType("INCREASE");
+            resp.setCreditAmount(transaction.getAmount());
+            resp.setDebitAmount(BigDecimal.ZERO);
+        } else {
+            resp.setType("DECREASE");
+            resp.setDebitAmount(transaction.getAmount());
+            resp.setCreditAmount(BigDecimal.ZERO);
+        }
+
+        // 余额快照 - TransactionDO.balance 是操作后余额
+        resp.setAfterAmount(transaction.getBalance());
+        // 计算操作前余额
+        if ("C".equals(transaction.getDirection())) {
+            resp.setBeforeAmount(transaction.getBalance().subtract(transaction.getAmount()));
+        } else {
+            resp.setBeforeAmount(transaction.getBalance().add(transaction.getAmount()));
+        }
+
+        // 备注和操作人
+        resp.setRemark(transaction.getRemark());
+        // 操作人姓名需要从createUserString获取，这里暂时留空，由前端通过crane4j自动填充
+        resp.setOperatorName(transaction.getCreateUser() != null ? String.valueOf(transaction.getCreateUser()) : null);
+
+        return resp;
     }
 }

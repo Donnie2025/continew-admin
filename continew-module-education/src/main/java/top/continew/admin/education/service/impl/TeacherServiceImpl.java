@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Transactional;
 
+import top.continew.admin.education.enums.UserType;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.TeacherMapper;
 import top.continew.admin.education.mapper.SlotMapper;
@@ -30,10 +31,14 @@ import top.continew.admin.education.model.entity.SlotDO;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.model.query.TeacherQuery;
 import top.continew.admin.education.model.req.TeacherReq;
+import top.continew.admin.education.model.req.TeacherRegisterReq;
 import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.model.resp.TeacherPublicResp;
 import top.continew.admin.education.service.TeacherService;
+import top.continew.admin.education.service.TeacherPaymentService;
+import top.continew.admin.education.service.CredentialService;
+import top.continew.admin.education.model.req.CredentialSetPasswordReq;
 import top.continew.admin.common.enums.DisEnableStatusEnum;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -59,6 +64,8 @@ import cn.hutool.core.util.StrUtil;
 public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO, TeacherResp, TeacherDetailResp, TeacherQuery, TeacherReq> implements TeacherService {
 
     private final SlotMapper slotMapper;
+    private final TeacherPaymentService teacherPaymentService;
+    private final CredentialService credentialService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -190,6 +197,67 @@ public class TeacherServiceImpl extends BaseServiceImpl<TeacherMapper, TeacherDO
         TeacherPublicResp publicResp = new TeacherPublicResp();
         BeanUtils.copyProperties(detail, publicResp);
         return publicResp;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long register(TeacherRegisterReq req) {
+        // Check if phone already exists
+        String phoneWithPrefix = req.getPhone();
+        if (!phoneWithPrefix.startsWith("0063-")) {
+            phoneWithPrefix = "0063-" + phoneWithPrefix;
+        }
+
+        TeacherDO existingTeacher = this.getByPhone(phoneWithPrefix);
+        if (existingTeacher != null) {
+            throw new RuntimeException("该手机号已被注册");
+        }
+
+        // Create new teacher entity
+        TeacherDO teacher = new TeacherDO();
+        teacher.setName(req.getName());
+        teacher.setPhone(phoneWithPrefix);
+        teacher.setEmail(req.getEmail());
+        teacher.setAvatar(req.getAvatar());
+        teacher.setVideoUrl(req.getVideoUrl());
+        teacher.setDescription(req.getDescription());
+        teacher.setGender(req.getGender());
+
+        // Set default values - active immediately, no review required
+        teacher.setStatus(1); // 1: active
+        teacher.setIsShow(1); // Show to students
+        teacher.setIsFixed(0);
+        teacher.setScore(5); // Default score
+        teacher.setRate(0); // Will be set by admin
+        teacher.setShowSalary(0);
+        teacher.setSort(999); // Default sort order
+
+        this.baseMapper.insert(teacher);
+        log.info("New teacher registered: {} (ID: {}), status: active", teacher.getName(), teacher.getId());
+
+        // Save password to edu_credential table
+        if (StrUtil.isNotBlank(req.getPassword())) {
+            try {
+                CredentialSetPasswordReq passwordReq = new CredentialSetPasswordReq();
+                passwordReq.setUserId(teacher.getId());
+                passwordReq.setUserType(UserType.TEACHER.getValue());
+                passwordReq.setPassword(req.getPassword());
+                credentialService.setPassword(passwordReq);
+                log.info("Teacher password set successfully for ID: {}", teacher.getId());
+            } catch (Exception e) {
+                log.error("Failed to set password for teacher ID: {}", teacher.getId(), e);
+                // 不抛出异常，密码设置失败不影响注册流程
+            }
+        }
+
+        // Save payment information if provided
+        if (StrUtil.isNotBlank(req.getPaymentChannel())) {
+            teacherPaymentService.saveOrUpdate(teacher.getId(), teacher.getName(), req.getPaymentChannel(), req
+                .getAccountNumber(), req.getAccountName(), req.getQrCode(), req.getBankName(), 0  // rate starts at 0, will be set by admin
+            );
+        }
+
+        return teacher.getId();
     }
 
     /**

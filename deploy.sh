@@ -62,15 +62,27 @@ upload_file() {
 upload_dir() {
     local source=$1
     local dest=$2
+    local exclude=$3
 
     log_info "上传目录: $source -> ${SSH_HOST}:${dest}"
 
-    if scp -r "$source"/* "${SSH_HOST}:${dest}/"; then
-        log_info "✓ 目录上传成功"
-        return 0
+    if [ -n "$exclude" ]; then
+        log_warn "排除文件: $exclude"
+        if rsync -avz --exclude="$exclude" "$source/" "${SSH_HOST}:${dest}/"; then
+            log_info "✓ 目录上传成功"
+            return 0
+        else
+            log_error "✗ 目录上传失败"
+            return 1
+        fi
     else
-        log_error "✗ 目录上传失败"
-        return 1
+        if scp -r "$source"/* "${SSH_HOST}:${dest}/"; then
+            log_info "✓ 目录上传成功"
+            return 0
+        else
+            log_error "✗ 目录上传失败"
+            return 1
+        fi
     fi
 }
 
@@ -151,8 +163,8 @@ echo ""
 upload_file "$EDUCATION_JAR" "${REMOTE_BASE}/lib/" || ((UPLOAD_ERRORS++))
 echo ""
 
-# 3. 上传配置文件
-upload_dir "$CONFIG_DIR" "${REMOTE_BASE}/config" || ((UPLOAD_ERRORS++))
+# 3. 上传配置文件（排除 application.yml）
+upload_dir "$CONFIG_DIR" "${REMOTE_BASE}/config" "application.yml" || ((UPLOAD_ERRORS++))
 echo ""
 
 # 4. 上传证书文件

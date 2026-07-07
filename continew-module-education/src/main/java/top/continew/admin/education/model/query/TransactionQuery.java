@@ -24,7 +24,6 @@ import top.continew.starter.data.core.annotation.Query;
 import top.continew.starter.data.core.enums.QueryType;
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.*;
 
 /**
  * 订单查询条件
@@ -44,7 +43,7 @@ public class TransactionQuery implements Serializable {
      */
     @Schema(description = "学生ID")
     @Query(type = QueryType.EQ)
-    private Long stuId;
+    private Long studentId;
 
     /**
      * 会员卡ID

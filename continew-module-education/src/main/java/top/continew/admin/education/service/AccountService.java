@@ -16,6 +16,7 @@
 
 package top.continew.admin.education.service;
 
+import top.continew.admin.education.enums.AccountTypeEnum;
 import top.continew.admin.education.model.resp.AccountResp;
 
 import java.util.List;
@@ -44,4 +45,13 @@ public interface AccountService {
      * @return 账户列表
      */
     List<AccountResp> getStudentAccounts(Long studentId);
+
+    /**
+     * 根据账户类型获取学生账户
+     *
+     * @param studentId 学生ID
+     * @param accountType 账户类型
+     * @return 账户信息，不存在返回null
+     */
+    AccountResp getStudentAccountByType(Long studentId, AccountTypeEnum accountType);
 }

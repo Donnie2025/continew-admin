@@ -44,6 +44,7 @@ import top.continew.admin.education.service.TeacherService;
 import top.continew.admin.education.service.InstitutionService;
 import top.continew.admin.education.model.entity.TeacherDO;
 import top.continew.admin.education.util.InstitutionUtil;
+import top.continew.admin.education.enums.RecordStatusEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -211,7 +212,7 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
         // 构造更新对象，只更新status字段
         SlotDO updateSlot = new SlotDO();
         updateSlot.setId(id);
-        updateSlot.setStatus(0); // 设置为禁用状态（软删除）
+        updateSlot.setStatus(RecordStatusEnum.DISABLED.getValue()); // 设置为禁用状态（软删除）
 
         int updateResult = baseMapper.updateById(updateSlot);
         if (updateResult == 0) {

@@ -74,16 +74,23 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
 
         // 1. 处理班主任信息
         String mainTeacherUid = null;
+        boolean skipClassinIntegration = false;
         if (req.getMainTeacherId() != null && req.getInstitutionId() != null) {
             // 1.1 查询教师信息
             TeacherDO teacher = teacherMapper.selectById(req.getMainTeacherId());
             if (teacher != null) {
-                // 1.2 查询或自动注册教师的 ClassIn 账号（使用课程所属机构）
-                ClassinUserDO classinTeacher = classinHelper.registerTeacherIfAbsent(req
-                    .getMainTeacherId(), teacher, req.getInstitutionId());
-                if (classinTeacher != null) {
-                    mainTeacherUid = classinTeacher.getClassinUid();
-                    entity.setMainTeacherUid(mainTeacherUid);
+                // 检查是否是Acadsoc教师，如果是则跳过ClassIn对接
+                if ("Acadsoc".equalsIgnoreCase(teacher.getName())) {
+                    log.info("教师是Acadsoc，跳过ClassIn对接: teacherId={}, teacherName={}", req.getMainTeacherId(), teacher.getName());
+                    skipClassinIntegration = true;
+                } else {
+                    // 1.2 查询或自动注册教师的 ClassIn 账号（使用课程所属机构）
+                    ClassinUserDO classinTeacher = classinHelper.registerTeacherIfAbsent(req
+                        .getMainTeacherId(), teacher, req.getInstitutionId());
+                    if (classinTeacher != null) {
+                        mainTeacherUid = classinTeacher.getClassinUid();
+                        entity.setMainTeacherUid(mainTeacherUid);
+                    }
                 }
             }
         }
@@ -92,14 +99,18 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         String courseUnique = UUID.randomUUID().toString().replace("-", "");
         entity.setCourseUnique(courseUnique);
 
-        // 3. 调用 ClassIn 接口创建课程
-        ClassinCourseAddReq classinReq = new ClassinCourseAddReq();
-        classinReq.setCourseName(req.getName());
-        classinReq.setCourseUniqueIdentity(courseUnique);
-        classinReq.setMainTeacherUid(mainTeacherUid); // 如果为 null，ClassIn 不会设置班主任
-        classinReq.setClassroomSettingId(req.getCourseSettingId());
-        Long courseUid = classinClient.addCourse(classinReq);
-        entity.setCourseUid(courseUid);
+        // 3. 调用 ClassIn 接口创建课程（如果不是Acadsoc教师）
+        if (!skipClassinIntegration) {
+            ClassinCourseAddReq classinReq = new ClassinCourseAddReq();
+            classinReq.setCourseName(req.getName());
+            classinReq.setCourseUniqueIdentity(courseUnique);
+            classinReq.setMainTeacherUid(mainTeacherUid); // 如果为 null，ClassIn 不会设置班主任
+            classinReq.setClassroomSettingId(req.getCourseSettingId());
+            Long courseUid = classinClient.addCourse(classinReq);
+            entity.setCourseUid(courseUid);
+        } else {
+            log.info("跳过ClassIn课程创建，因为教师是Acadsoc");
+        }
 
         // 4. 保存到本地数据库
         baseMapper.insert(entity);
@@ -118,17 +129,24 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
 
         // 3. 处理班主任信息变更
         String mainTeacherUid = oldCourse.getMainTeacherUid();
+        boolean skipClassinIntegration = false;
         Long institutionId = req.getInstitutionId() != null ? req.getInstitutionId() : oldCourse.getInstitutionId();
         if (req.getMainTeacherId() != null && institutionId != null) {
             // 3.1 查询教师信息
             TeacherDO teacher = teacherMapper.selectById(req.getMainTeacherId());
             if (teacher != null) {
-                // 3.2 查询或自动注册教师的 ClassIn 账号（使用课程所属机构）
-                ClassinUserDO classinTeacher = classinHelper.registerTeacherIfAbsent(req
-                    .getMainTeacherId(), teacher, institutionId);
-                if (classinTeacher != null) {
-                    mainTeacherUid = classinTeacher.getClassinUid();
-                    entity.setMainTeacherUid(mainTeacherUid);
+                // 检查是否是Acadsoc教师，如果是则跳过ClassIn对接
+                if ("Acadsoc".equalsIgnoreCase(teacher.getName())) {
+                    log.info("教师是Acadsoc，跳过ClassIn对接: teacherId={}, teacherName={}", req.getMainTeacherId(), teacher.getName());
+                    skipClassinIntegration = true;
+                } else {
+                    // 3.2 查询或自动注册教师的 ClassIn 账号（使用课程所属机构）
+                    ClassinUserDO classinTeacher = classinHelper.registerTeacherIfAbsent(req
+                        .getMainTeacherId(), teacher, institutionId);
+                    if (classinTeacher != null) {
+                        mainTeacherUid = classinTeacher.getClassinUid();
+                        entity.setMainTeacherUid(mainTeacherUid);
+                    }
                 }
             }
         } else {
@@ -141,8 +159,8 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
         entity.setCourseUid(oldCourse.getCourseUid());
         entity.setCourseUnique(oldCourse.getCourseUnique());
 
-        // 5. 调用 ClassIn 接口更新课程
-        if (oldCourse.getCourseUid() != null) {
+        // 5. 调用 ClassIn 接口更新课程（如果不是Acadsoc教师）
+        if (!skipClassinIntegration && oldCourse.getCourseUid() != null) {
             try {
                 ClassinCourseAddReq classinReq = new ClassinCourseAddReq();
                 classinReq.setCourseName(req.getName());
@@ -163,7 +181,11 @@ public class CourseServiceImpl extends BaseServiceImpl<CourseMapper, CourseDO, C
                 // 继续更新本地数据库，不因ClassIn同步失败而中断
             }
         } else {
-            log.warn("课程未关联ClassIn，跳过同步，课程ID：{}", id);
+            if (skipClassinIntegration) {
+                log.info("跳过ClassIn课程更新，因为教师是Acadsoc");
+            } else {
+                log.warn("课程未关联ClassIn，跳过同步，课程ID：{}", id);
+            }
         }
 
         // 6. 更新本地数据库

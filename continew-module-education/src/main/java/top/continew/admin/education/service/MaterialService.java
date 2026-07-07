@@ -20,15 +20,18 @@ import top.continew.admin.education.model.query.MaterialQuery;
 import top.continew.admin.education.model.req.MaterialReq;
 import top.continew.admin.education.model.req.MaterialSortReq;
 import top.continew.admin.education.model.req.SyncCloudFoldersReq;
+import top.continew.admin.education.model.req.MaterialLessonImportReq;
 import top.continew.admin.education.model.resp.MaterialDetailResp;
 import top.continew.admin.education.model.resp.MaterialResp;
 import top.continew.admin.education.model.resp.MaterialStatisticsResp;
+import top.continew.admin.education.model.resp.MaterialImportResp;
+import top.continew.admin.education.model.resp.MaterialLessonWithCompletionResp;
 import top.continew.starter.extension.crud.service.BaseService;
 
 import java.util.List;
 
 /**
- * 教材业务接口
+ * 教材业务接口（包含课节相关功能）
  *
  * @author don
  * @since 2025/12/29 21:22
@@ -88,4 +91,22 @@ public interface MaterialService extends BaseService<MaterialResp, MaterialDetai
      * @return 同步结果统计
      */
     java.util.Map<String, Object> syncFeishu(Long id, boolean recursive);
+
+    // ========== 课节相关方法（原MaterialLessonService） ==========
+
+    /**
+     * 从飞书链接导入课节
+     *
+     * @param req 导入请求参数
+     * @return 导入结果
+     */
+    MaterialImportResp importLessonsFromFeishu(MaterialLessonImportReq req);
+
+    /**
+     * 获取教材的课程列表（包含完成状态）
+     *
+     * @param materialId 教材ID
+     * @return 课程列表（包含完成状态）
+     */
+    List<MaterialLessonWithCompletionResp> listLessonsWithCompletionStatus(Long materialId);
 }

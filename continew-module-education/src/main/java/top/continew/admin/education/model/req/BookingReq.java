@@ -59,6 +59,20 @@ public class BookingReq implements Serializable {
     private Long accountId;
 
     /**
+     * 学生卡ID（已废弃，用于向后兼容）
+     */
+    @Schema(description = "学生卡ID（已废弃，请使用accountId）", hidden = true)
+    @Deprecated
+    private Long stuCardId;
+
+    /**
+     * 获取账户ID，优先使用accountId，如果为空则使用stuCardId（向后兼容）
+     */
+    public Long getAccountId() {
+        return accountId != null ? accountId : stuCardId;
+    }
+
+    /**
      * 教师ID
      */
     @Schema(description = "教师ID")

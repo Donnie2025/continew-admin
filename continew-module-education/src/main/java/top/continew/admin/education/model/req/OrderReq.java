@@ -46,6 +46,12 @@ public class OrderReq implements Serializable {
     private BigDecimal orderPrice;
 
     /**
+     * 学生ID（管理员创建订单时使用）
+     */
+    @Schema(description = "学生ID", example = "1")
+    private Long studentId;
+
+    /**
      * 会员卡ID
      */
     @Schema(description = "会员卡ID", example = "1")
@@ -56,7 +62,6 @@ public class OrderReq implements Serializable {
      * 支付渠道ID
      */
     @Schema(description = "支付渠道ID", example = "1")
-    @NotNull(message = "支付渠道ID不能为空")
     private Long paymentChannelId;
 
     /**

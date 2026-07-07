@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.continew.starter.core.exception.BusinessException;
+import top.continew.admin.education.enums.RecordStatusEnum;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -154,8 +155,8 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
             entity.setFlvUrl(classResp.getLiveInfo().getFLV());
         }
 
-        // 设置默认状态（1：启用；2：禁用；3：结课）
-        entity.setStatus(1); // 1-启用
+        // 设置默认状态（启用）
+        entity.setStatus(RecordStatusEnum.ENABLED.getValue());
 
         // 保存到数据库
         super.save(entity);
@@ -252,8 +253,8 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(List<Long> ids) {
-        // 逻辑删除：将状态设置为2（禁用）而不是物理删除
-        log.info("开始逻辑删除课堂，IDs：{}", ids);
+        // 软删除：将状态设置为禁用而不是物理删除
+        log.info("开始软删除课堂，IDs：{}", ids);
 
         // 查询课堂信息
         List<LessonDO> lessonList = super.listByIds(ids);
@@ -280,12 +281,12 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
                 }
             }
 
-            // 逻辑删除：更新状态为2（禁用）
-            lesson.setStatus(2);
+            // 软删除：更新状态为禁用
+            lesson.setStatus(RecordStatusEnum.DISABLED.getValue());
             baseMapper.updateById(lesson);
         }
 
-        log.info("课堂逻辑删除完成，IDs：{}", ids);
+        log.info("课堂软删除完成，IDs：{}", ids);
     }
 
     /**
@@ -418,10 +419,10 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
 
     @Override
     public List<LessonResp> listByCourseId(Long courseId) {
-        // 查询指定班级的所有课节（过滤掉已删除的课节：status!=2）
+        // 查询指定班级的所有课节（过滤掉已删除的课节）
         LambdaQueryWrapper<LessonDO> wrapper = Wrappers.lambdaQuery(LessonDO.class)
             .eq(LessonDO::getCourseId, courseId)
-            .ne(LessonDO::getStatus, 2) // 过滤掉已删除的课节（status=2）
+            .ne(LessonDO::getStatus, RecordStatusEnum.DISABLED.getValue()) // 过滤掉已删除的课节
             .orderByDesc(LessonDO::getStartTime); // 按开始时间倒序排列（最新的在前）
         List<LessonDO> list = baseMapper.selectList(wrapper);
 
@@ -439,7 +440,7 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
     }
 
     /**
-     * 重写查询构造器，添加通用的状态过滤（过滤掉已删除的课节：status!=2）
+     * 重写查询构造器，添加通用的状态过滤（过滤掉已删除的课节）
      */
     @Override
     protected QueryWrapper<LessonDO> buildQueryWrapper(LessonQuery query) {
@@ -452,8 +453,8 @@ public class LessonServiceImpl extends BaseServiceImpl<LessonMapper, LessonDO, L
         // 恢复courseStatus值
         query.setCourseStatus(courseStatus);
 
-        // 添加通用的状态过滤条件：排除已删除的课节（status=2）
-        queryWrapper.ne("status", 2);
+        // 添加通用的状态过滤条件：排除已删除的课节
+        queryWrapper.ne("status", RecordStatusEnum.DISABLED.getValue());
 
         // 根据课程状态过滤
         if (courseStatus != null && !courseStatus.isEmpty()) {

@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import top.continew.admin.education.model.query.SlotQuery;
+import top.continew.admin.education.model.req.TeacherRegisterReq;
 import top.continew.admin.education.model.resp.SlotResp;
 import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.model.resp.TeacherPublicResp;
@@ -285,6 +286,25 @@ public class MiniTeacherController {
         } catch (Exception e) {
             log.error("获取教师时间段失败, 教师ID: {}, 日期: {}", teacherId, date, e);
             return R.fail("500", "获取时间段失败");
+        }
+    }
+
+    @SaIgnore
+    @PostMapping("/register")
+    @Operation(summary = "教师注册", description = "新教师提交注册申请")
+    public R<Long> register(@Validated @RequestBody TeacherRegisterReq req) {
+        log.info("教师注册请求: 姓名={}, 手机号={}", req.getName(), req.getPhone());
+
+        try {
+            Long teacherId = teacherService.register(req);
+            log.info("教师注册成功, ID: {}", teacherId);
+            return R.ok(teacherId + "", "注册成功，您现在可以使用手机号登录");
+        } catch (RuntimeException e) {
+            log.error("教师注册失败: {}", e.getMessage());
+            return R.fail("400", e.getMessage());
+        } catch (Exception e) {
+            log.error("教师注册异常", e);
+            return R.fail("500", "注册失败，请稍后重试");
         }
     }
 }

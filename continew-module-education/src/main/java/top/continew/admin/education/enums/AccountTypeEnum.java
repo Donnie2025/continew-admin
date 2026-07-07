@@ -58,4 +58,34 @@ public enum AccountTypeEnum {
      * 账户类型描述
      */
     private final String desc;
+
+    /**
+     * 根据编码获取账户类型名称
+     *
+     * @param code 账户类型编码
+     * @return 账户类型描述，未找到返回编码本身
+     */
+    public static String getDescByCode(String code) {
+        for (AccountTypeEnum type : values()) {
+            if (type.code.equals(code)) {
+                return type.desc;
+            }
+        }
+        return code;
+    }
+
+    /**
+     * 根据编码获取枚举实例
+     *
+     * @param code 账户类型编码
+     * @return 枚举实例，未找到返回null
+     */
+    public static AccountTypeEnum fromCode(String code) {
+        for (AccountTypeEnum type : values()) {
+            if (type.code.equals(code)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

@@ -50,62 +50,45 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public Map<String, Object> getCurrentStudentAccountBalance() {
         Map<String, Object> result = new HashMap<>();
+        result.put("accountId", null);
+        result.put("balance", 0);
 
         try {
-            // 获取当前登录学生ID
             Long studentId = UserContextHolder.getUserId();
             if (studentId == null) {
                 log.warn("用户未登录，无法获取账户余额");
-                result.put("accountId", null);
-                result.put("balance", 0);
                 return result;
             }
 
             log.info("查询学生账户余额: studentId={}", studentId);
 
-            // 查询该学生的有效账户（状态为1且余额>0）
-            // 优先返回余额最多的账户
-            LambdaQueryWrapper<AccountDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(AccountDO::getStudentId, studentId)
-                .eq(AccountDO::getStatus, 1) // 状态为有效
-                .gt(AccountDO::getBalance, BigDecimal.ZERO) // 余额大于0
-                .orderByDesc(AccountDO::getBalance) // 按余额降序排列
-                .last("LIMIT 1"); // 只取第一个（余额最多的）
-
-            AccountDO account = accountMapper.selectOne(queryWrapper);
-
+            // 优先查找有余额的账户
+            AccountDO account = findAccountWithBalance(studentId);
             if (account != null) {
                 result.put("accountId", account.getId());
                 result.put("balance", account.getBalance().intValue());
-                log.info("找到学生可用账户: studentId={}, accountId={}, balance={}", studentId, account.getId(), account
-                    .getBalance());
+                log.info("找到学生可用账户: studentId={}, accountId={}, balance={}",
+                    studentId, account.getId(), account.getBalance());
+                return result;
+            }
+
+            // 没有余额时，查找最近创建的有效账户
+            account = findLatestActiveAccount(studentId);
+            if (account != null) {
+                result.put("accountId", account.getId());
+                result.put("balance", account.getBalance() != null ? account.getBalance().intValue() : 0);
+                log.info("学生有账户但余额为0: studentId={}, accountId={}", studentId, account.getId());
             } else {
-                // 如果没有余额>0的账户，查找所有有效账户（包括余额为0的）
-                LambdaQueryWrapper<AccountDO> allAccountQuery = new LambdaQueryWrapper<>();
-                allAccountQuery.eq(AccountDO::getStudentId, studentId)
-                    .eq(AccountDO::getStatus, 1)
-                    .orderByDesc(AccountDO::getCreateTime)
-                    .last("LIMIT 1");
-
-                AccountDO emptyAccount = accountMapper.selectOne(allAccountQuery);
-
-                if (emptyAccount != null) {
-                    result.put("accountId", emptyAccount.getId());
-                    result.put("balance", emptyAccount.getBalance() != null ? emptyAccount.getBalance().intValue() : 0);
-                    log.info("学生有账户但余额为0: studentId={}, accountId={}", studentId, emptyAccount.getId());
-                } else {
-                    result.put("accountId", null);
-                    result.put("balance", 0);
-                    log.warn("学生没有可用的课时账户: studentId={}", studentId);
-                }
+                log.warn("学生没有可用的课时账户，自动创建默认账户: studentId={}", studentId);
+                account = createDefaultAccount(studentId);
+                result.put("accountId", account.getId());
+                result.put("balance", 0);
+                log.info("已为学生创建默认课时账户: studentId={}, accountId={}", studentId, account.getId());
             }
 
             return result;
-
         } catch (Exception e) {
-            log.error("获取学生账户余额失败: error={}", e.getMessage(), e);
-            result.put("accountId", null);
-            result.put("balance", 0);
+            log.error("获取学生账户余额失败", e);
             return result;
         }
     }
@@ -119,20 +102,71 @@ public class AccountServiceImpl implements AccountService {
 
         List<AccountDO> accounts = accountMapper.selectList(wrapper);
 
-        return accounts.stream().map(account -> {
-            AccountResp resp = new AccountResp();
-            BeanUtil.copyProperties(account, resp);
-            resp.setAccountTypeName(getAccountTypeName(account.getAccountType()));
-            return resp;
-        }).collect(Collectors.toList());
+        return accounts.stream()
+            .map(this::convertToResp)
+            .collect(Collectors.toList());
     }
 
-    private String getAccountTypeName(String accountType) {
-        for (AccountTypeEnum type : AccountTypeEnum.values()) {
-            if (type.getCode().equals(accountType)) {
-                return type.getDesc();
-            }
-        }
-        return accountType;
+    @Override
+    public AccountResp getStudentAccountByType(Long studentId, AccountTypeEnum accountType) {
+        LambdaQueryWrapper<AccountDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AccountDO::getStudentId, studentId)
+            .eq(AccountDO::getAccountType, accountType.getCode())
+            .eq(AccountDO::getStatus, 1)
+            .last("LIMIT 1");
+
+        AccountDO account = accountMapper.selectOne(wrapper);
+        return account != null ? convertToResp(account) : null;
+    }
+
+    /**
+     * 查找有余额的账户（按余额降序）
+     */
+    private AccountDO findAccountWithBalance(Long studentId) {
+        LambdaQueryWrapper<AccountDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AccountDO::getStudentId, studentId)
+            .eq(AccountDO::getStatus, 1)
+            .gt(AccountDO::getBalance, BigDecimal.ZERO)
+            .orderByDesc(AccountDO::getBalance)
+            .last("LIMIT 1");
+
+        return accountMapper.selectOne(wrapper);
+    }
+
+    /**
+     * 查找最近创建的有效账户
+     */
+    private AccountDO findLatestActiveAccount(Long studentId) {
+        LambdaQueryWrapper<AccountDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AccountDO::getStudentId, studentId)
+            .eq(AccountDO::getStatus, 1)
+            .orderByDesc(AccountDO::getCreateTime)
+            .last("LIMIT 1");
+
+        return accountMapper.selectOne(wrapper);
+    }
+
+    /**
+     * 创建默认课时账户
+     */
+    private AccountDO createDefaultAccount(Long studentId) {
+        AccountDO account = new AccountDO();
+        account.setStudentId(studentId);
+        account.setAccountType("PAID");
+        account.setBalance(BigDecimal.ZERO);
+        account.setStatus(1);
+        account.setRemark("系统自动创建的付费课时账户");
+        accountMapper.insert(account);
+        return account;
+    }
+
+    /**
+     * 转换实体为响应对象
+     */
+    private AccountResp convertToResp(AccountDO account) {
+        AccountResp resp = new AccountResp();
+        BeanUtil.copyProperties(account, resp);
+        resp.setAccountTypeName(AccountTypeEnum.getDescByCode(account.getAccountType()));
+        return resp;
     }
 }

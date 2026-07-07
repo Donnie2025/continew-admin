@@ -20,6 +20,7 @@ import top.continew.starter.extension.crud.enums.Api;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
@@ -38,9 +39,22 @@ import top.continew.admin.education.service.OrderService;
  */
 @Tag(name = "订单管理 API")
 @RestController
-@CrudRequestMapping(value = "/education/order", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
-    Api.EXPORT})
+@RequiredArgsConstructor
+@CrudRequestMapping(value = "/api/education/order", api = {Api.PAGE, Api.GET, Api.UPDATE, Api.DELETE, Api.EXPORT})
 public class OrderController extends BaseController<OrderService, OrderResp, OrderDetailResp, OrderQuery, OrderReq> {
+
+    private final OrderService orderService;
+
+    /**
+     * 创建订单
+     *
+     * @param req 订单请求参数
+     * @return 订单详情
+     */
+    @PostMapping
+    public OrderDetailResp createOrder(@RequestBody OrderReq req) {
+        return orderService.createOrder(req);
+    }
 
     /**
      * 确认订单入账

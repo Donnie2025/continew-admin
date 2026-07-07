@@ -61,6 +61,26 @@ CREATE TABLE `edu_teacher` (
   CONSTRAINT `fk_teacher_institution` FOREIGN KEY (`institution_id`) REFERENCES `edu_institution` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师表';
 
+CREATE TABLE `edu_teacher_payment` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `teacher_id` bigint(20) NOT NULL COMMENT '教师ID',
+  `teacher_name` varchar(100) DEFAULT NULL COMMENT '教师姓名（冗余字段）',
+  `payment_channel` varchar(20) NOT NULL COMMENT '支付渠道（GCash、Maya、Bank）',
+  `account_number` varchar(100) NOT NULL COMMENT '账号',
+  `account_name` varchar(100) NOT NULL COMMENT '账户名',
+  `qr_code` varchar(512) DEFAULT NULL COMMENT '收款二维码地址',
+  `bank_name` varchar(100) DEFAULT NULL COMMENT '银行名称（当payment_channel为Bank时使用）',
+  `rate` int DEFAULT '0' COMMENT '单价（从edu_teacher表迁移）',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态（1：启用；0：禁用）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` bigint(20) DEFAULT NULL COMMENT '创建人',
+  `update_user` bigint(20) DEFAULT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`),
+  KEY `idx_teacher_id` (`teacher_id`),
+  CONSTRAINT `fk_teacher_payment_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `edu_teacher` (`id`),
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='教师收款信息表';
+
 CREATE TABLE `edu_slot` (
    `id`  bigint(20)   NOT NULL AUTO_INCREMENT     COMMENT 'ID',
   `teacher_id` bigint(20) NOT NULL COMMENT '所属教师ID',

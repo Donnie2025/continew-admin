@@ -41,26 +41,39 @@ public class MaterialLessonReq implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 教材ID
+     * 教材ID（映射到MaterialDO.pid）
      */
     @Schema(description = "教材ID")
     @NotNull(message = "教材ID不能为空")
     private Long materialId;
 
     /**
-     * 教材名称（冗余字段，格式：name + level）
-     */
-    @Schema(description = "教材名称（冗余字段，格式：name + level）")
-    @Length(max = 150, message = "教材名称（冗余字段，格式：name + level）长度不能超过 {max} 个字符")
-    private String materialName;
-
-    /**
-     * 课节名字
+     * 课节名字（映射到MaterialDO.name）
      */
     @Schema(description = "课节名字")
     @NotBlank(message = "课节名字不能为空")
     @Length(max = 100, message = "课节名字长度不能超过 {max} 个字符")
     private String lessonName;
+
+    /**
+     * 课节链接（映射到MaterialDO.lessonUrl）
+     */
+    @Schema(description = "课节链接")
+    @Length(max = 500, message = "课节链接长度不能超过 {max} 个字符")
+    private String lessonUrl;
+
+    /**
+     * 节点类型（自动设置为LESSON）
+     */
+    @Schema(description = "节点类型", hidden = true)
+    private String type;
+
+    /**
+     * 教材名称（虚拟字段，不映射到数据库）
+     */
+    @Schema(description = "教材名称", hidden = true)
+    @Length(max = 150, message = "教材名称长度不能超过 {max} 个字符")
+    private String materialName;
 
     /**
      * 状态（1:启用 0:禁用）

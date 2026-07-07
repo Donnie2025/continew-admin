@@ -19,6 +19,7 @@ package top.continew.admin.education.service;
 import top.continew.starter.extension.crud.service.BaseService;
 import top.continew.admin.education.model.query.TeacherQuery;
 import top.continew.admin.education.model.req.TeacherReq;
+import top.continew.admin.education.model.req.TeacherRegisterReq;
 import top.continew.admin.education.model.resp.TeacherDetailResp;
 import top.continew.admin.education.model.resp.TeacherResp;
 import top.continew.admin.education.model.entity.TeacherDO;
@@ -99,4 +100,12 @@ public interface TeacherService extends BaseService<TeacherResp, TeacherDetailRe
      * @return 教师公开信息
      */
     top.continew.admin.education.model.resp.TeacherPublicResp getPublicInfo(Long id);
+
+    /**
+     * 教师注册
+     *
+     * @param req 注册请求参数
+     * @return 教师ID
+     */
+    Long register(TeacherRegisterReq req);
 }

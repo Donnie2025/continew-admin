@@ -294,4 +294,24 @@ wechat:
     # 公众号 AppId
     app-id: ${WECHAT_MP_APP_ID:wx7225583c047bef96}
     # 公众号 AppSecret
-    app-secret: ${WECHAT_MP_APP_SECRET:6774a2c73ccd7fdc89487c40800d62be}
+    app-secret: ${WECHAT_MP_APP_SECRET:06aa294f9dd339f02a908d1da507a633}
+    # 公众号 Secret（用于支付相关）
+    secret: ${WECHAT_MP_SECRET:2184f965da2dc29b35cc536647b94640}
+    # OAuth2授权回调地址（生产环境）
+    oauth-redirect-url: ${WECHAT_OAUTH_REDIRECT_URL:http://student.haoyueke.com.cn/api/wechat/oauth/callback}
+  # 微信支付配置（生产环境）
+  pay:
+    # 商户号
+    mch-id: ${WECHAT_MCH_ID:1745459148}
+    # 商户API密钥（APIv3密钥，32位字符串）
+    api-v3-key: ${WECHAT_API_V3_KEY:6cdfb365086b4ef292d56234bb690391}
+    # 商户证书序列号
+    merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER:46FE4DCB3519C210AE29C46F5F3854066F939C99}
+    # 商户私钥路径（生产环境使用绝对路径）
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:file:/www/wwwroot/continew-admin/cert/apiclient_key.pem}
+    # 微信支付公钥路径（生产环境使用绝对路径）
+    public-key-path: ${WECHAT_PUBLIC_KEY_PATH:file:/www/wwwroot/continew-admin/cert/pub_key.pem}
+    # 微信支付公钥ID
+    public-key-id: ${WECHAT_PUBLIC_KEY_ID:PUB_KEY_ID_0117454591482026060500291682001003}
+    # 支付回调通知地址（生产环境公网地址）
+    notify-url: ${WECHAT_NOTIFY_URL:http://api.haoyueke.com.cn/api/payment/wechat/notify}

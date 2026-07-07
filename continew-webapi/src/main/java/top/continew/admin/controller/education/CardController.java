@@ -41,7 +41,7 @@ import java.util.List;
  */
 @Tag(name = "会员卡管理管理 API")
 @RestController
-@CrudRequestMapping(value = "/education/card", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
+@CrudRequestMapping(value = "/api/education/card", api = {Api.PAGE, Api.GET, Api.CREATE, Api.UPDATE, Api.DELETE,
     Api.EXPORT})
 public class CardController extends BaseController<CardService, CardResp, CardDetailResp, CardQuery, CardReq> {
 

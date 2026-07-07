@@ -110,6 +110,12 @@ public class StudentResp extends BaseResp {
     private List<CardBriefInfo> activeCards;
 
     /**
+     * PAID账户余额
+     */
+    @Schema(description = "PAID账户余额")
+    private BigDecimal paidBalance;
+
+    /**
      * 会员卡简要信息
      */
     @Data

@@ -77,6 +77,7 @@ import top.continew.admin.education.mapper.TeacherMapper;
 import top.continew.admin.education.mapper.StudentMapper;
 import top.continew.admin.education.mapper.SlotMapper;
 import top.continew.admin.education.model.entity.StudentDO;
+import top.continew.admin.education.enums.RecordStatusEnum;
 
 /**
  * 预约业务实现
@@ -139,9 +140,6 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
     @Autowired
     private MaterialService materialService;
-
-    @Autowired
-    private MaterialLessonService materialLessonService;
 
     @Autowired
     private TeacherMapper teacherMapper;
@@ -283,6 +281,12 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
     @Override
     protected void beforeCreate(BookingReq req) {
+        // 向后兼容：如果accountId为空但stuCardId有值，则使用stuCardId
+        if (req.getAccountId() == null && req.getStuCardId() != null) {
+            log.info("使用stuCardId作为accountId（向后兼容）: stuCardId={}", req.getStuCardId());
+            req.setAccountId(req.getStuCardId());
+        }
+
         // 转换为BookingDO进行验证和数据准备
         BookingDO booking = new BookingDO();
         booking.setStudentId(req.getStudentId());
@@ -322,6 +326,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         }
         if (studentId == null) {
             throw new RuntimeException("学生ID不能为空");
+        }
+        if (accountId == null) {
+            throw new RuntimeException("课时账户ID不能为空");
         }
 
         // 1. 检查该学生是否已经预约过该课时
@@ -414,11 +421,11 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
         // 5c. 设置课节信息
         if (booking.getLessonId() != null) {
-            MaterialLessonDetailResp lesson = materialLessonService.get(booking.getLessonId());
+            MaterialDetailResp lesson = materialService.get(booking.getLessonId());
             if (lesson != null) {
-                booking.setLessonName(lesson.getLessonName());
+                booking.setLessonName(lesson.getName());
                 booking.setLessonUrl(lesson.getLessonUrl());
-                log.info("设置课节信息: name={}", lesson.getLessonName());
+                log.info("设置课节信息: name={}", lesson.getName());
             }
         }
 
@@ -781,6 +788,12 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
                 return;
             }
 
+            // 如果教师是Acadsoc，跳过ClassIn对接
+            if ("Acadsoc".equalsIgnoreCase(teacher.getName())) {
+                log.info("教师是Acadsoc，跳过ClassIn对接: teacherId={}, teacherName={}", booking.getTeacherId(), teacher.getName());
+                return;
+            }
+
             ClassinUserDO teacherClassinUser = classinHelper.registerTeacherIfAbsent(booking
                 .getTeacherId(), convertTeacherRespToEntity(teacher), institutionId);
 
@@ -830,7 +843,20 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         log.info("开始同步取消预约到ClassIn系统: bookingId={}", booking.getId());
 
         try {
-            // 1. 查找相关的课程记录（使用现有的findCommonCourse方法）
+            // 1. 获取教师信息，检查是否是Acadsoc
+            TeacherDetailResp teacher = teacherService.get(booking.getTeacherId());
+            if (teacher == null) {
+                log.warn("教师信息不存在，跳过ClassIn同步: teacherId={}", booking.getTeacherId());
+                return;
+            }
+
+            // 如果教师是Acadsoc，跳过ClassIn对接
+            if ("Acadsoc".equalsIgnoreCase(teacher.getName())) {
+                log.info("教师是Acadsoc，跳过ClassIn取消预约对接: teacherId={}, teacherName={}", booking.getTeacherId(), teacher.getName());
+                return;
+            }
+
+            // 2. 查找相关的课程记录（使用现有的findCommonCourse方法）
             Long courseId = courseMapper.findCommonCourse(booking.getTeacherId(), booking.getStudentId());
             if (courseId == null) {
                 log.warn("未找到对应的课程记录，跳过ClassIn删除: studentId={}, teacherId={}", booking.getStudentId(), booking
@@ -1367,9 +1393,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
             throw new RuntimeException("距离开课时间不足2小时，无法取消预约");
         }
 
-        // 5. 更新预约状态为已取消 (status: 0=禁用/已取消)
-        log.info("开始更新预约状态: 预约ID={}, 原状态={}, 新状态=0", bookingId, booking.getStatus());
-        booking.setStatus(0);
+        // 5. 更新预约状态为已取消
+        log.info("开始更新预约状态: 预约ID={}, 原状态={}, 新状态=禁用", bookingId, booking.getStatus());
+        booking.setStatus(RecordStatusEnum.DISABLED.getValue());
         booking.setUpdateTime(LocalDateTime.now());
         int updateResult = baseMapper.updateById(booking);
         log.info("预约状态更新结果: updateResult={}, 预约ID={}", updateResult, bookingId);
@@ -1410,9 +1436,9 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
 
         // 教师取消预约不需要验证学生权限和时间限制
 
-        // 3. 更新预约状态为已取消 (status: 0=禁用/已取消)
-        log.info("教师取消预约，开始更新预约状态: 预约ID={}, 原状态={}, 新状态=0", bookingId, booking.getStatus());
-        booking.setStatus(0);
+        // 3. 更新预约状态为已取消
+        log.info("教师取消预约，开始更新预约状态: 预约ID={}, 原状态={}, 新状态=禁用", bookingId, booking.getStatus());
+        booking.setStatus(RecordStatusEnum.DISABLED.getValue());
         booking.setUpdateTime(LocalDateTime.now());
         int updateResult = baseMapper.updateById(booking);
         log.info("教师取消预约状态更新结果: updateResult={}, 预约ID={}", updateResult, bookingId);
