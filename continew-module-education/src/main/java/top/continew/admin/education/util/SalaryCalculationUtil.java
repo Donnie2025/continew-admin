@@ -31,7 +31,7 @@ public class SalaryCalculationUtil {
      * 不参与小费结算的教师名单
      */
     private static final Set<String> EXCLUDED_TEACHERS = Set
-        .of("Issa", "French", "Anna", "Mae", "Alex", "Lady", "Mary", "Ainie", "Daisy", "Mira", "Lina", "Yham", "Jenalyn", "Gistel", "Johanna", "Tasha", "Ray", "Jessa", "Via");
+        .of("Issa", "French", "Anna", "Mae", "Alex", "Lady", "Mary", "Ainie", "Daisy", "Mira", "Lina", "Yham", "Jenalyn", "Gistel", "Johanna", "Tasha", "Ray", "Jessa", "Via","Jhoe");
 
     private SalaryCalculationUtil() {
         // 工具类不允许实例化

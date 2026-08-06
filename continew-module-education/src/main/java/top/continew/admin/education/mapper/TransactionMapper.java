@@ -16,8 +16,12 @@
 
 package top.continew.admin.education.mapper;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import org.apache.ibatis.annotations.Param;
 import top.continew.starter.data.mp.base.BaseMapper;
 import top.continew.admin.education.model.entity.TransactionDO;
+import top.continew.admin.education.model.query.TransactionQuery;
+import top.continew.admin.education.model.resp.TransactionResp;
 
 /**
  * 订单 Mapper
@@ -25,4 +29,10 @@ import top.continew.admin.education.model.entity.TransactionDO;
  * @author don
  * @since 2025/05/10 22:11
  */
-public interface TransactionMapper extends BaseMapper<TransactionDO> {}
+public interface TransactionMapper extends BaseMapper<TransactionDO> {
+
+    /**
+     * 分页查询交易记录
+     */
+    IPage<TransactionResp> selectPageList(IPage<TransactionResp> page, @Param("query") TransactionQuery query);
+}

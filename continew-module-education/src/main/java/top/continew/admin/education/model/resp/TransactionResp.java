@@ -75,6 +75,18 @@ public class TransactionResp extends BaseResp {
     private String type;
 
     /**
+     * 借贷方向：C=Credit 入账/增加余额，D=Debit 出账/减少余额
+     */
+    @Schema(description = "借贷方向：C=Credit 入账/增加余额，D=Debit 出账/减少余额")
+    private String direction;
+
+    /**
+     * 课时变动数量（始终为正数，direction 标明方向）
+     */
+    @Schema(description = "课时变动数量")
+    private BigDecimal amount;
+
+    /**
      * 支出金额（扣款）
      */
     @Schema(description = "支出金额（扣款）")

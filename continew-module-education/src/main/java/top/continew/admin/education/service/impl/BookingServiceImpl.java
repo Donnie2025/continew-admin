@@ -18,6 +18,7 @@ package top.continew.admin.education.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -151,6 +152,98 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     private SlotMapper slotMapper;
 
     /**
+     * 重写查询构建方法，支持时间状态过滤和排序
+     */
+    @Override
+    protected QueryWrapper<BookingDO> buildQueryWrapper(BookingQuery query) {
+        // 使用 lambda 构建查询
+        QueryWrapper<BookingDO> wrapper = new QueryWrapper<>();
+        LambdaQueryWrapper<BookingDO> lambda = wrapper.lambda();
+
+        // 应用标准查询条件
+        if (query.getStudentId() != null) {
+            lambda.eq(BookingDO::getStudentId, query.getStudentId());
+        }
+        if (query.getStudentName() != null) {
+            lambda.like(BookingDO::getStudentName, query.getStudentName());
+        }
+        if (query.getTeacherName() != null) {
+            lambda.like(BookingDO::getTeacherName, query.getTeacherName());
+        }
+        if (query.getCreateUser() != null) {
+            lambda.eq(BookingDO::getCreateUser, query.getCreateUser());
+        }
+        if (query.getStatus() != null) {
+            lambda.eq(BookingDO::getStatus, query.getStatus());
+        }
+
+        // 处理时间状态过滤
+        if (query.getTimeStatus() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            String currentDate = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String currentTime = now.format(DateTimeFormatter.ofPattern("HH:mm"));
+
+            if ("notStarted".equals(query.getTimeStatus())) {
+                // 未开始：slot_date > 当前日期 OR (slot_date = 当前日期 AND slot_time > 当前时间)
+                lambda.and(w -> w
+                    .gt(BookingDO::getSlotDate, currentDate)
+                    .or(w2 -> w2
+                        .eq(BookingDO::getSlotDate, currentDate)
+                        .gt(BookingDO::getSlotTime, currentTime)
+                    )
+                );
+                // 未开始：按时间升序
+                lambda.orderByAsc(BookingDO::getSlotDate, BookingDO::getSlotTime);
+            } else if ("finished".equals(query.getTimeStatus())) {
+                // 已结束：slot_date < 当前日期 OR (slot_date = 当前日期 AND slot_time <= 当前时间)
+                lambda.and(w -> w
+                    .lt(BookingDO::getSlotDate, currentDate)
+                    .or(w2 -> w2
+                        .eq(BookingDO::getSlotDate, currentDate)
+                        .le(BookingDO::getSlotTime, currentTime)
+                    )
+                );
+                // 已结束：按时间降序
+                lambda.orderByDesc(BookingDO::getSlotDate, BookingDO::getSlotTime);
+            }
+        } else {
+            // 默认排序（如果没有指定时间状态）
+            lambda.orderByDesc(BookingDO::getId);
+        }
+
+        return wrapper;
+    }
+
+    /**
+     * 转换为响应对象
+     */
+    private BookingResp convertToResp(BookingDO booking) {
+        BookingResp resp = new BookingResp();
+        resp.setId(booking.getId());
+        resp.setSlotId(booking.getSlotId());
+        resp.setSlotDate(booking.getSlotDate());
+        resp.setSlotTime(booking.getSlotTime());
+        resp.setStudentName(booking.getStudentName());
+        resp.setStudentPhone(booking.getStudentPhone());
+        resp.setStuCardId(booking.getAccountId());
+        resp.setCardName(booking.getCardName());
+        resp.setTeacherName(booking.getTeacherName());
+        resp.setMaterialId(booking.getMaterialId());
+        resp.setMaterialName(booking.getMaterialName());
+        resp.setMaterialLevel(booking.getMaterialLevel());
+        resp.setLessonId(booking.getLessonId());
+        resp.setLessonName(booking.getLessonName());
+        resp.setLessonUrl(booking.getLessonUrl());
+        resp.setRemark(booking.getRemark());
+        resp.setStatus(booking.getStatus());
+        resp.setCreateTime(booking.getCreateTime());
+        resp.setUpdateTime(booking.getUpdateTime());
+        resp.setCreateUser(booking.getCreateUser());
+        resp.setUpdateUser(booking.getUpdateUser());
+        return resp;
+    }
+
+    /**
      * 根据课时ID列表查询对应的预约信息
      *
      * @param slotIds 课时ID列表
@@ -208,6 +301,40 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     @Override
     public void update(BookingDO booking, Long id) {
         booking.setId(id);
+
+        // 如果更新了课节ID，同步更新课节名称和链接
+        if (booking.getLessonId() != null) {
+            MaterialDetailResp lesson = materialService.get(booking.getLessonId());
+            if (lesson != null) {
+                booking.setLessonName(lesson.getName());
+                booking.setLessonUrl(lesson.getLessonUrl());
+                log.info("更新课节信息: lessonId={}, lessonName={}", booking.getLessonId(), lesson.getName());
+            }
+        }
+
+        // 如果更新了教材ID，同步更新教材相关信息
+        if (booking.getMaterialId() != null) {
+            MaterialDetailResp material = materialService.get(booking.getMaterialId());
+            if (material != null) {
+                if ("LEVEL".equals(material.getType())) {
+                    // 当前节点是 LEVEL，需要向上查找 BOOK
+                    booking.setMaterialLevel(material.getName());
+
+                    if (material.getPid() != null) {
+                        MaterialDetailResp bookMaterial = materialService.get(material.getPid());
+                        if (bookMaterial != null && "BOOK".equals(bookMaterial.getType())) {
+                            booking.setMaterialName(bookMaterial.getName());
+                            booking.setMaterialCode(bookMaterial.getCode());
+                        }
+                    }
+                } else if ("BOOK".equals(material.getType())) {
+                    booking.setMaterialName(material.getName());
+                    booking.setMaterialCode(material.getCode());
+                }
+                log.info("更新教材信息: materialId={}, materialName={}", booking.getMaterialId(), booking.getMaterialName());
+            }
+        }
+
         // 设置更新审计字段
         booking.setUpdateTime(LocalDateTime.now());
         try {
@@ -403,7 +530,10 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         if (accountId != null) {
             AccountDO account = accountMapper.selectById(accountId);
             if (account != null) {
-                log.info("设置课时账户: accountId={}, type={}", accountId, account.getAccountType());
+                // 设置卡名称（使用账户类型作为卡标题）
+                String cardTitle = getCardTitleFromAccountType(account.getAccountType());
+                booking.setCardName(cardTitle);
+                log.info("设置课时账户: accountId={}, type={}, cardTitle={}", accountId, account.getAccountType(), cardTitle);
             }
         }
 
@@ -411,11 +541,48 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         if (booking.getMaterialId() != null) {
             MaterialDetailResp material = materialService.get(booking.getMaterialId());
             if (material != null) {
-                booking.setMaterialName(material.getName());
-                booking.setMaterialLevel(material.getType());
-                booking.setMaterialCode(material.getCode());
-                log.info("设置教材信息: name={}, type={}, code={}", material.getName(), material.getType(), material
-                    .getCode());
+                // materialId 通常指向 LEVEL 类型的节点
+                // material_name 应该是 BOOK 的 name
+                // material_code 应该是 BOOK 的 code
+                // material_level 应该是 LEVEL 的 name
+
+                if ("LEVEL".equals(material.getType())) {
+                    // 当前节点是 LEVEL，需要向上查找 BOOK
+                    booking.setMaterialLevel(material.getName()); // LEVEL 的名称（如 K1）
+
+                    // 查找父节点 BOOK
+                    if (material.getPid() != null) {
+                        MaterialDetailResp bookMaterial = materialService.get(material.getPid());
+                        if (bookMaterial != null && "BOOK".equals(bookMaterial.getType())) {
+                            booking.setMaterialName(bookMaterial.getName()); // BOOK 的名称
+                            booking.setMaterialCode(bookMaterial.getCode()); // BOOK 的编码
+                            log.info("设置教材信息: BOOK name={}, code={}, LEVEL name={}", bookMaterial.getName(), bookMaterial.getCode(), material.getName());
+                        } else {
+                            // 父节点不是 BOOK，使用当前节点信息
+                            booking.setMaterialName(material.getName());
+                            booking.setMaterialCode(material.getCode());
+                            log.warn("父节点不是BOOK类型: materialId={}, parentId={}, parentType={}",
+                                booking.getMaterialId(), material.getPid(), bookMaterial != null ? bookMaterial.getType() : "null");
+                        }
+                    } else {
+                        // 没有父节点，使用当前节点信息
+                        booking.setMaterialName(material.getName());
+                        booking.setMaterialCode(material.getCode());
+                        log.warn("LEVEL类型节点没有父节点: materialId={}", booking.getMaterialId());
+                    }
+                } else if ("BOOK".equals(material.getType())) {
+                    // 当前节点就是 BOOK
+                    booking.setMaterialName(material.getName());
+                    booking.setMaterialCode(material.getCode());
+                    booking.setMaterialLevel(""); // BOOK 级别没有 LEVEL
+                    log.info("设置教材信息: BOOK name={}, code={}", material.getName(), material.getCode());
+                } else {
+                    // 其他类型，直接使用当前节点信息
+                    booking.setMaterialName(material.getName());
+                    booking.setMaterialCode(material.getCode());
+                    booking.setMaterialLevel(material.getType());
+                    log.info("设置教材信息: name={}, type={}, code={}", material.getName(), material.getType(), material.getCode());
+                }
             }
         }
 
@@ -1132,6 +1299,42 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
     }
 
     @Override
+    public BookingDetailResp getLastBookingByStudentId(Long studentId) {
+        try {
+            if (studentId == null) {
+                log.warn("学生ID为空，无法获取最后预约记录");
+                return null;
+            }
+
+            // 查询该学生的最后一次预约记录
+            LambdaQueryWrapper<BookingDO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(BookingDO::getStudentId, studentId)
+                .eq(BookingDO::getStatus, 1) // 只查询已预约状态的记录
+                .orderByDesc(BookingDO::getCreateTime) // 按创建时间降序
+                .last("LIMIT 1"); // 只取第一条记录
+
+            BookingDO lastBooking = baseMapper.selectOne(queryWrapper);
+
+            if (lastBooking == null) {
+                log.info("学生暂无预约记录: studentId={}", studentId);
+                return null;
+            }
+
+            log.info("找到学生最后预约记录: studentId={}, bookingId={}, materialId={}, lessonId={}",
+                studentId, lastBooking.getId(), lastBooking.getMaterialId(), lastBooking.getLessonId());
+
+            // 转换为详细响应对象
+            BookingDetailResp resp = super.get(lastBooking.getId());
+
+            return resp;
+
+        } catch (Exception e) {
+            log.error("根据学生ID获取最后预约记录失败: studentId={}, error={}", studentId, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    @Override
     public List<Long> getCompletedLessonIds(Long studentId, Long materialId) {
         try {
             log.info("查询学生已完成的课件列表: studentId={}, materialId={}", studentId, materialId);
@@ -1795,6 +1998,31 @@ public class BookingServiceImpl extends BaseServiceImpl<BookingMapper, BookingDO
         } catch (Exception e) {
             log.error("查找学生可用账户失败: studentId={}, error={}", studentId, e.getMessage(), e);
             return null;
+        }
+    }
+
+    /**
+     * 根据账户类型获取卡标题
+     *
+     * @param accountType 账户类型（PAID, GIFT, LEAVE, FREEZE）
+     * @return 卡标题
+     */
+    private String getCardTitleFromAccountType(String accountType) {
+        if (accountType == null) {
+            return "未知账户";
+        }
+
+        switch (accountType) {
+            case "PAID":
+                return "正式课时账户";
+            case "GIFT":
+                return "赠送课时账户";
+            case "LEAVE":
+                return "请假补偿账户";
+            case "FREEZE":
+                return "冻结账户";
+            default:
+                return accountType + "账户";
         }
     }
 

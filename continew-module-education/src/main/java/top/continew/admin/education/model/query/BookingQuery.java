@@ -21,6 +21,7 @@ import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import top.continew.starter.data.core.annotation.Query;
+import top.continew.starter.data.core.annotation.QueryIgnore;
 import top.continew.starter.data.core.enums.QueryType;
 import java.io.Serial;
 import java.io.Serializable;
@@ -40,18 +41,25 @@ public class BookingQuery implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 所属学生ID
+     */
+    @Schema(description = "所属学生ID")
+    @Query(type = QueryType.EQ)
+    private Long studentId;
+
+    /**
      * 所属学生姓名
      */
     @Schema(description = "所属学生姓名")
-    @Query(type = QueryType.EQ)
+    @Query(type = QueryType.LIKE)
     private String studentName;
 
     /**
-     * 预约会员卡名称
+     * 老师姓名
      */
-    @Schema(description = "预约会员卡名称")
-    @Query(type = QueryType.EQ)
-    private String cardName;
+    @Schema(description = "老师姓名")
+    @Query(type = QueryType.LIKE)
+    private String teacherName;
 
     /**
      * 创建人
@@ -66,4 +74,11 @@ public class BookingQuery implements Serializable {
     @Schema(description = "状态（1:有效 0:已取消）")
     @Query(type = QueryType.EQ)
     private Integer status = 1;
+
+    /**
+     * 时间状态（notStarted:未开始 finished:已结束）
+     */
+    @Schema(description = "时间状态（notStarted:未开始 finished:已结束）")
+    @QueryIgnore
+    private String timeStatus;
 }

@@ -176,7 +176,19 @@ public class StudentServiceImpl extends BaseServiceImpl<StudentMapper, StudentDO
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(StudentReq req) {
-        return super.create(req);
+        // 设置默认值：不允许录课
+        StudentDO student = new StudentDO();
+        BeanUtils.copyProperties(req, student);
+        student.setEnableRecording(0);
+        student.setRegisterTime(LocalDateTime.now());
+        student.setStatus(1);
+
+        // 使用统一的机构ID获取逻辑
+        Long institutionId = InstitutionUtil.getEffectiveInstitutionId(institutionService, "为新增学生设置");
+        student.setInstitutionId(institutionId);
+
+        baseMapper.insert(student);
+        return student.getId();
     }
 
     @Override

@@ -112,8 +112,15 @@ public class SlotResp extends BaseResp {
     /**
      * 预约详细信息
      */
+    @Data
     @Schema(description = "预约详细信息")
     public static class BookingDetailInfo {
+        /**
+         * 预约ID
+         */
+        @Schema(description = "预约ID")
+        private Long id;
+
         /**
          * 学生ID
          */

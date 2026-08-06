@@ -384,6 +384,7 @@ public class SlotServiceImpl extends BaseServiceImpl<SlotMapper, SlotDO, SlotRes
     private SlotResp.BookingDetailInfo convertToBookingDetailInfo(BookingDO booking) {
         SlotResp.BookingDetailInfo detailInfo = new SlotResp.BookingDetailInfo();
 
+        detailInfo.setId(booking.getId());
         detailInfo.setStudentId(booking.getStudentId());
         detailInfo.setStudentName(booking.getStudentName());
         detailInfo.setStudentPhone(booking.getStudentPhone());

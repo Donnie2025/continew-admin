@@ -114,6 +114,15 @@ public interface BookingService extends BaseService<BookingResp, BookingDetailRe
     BookingDO getLastBookingByCurrentStudent();
 
     /**
+     * 根据学生ID获取最后一次预约记录
+     * 用于教师添加预约时智能选择下一节课功能
+     *
+     * @param studentId 学生ID
+     * @return 最后一次预约记录，如果没有预约记录则返回null
+     */
+    BookingDetailResp getLastBookingByStudentId(Long studentId);
+
+    /**
      * 获取学生已完成的课件列表
      * 根据预约时间与当前时间对比判断课件是否已完成
      *

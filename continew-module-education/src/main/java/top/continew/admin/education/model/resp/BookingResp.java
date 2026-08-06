@@ -92,6 +92,18 @@ public class BookingResp extends BaseResp {
     private LocalDateTime operateTime;
 
     /**
+     * 教师姓名
+     */
+    @Schema(description = "教师姓名")
+    private String teacherName;
+
+    /**
+     * 预约教材ID
+     */
+    @Schema(description = "预约教材ID")
+    private Long materialId;
+
+    /**
      * 预约教材名字
      */
     @Schema(description = "预约教材名字")
@@ -104,16 +116,34 @@ public class BookingResp extends BaseResp {
     private String materialLevel;
 
     /**
+     * 课节ID
+     */
+    @Schema(description = "课节ID")
+    private Long lessonId;
+
+    /**
      * 课节名称
      */
     @Schema(description = "课节名称")
     private String lessonName;
 
     /**
+     * 课节URL
+     */
+    @Schema(description = "课节URL")
+    private String lessonUrl;
+
+    /**
      * 预约备注
      */
     @Schema(description = "预约备注")
     private String remark;
+
+    /**
+     * 状态（1：启用；0：禁用）
+     */
+    @Schema(description = "状态")
+    private Integer status;
 
     /**
      * 更新时间

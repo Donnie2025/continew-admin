@@ -347,4 +347,40 @@ public class FixedBookingServiceImpl implements FixedBookingService {
             .filter(ObjectUtil::isNotNull)
             .collect(Collectors.toList());
     }
+
+    @Override
+    public List<top.continew.admin.education.model.resp.FixedBookingResp> listBookingRecordsByStudentId(Long studentId) {
+        if (studentId == null) {
+            return List.of();
+        }
+
+        // 查询学生的所有固定课预约记录
+        List<FixedBookingDO> bookings = fixedBookingMapper.selectByStudentId(studentId);
+        if (bookings.isEmpty()) {
+            return List.of();
+        }
+
+        // 转换为响应对象
+        return bookings.stream()
+            .map(booking -> {
+                top.continew.admin.education.model.resp.FixedBookingResp resp = new top.continew.admin.education.model.resp.FixedBookingResp();
+                resp.setId(booking.getId());
+                resp.setFixedId(booking.getFixedId());
+                resp.setTeacherName(booking.getTeacherName());
+                resp.setWeekDay(booking.getWeekDay());
+                resp.setStartTime(booking.getStartTime());
+
+                // 设置操作人信息（使用createUser ID作为字符串，前端可以根据需要进行映射）
+                if (booking.getCreateUser() != null) {
+                    resp.setCreateUserString(String.valueOf(booking.getCreateUser()));
+                } else {
+                    resp.setCreateUserString("系统");
+                }
+
+                resp.setCreateTime(booking.getCreateTime());
+                resp.setStatus(booking.getStatus());
+                return resp;
+            })
+            .collect(Collectors.toList());
+    }
 }

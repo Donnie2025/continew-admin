@@ -16,10 +16,14 @@
 
 package top.continew.admin.education.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 
+import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.resp.PageResp;
 import top.continew.starter.extension.crud.service.BaseServiceImpl;
 import top.continew.admin.education.mapper.TransactionMapper;
 import top.continew.admin.education.model.entity.TransactionDO;
@@ -37,4 +41,12 @@ import top.continew.admin.education.service.TransactionService;
  */
 @Service
 @RequiredArgsConstructor
-public class TransactionServiceImpl extends BaseServiceImpl<TransactionMapper, TransactionDO, TransactionResp, TransactionDetailResp, TransactionQuery, TransactionReq> implements TransactionService {}
+public class TransactionServiceImpl extends BaseServiceImpl<TransactionMapper, TransactionDO, TransactionResp, TransactionDetailResp, TransactionQuery, TransactionReq> implements TransactionService {
+
+    @Override
+    public PageResp<TransactionResp> page(TransactionQuery query, PageQuery pageQuery) {
+        Page<TransactionResp> page = new Page<>(pageQuery.getPage(), pageQuery.getSize());
+        IPage<TransactionResp> result = this.baseMapper.selectPageList(page, query);
+        return PageResp.build(result);
+    }
+}

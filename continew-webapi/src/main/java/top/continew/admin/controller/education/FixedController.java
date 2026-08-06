@@ -159,4 +159,28 @@ public class FixedController extends BaseController<FixedService, FixedResp, Fix
         fixedBookingService.deleteById(id);
         return R.ok();
     }
+
+    /**
+     * 根据学生ID查询固定课预约列表
+     *
+     * @param studentId 学生ID
+     * @return 固定课预约列表
+     */
+    @Operation(summary = "根据学生ID查询固定课预约列表", description = "查询指定学生的所有固定课预约详情")
+    @GetMapping("/student/{studentId}")
+    public R<List<FixedResp>> listByStudentId(@Parameter(description = "学生ID", example = "1") @PathVariable @NotNull Long studentId) {
+        return R.ok(fixedBookingService.listFixedDetailsByStudentId(studentId));
+    }
+
+    /**
+     * 根据学生ID查询固定课预约记录列表
+     *
+     * @param studentId 学生ID
+     * @return 固定课预约记录列表
+     */
+    @Operation(summary = "根据学生ID查询固定课预约记录列表", description = "查询指定学生的所有固定课预约记录（含操作人、操作时间）")
+    @GetMapping("/student/{studentId}/records")
+    public R<List<top.continew.admin.education.model.resp.FixedBookingResp>> listBookingRecordsByStudentId(@Parameter(description = "学生ID", example = "1") @PathVariable @NotNull Long studentId) {
+        return R.ok(fixedBookingService.listBookingRecordsByStudentId(studentId));
+    }
 }

@@ -103,8 +103,15 @@ public class ClassinCloudController {
     @Operation(summary = "创建文件夹")
     @PostMapping("/folder")
     public R<String> createFolder(@Parameter(description = "父文件夹ID") @RequestParam String parentFolderId,
-                                  @Parameter(description = "文件夹名称") @RequestParam String folderName) {
-        return R.ok(classinClient.createCloudFolder(parentFolderId, folderName));
+                                  @Parameter(description = "文件夹名称") @RequestParam String folderName,
+                                  @Parameter(description = "是否同步到ClassIn") @RequestParam(required = false, defaultValue = "true") Boolean enableClassInSync) {
+        if (enableClassInSync != null && enableClassInSync) {
+            String folderId = classinClient.createCloudFolder(parentFolderId, folderName);
+            return R.ok(folderId);
+        } else {
+            log.info("跳过 ClassIn 创建文件夹: {}", folderName);
+            return R.ok(null);
+        }
     }
 
     @Operation(summary = "删除文件夹")
@@ -141,18 +148,27 @@ public class ClassinCloudController {
     @PostMapping("/file/upload")
     public R<Map<String, String>> uploadFile(@Parameter(description = "目标文件夹ID，为空则上传到根目录") @RequestParam(required = false) String folderId,
                                              @Parameter(description = "飞书文件夹token") @RequestParam(required = false) String feishuFolderToken,
+                                             @Parameter(description = "是否同步到ClassIn") @RequestParam(required = false, defaultValue = "true") Boolean enableClassInSync,
                                              @Parameter(description = "文件") @RequestPart MultipartFile file) throws IOException {
         byte[] fileBytes = file.getBytes();
         String fileName = file.getOriginalFilename();
 
-        // 上传到 ClassIn（带重试）
-        String classinFileId;
-        try {
-            classinFileId = withRetry("ClassIn上传[" + fileName + "]", () -> classinClient
-                .uploadCloudFile(folderId, fileBytes, fileName));
-        } catch (Exception e) {
-            log.error("ClassIn 上传最终失败: {}", fileName, e);
-            throw new RuntimeException("ClassIn 上传失败: " + e.getMessage(), e);
+        Map<String, String> result = new HashMap<>();
+
+        // 根据开关决定是否上传到 ClassIn
+        if (enableClassInSync != null && enableClassInSync) {
+            // 上传到 ClassIn（带重试）
+            String classinFileId;
+            try {
+                classinFileId = withRetry("ClassIn上传[" + fileName + "]", () -> classinClient
+                    .uploadCloudFile(folderId, fileBytes, fileName));
+                result.put("classinFileId", classinFileId);
+            } catch (Exception e) {
+                log.error("ClassIn 上传最终失败: {}", fileName, e);
+                throw new RuntimeException("ClassIn 上传失败: " + e.getMessage(), e);
+            }
+        } else {
+            log.info("跳过 ClassIn 上传: {}", fileName);
         }
 
         // 同时上传到飞书（带重试，失败不影响结果）
@@ -170,8 +186,6 @@ public class ClassinCloudController {
             }
         }
 
-        Map<String, String> result = new HashMap<>();
-        result.put("classinFileId", classinFileId);
         result.put("feishuFileToken", feishuFileToken);
         result.put("lessonUrl", lessonUrl);
 

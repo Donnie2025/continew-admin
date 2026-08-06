@@ -98,4 +98,34 @@ public class BookingController extends BaseController<BookingService, BookingRes
     public void cancelBookingBySlotAndStudent(@Validated @RequestBody CancelBookingBySlotReq req) {
         baseService.cancelBookingBySlotAndStudent(req.getSlotId(), req.getStudentId());
     }
+
+    /**
+     * 更新预约信息（仅更新部分字段）
+     *
+     * @param bookingId 预约ID
+     * @param req 更新参数
+     */
+    @Operation(summary = "更新预约信息", description = "更新预约的教材、课节和备注信息")
+    @PutMapping("/{bookingId}/info")
+    public void updateBookingInfo(@PathVariable Long bookingId, @RequestBody BookingReq req) {
+        BookingDO booking = new BookingDO();
+        booking.setId(bookingId);
+        booking.setAccountId(req.getAccountId());
+        booking.setMaterialId(req.getMaterialId());
+        booking.setLessonId(req.getLessonId());
+        booking.setRemark(req.getRemark());
+        baseService.update(booking, bookingId);
+    }
+
+    /**
+     * 根据学生ID获取最后一次预约记录
+     *
+     * @param studentId 学生ID
+     * @return 最后一次预约记录详情
+     */
+    @Operation(summary = "获取学生最后预约记录", description = "获取指定学生的最后一次预约记录，用于智能选择下一节课")
+    @GetMapping("/last-by-student/{studentId}")
+    public BookingDetailResp getLastBookingByStudentId(@PathVariable Long studentId) {
+        return baseService.getLastBookingByStudentId(studentId);
+    }
 }

@@ -131,4 +131,12 @@ public interface FixedBookingService {
      * @return 固定课详情列表
      */
     List<top.continew.admin.education.model.resp.FixedResp> listFixedDetailsByStudentId(Long studentId);
+
+    /**
+     * 根据学生ID查询固定课预约记录列表
+     *
+     * @param studentId 学生ID
+     * @return 固定课预约记录列表
+     */
+    List<top.continew.admin.education.model.resp.FixedBookingResp> listBookingRecordsByStudentId(Long studentId);
 }
